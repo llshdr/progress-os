@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { User } from '@supabase/supabase-js'
 
-interface DashboardProps {
+interface DashboardClientProps {
   user: User
 }
 
-export default function Dashboard({ user }: DashboardProps) {
+export default function DashboardClient({ user }: DashboardClientProps) {
   const supabase = createClient()
 
   const handleSignOut = async () => {
