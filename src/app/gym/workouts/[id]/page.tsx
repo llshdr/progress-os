@@ -19,10 +19,18 @@ type Workout = {
 
 type Exercise = {
   id: string
-  exercise_name: string
+  exercise_name: string | null
+  exercise_library_id: string | null
   equipment: string | null
   notes: string | null
   exercise_order: number
+}
+
+type LibraryExercise = {
+  id: string
+  name: string
+  primary_muscle_group: string
+  equipment_type: string
 }
 
 export default function CurrentWorkoutPage() {
@@ -30,16 +38,40 @@ export default function CurrentWorkoutPage() {
   const router = useRouter()
   const [workout, setWorkout] = useState<Workout | null>(null)
   const [exercises, setExercises] = useState<Exercise[]>([])
+  const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([])
   const [loading, setLoading] = useState(true)
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
   const [showAddExercise, setShowAddExercise] = useState(false)
+  const [selectedLibraryExercise, setSelectedLibraryExercise] = useState<string | null>(null)
   const [newExerciseName, setNewExerciseName] = useState('')
   const [newExerciseEquipment, setNewExerciseEquipment] = useState('')
+  const [useLibrary, setUseLibrary] = useState(true)
   const supabase = createClient()
 
   useEffect(() => {
     fetchWorkoutData()
+    fetchLibraryExercises()
   }, [params.id])
+
+  const fetchLibraryExercises = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data, error } = await supabase
+      .from('exercise_library')
+      .select('id, name, primary_muscle_group, equipment_type')
+      .eq('user_id', user.id)
+      .eq('archived', false)
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching library exercises:', error)
+    } else {
+      setLibraryExercises(data || [])
+    }
+  }
 
   const fetchWorkoutData = async () => {
     const {
@@ -62,10 +94,10 @@ export default function CurrentWorkoutPage() {
 
     setWorkout(workoutData)
 
-    // Fetch exercises
+    // Fetch exercises with library data
     const { data: exercisesData, error: exercisesError } = await supabase
       .from('exercises')
-      .select('*')
+      .select('*, exercise_library(id, name, primary_muscle_group, equipment_type)')
       .eq('workout_id', params.id)
       .order('exercise_order', { ascending: true })
 
@@ -80,19 +112,40 @@ export default function CurrentWorkoutPage() {
 
   const handleAddExercise = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newExerciseName) return
+    
+    // If using library, require selected exercise
+    if (useLibrary && !selectedLibraryExercise) {
+      alert('Please select an exercise from your library')
+      return
+    }
+    
+    // If not using library, require custom name
+    if (!useLibrary && !newExerciseName) {
+      alert('Please enter an exercise name')
+      return
+    }
 
-    const { error } = await supabase.from('exercises').insert({
+    const exerciseData: any = {
       workout_id: params.id,
-      exercise_name: newExerciseName,
-      equipment: newExerciseEquipment || null,
       exercise_order: exercises.length + 1,
-    })
+    }
+
+    if (useLibrary && selectedLibraryExercise) {
+      exerciseData.exercise_library_id = selectedLibraryExercise
+      // exercise_name will be null, derived from library
+    } else {
+      exerciseData.exercise_name = newExerciseName
+      exerciseData.equipment = newExerciseEquipment || null
+    }
+
+    const { error } = await supabase.from('exercises').insert(exerciseData)
 
     if (error) {
       console.error('Error adding exercise:', error)
       alert('Failed to add exercise')
     } else {
+      // Reset form
+      setSelectedLibraryExercise(null)
       setNewExerciseName('')
       setNewExerciseEquipment('')
       setShowAddExercise(false)
@@ -147,6 +200,9 @@ export default function CurrentWorkoutPage() {
   // If an exercise is active, show the set logger
   if (activeExerciseId) {
     const activeExercise = exercises.find(e => e.id === activeExerciseId)
+    // Get exercise name from library or fallback to custom name
+    const exerciseName = (activeExercise as any)?.exercise_library?.name || activeExercise?.exercise_name || 'Unknown Exercise'
+    
     return (
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -159,7 +215,7 @@ export default function CurrentWorkoutPage() {
           </button>
           <SetLogger
             exerciseId={activeExerciseId}
-            exerciseName={activeExercise?.exercise_name || ''}
+            exerciseName={exerciseName}
             onComplete={() => setActiveExerciseId(null)}
           />
         </div>
@@ -210,27 +266,33 @@ export default function CurrentWorkoutPage() {
               </button>
             </div>
           ) : (
-            exercises.map((exercise) => (
-              <button
-                key={exercise.id}
-                onClick={() => setActiveExerciseId(exercise.id)}
-                className="w-full border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200 text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-white mb-1">
-                      {exercise.exercise_name}
-                    </h3>
-                    {exercise.equipment && (
-                      <p className="text-white/40 text-sm">{exercise.equipment}</p>
-                    )}
+            exercises.map((exercise) => {
+              // Get exercise name from library or fallback to custom name
+              const exerciseName = (exercise as any)?.exercise_library?.name || exercise.exercise_name || 'Unknown Exercise'
+              const equipment = (exercise as any)?.exercise_library?.equipment_type || exercise.equipment
+              
+              return (
+                <button
+                  key={exercise.id}
+                  onClick={() => setActiveExerciseId(exercise.id)}
+                  className="w-full border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200 text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-white mb-1">
+                        {exerciseName}
+                      </h3>
+                      {equipment && (
+                        <p className="text-white/40 text-sm">{equipment}</p>
+                      )}
+                    </div>
+                    <div className="text-white/30">
+                      →
+                    </div>
                   </div>
-                  <div className="text-white/30">
-                    →
-                  </div>
-                </div>
-              </button>
-            ))
+                </button>
+              )
+            })
           )}
         </div>
 
@@ -238,27 +300,95 @@ export default function CurrentWorkoutPage() {
         {showAddExercise && (
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
             <form onSubmit={handleAddExercise} className="space-y-4">
-              <div>
-                <label className="text-white/60 text-sm mb-2 block">Exercise Name</label>
-                <input
-                  type="text"
-                  value={newExerciseName}
-                  onChange={(e) => setNewExerciseName(e.target.value)}
-                  placeholder="Bench Press"
-                  className="w-full bg-white/5 border-white/10 text-white rounded-lg px-4 py-3 placeholder:text-white/30"
-                  autoFocus
-                />
+              {/* Toggle between Library and Custom */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setUseLibrary(true)}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    useLibrary
+                      ? 'bg-white text-black'
+                      : 'bg-white/5 text-white/60 hover:bg-white/10'
+                  }`}
+                >
+                  From Library
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUseLibrary(false)}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    !useLibrary
+                      ? 'bg-white text-black'
+                      : 'bg-white/5 text-white/60 hover:bg-white/10'
+                  }`}
+                >
+                  Custom
+                </button>
               </div>
-              <div>
-                <label className="text-white/60 text-sm mb-2 block">Equipment (optional)</label>
-                <input
-                  type="text"
-                  value={newExerciseEquipment}
-                  onChange={(e) => setNewExerciseEquipment(e.target.value)}
-                  placeholder="Barbell"
-                  className="w-full bg-white/5 border-white/10 text-white rounded-lg px-4 py-3 placeholder:text-white/30"
-                />
-              </div>
+
+              {useLibrary ? (
+                /* Library Selection */
+                <div>
+                  <label className="text-white/60 text-sm mb-3 block">Select Exercise</label>
+                  {libraryExercises.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-white/40 mb-3">No exercises in your library</p>
+                      <Link
+                        href="/gym/exercises/new"
+                        className="text-white hover:text-white/60 text-sm"
+                      >
+                        Create your first exercise →
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="max-h-60 overflow-y-auto space-y-2">
+                      {libraryExercises.map((libExercise) => (
+                        <button
+                          key={libExercise.id}
+                          type="button"
+                          onClick={() => setSelectedLibraryExercise(libExercise.id)}
+                          className={`w-full p-3 rounded-lg border transition-all duration-200 text-left ${
+                            selectedLibraryExercise === libExercise.id
+                              ? 'bg-white/10 text-white border-white/20'
+                              : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          <div className="font-medium text-white">{libExercise.name}</div>
+                          <div className="text-white/40 text-sm">
+                            {libExercise.primary_muscle_group} • {libExercise.equipment_type}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Custom Exercise */
+                <>
+                  <div>
+                    <label className="text-white/60 text-sm mb-2 block">Exercise Name</label>
+                    <input
+                      type="text"
+                      value={newExerciseName}
+                      onChange={(e) => setNewExerciseName(e.target.value)}
+                      placeholder="Bench Press"
+                      className="w-full bg-white/5 border-white/10 text-white rounded-lg px-4 py-3 placeholder:text-white/30"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="text-white/60 text-sm mb-2 block">Equipment (optional)</label>
+                    <input
+                      type="text"
+                      value={newExerciseEquipment}
+                      onChange={(e) => setNewExerciseEquipment(e.target.value)}
+                      placeholder="Barbell"
+                      className="w-full bg-white/5 border-white/10 text-white rounded-lg px-4 py-3 placeholder:text-white/30"
+                    />
+                  </div>
+                </>
+              )}
+
               <div className="flex gap-3">
                 <button
                   type="submit"
