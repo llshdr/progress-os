@@ -5,18 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-
-const WORKOUT_TYPES = [
-  'Push',
-  'Pull',
-  'Legs',
-  'Upper Body',
-  'Lower Body',
-  'Full Body',
-  'Cardio',
-  'Custom',
-]
+import { WORKOUT_TYPES } from '@/lib/gym-constants'
 
 export default function NewWorkoutPage() {
   const router = useRouter()

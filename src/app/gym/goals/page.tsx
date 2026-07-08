@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   Select,
   SelectContent,
@@ -150,9 +152,7 @@ export default function GoalsPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
-        </div>
+        <LoadingState />
       </AppLayout>
     )
   }
@@ -248,8 +248,7 @@ export default function GoalsPage() {
 
         <div className="grid gap-3">
           {goals.length === 0 ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-              <p className="text-white/40 mb-4">No goals for this week yet</p>
+            <EmptyState message="No goals for this week yet">
               <Button
                 onClick={() => setIsDialogOpen(true)}
                 variant="outline"
@@ -257,7 +256,7 @@ export default function GoalsPage() {
               >
                 Add your first goal
               </Button>
-            </div>
+            </EmptyState>
           ) : (
             goals.map((goal) => (
               <div

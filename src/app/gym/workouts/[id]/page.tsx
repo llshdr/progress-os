@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
+import { formatElapsed } from '@/lib/format'
 import Link from 'next/link'
 import { Plus, Check, Clock, ArrowLeft } from 'lucide-react'
 import SetLogger from '@/components/workout/set-logger'
@@ -167,22 +170,10 @@ export default function CurrentWorkoutPage() {
     }
   }
 
-  const formatDuration = (startedAt: string) => {
-    const start = new Date(startedAt)
-    const now = new Date()
-    const minutes = Math.floor((now.getTime() - start.getTime()) / 60000)
-    if (minutes < 60) return `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
-  }
-
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
-        </div>
+        <LoadingState />
       </AppLayout>
     )
   }
@@ -238,7 +229,7 @@ export default function CurrentWorkoutPage() {
             <div className="flex items-center gap-3 text-white/40 text-sm">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {formatDuration(workout.started_at)}
+                {formatElapsed(workout.started_at)}
               </span>
               <span>•</span>
               <span>{exercises.length} exercises</span>
@@ -256,15 +247,14 @@ export default function CurrentWorkoutPage() {
         {/* Exercises List */}
         <div className="space-y-3 mb-6">
           {exercises.length === 0 ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-              <p className="text-white/40 mb-4">No exercises yet</p>
+            <EmptyState message="No exercises yet">
               <button
                 onClick={() => setShowAddExercise(true)}
                 className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors"
               >
                 Add your first exercise
               </button>
-            </div>
+            </EmptyState>
           ) : (
             exercises.map((exercise) => {
               // Get exercise name from library or fallback to custom name

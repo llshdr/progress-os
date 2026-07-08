@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
+import { formatRelativeDate, formatDuration } from '@/lib/format'
 import Link from 'next/link'
 import { Plus, Clock, Calendar } from 'lucide-react'
 
@@ -45,31 +48,6 @@ export default function WorkoutsPage() {
     setLoading(false)
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today'
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday'
-    }
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
-
-  const formatDuration = (startedAt: string, completedAt: string | null) => {
-    if (!completedAt) return 'In progress'
-    const start = new Date(startedAt)
-    const end = new Date(completedAt)
-    const minutes = Math.floor((end.getTime() - start.getTime()) / 60000)
-    if (minutes < 60) return `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
-  }
-
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -91,18 +69,15 @@ export default function WorkoutsPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
-          </div>
+          <LoadingState />
         ) : workouts.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">No workouts yet</p>
+          <EmptyState message="No workouts yet">
             <Link href="/gym/workouts/new">
               <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
                 Start your first workout
               </button>
             </Link>
-          </div>
+          </EmptyState>
         ) : (
           <div className="grid gap-3">
             {workouts.map((workout) => (
@@ -122,10 +97,12 @@ export default function WorkoutsPage() {
                           {workout.workout_type}
                         </h3>
                         <div className="flex items-center gap-3 text-white/40 text-sm">
-                          <span>{formatDate(workout.date)}</span>
+                          <span>{formatRelativeDate(workout.date)}</span>
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {formatDuration(workout.started_at, workout.completed_at)}
+                            {workout.completed_at
+                              ? formatDuration(workout.started_at, workout.completed_at)
+                              : 'In progress'}
                           </span>
                         </div>
                       </div>
