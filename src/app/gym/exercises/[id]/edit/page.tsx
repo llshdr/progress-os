@@ -4,253 +4,87 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-
-const MUSCLE_GROUPS = [
-  'Chest',
-  'Back',
-  'Legs',
-  'Shoulders',
-  'Arms',
-  'Core',
-  'Full Body',
-]
-
-const EQUIPMENT_TYPES = [
-  'Barbell',
-  'Dumbbell',
-  'Machine',
-  'Cable',
-  'Bodyweight',
-  'Kettlebell',
-  'Resistance Band',
-  'Other',
-]
-
-const CATEGORIES = [
-  'Compound',
-  'Isolation',
-  'Cardio',
-  'Mobility',
-  'Stretching',
-]
+import { LoadingState } from '@/components/ui/loading-state'
+import ExerciseForm, {
+  type ExerciseFormValues,
+} from '@/components/gym/exercise-form'
 
 export default function EditExercisePage() {
   const params = useParams()
   const router = useRouter()
-  const [name, setName] = useState('')
-  const [primaryMuscleGroup, setPrimaryMuscleGroup] = useState('')
-  const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>([])
-  const [equipmentType, setEquipmentType] = useState('')
-  const [category, setCategory] = useState('')
-  const [notes, setNotes] = useState('')
+  const [supabase] = useState(() => createClient())
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const supabase = createClient()
+  const [initialValues, setInitialValues] =
+    useState<ExerciseFormValues | null>(null)
 
   useEffect(() => {
-    fetchExercise()
-  }, [params.id])
+    const fetchExercise = async () => {
+      const { data, error } = await supabase
+        .from('exercise_library')
+        .select('*')
+        .eq('id', params.id)
+        .single()
 
-  const fetchExercise = async () => {
-    const { data, error } = await supabase
-      .from('exercise_library')
-      .select('*')
-      .eq('id', params.id)
-      .single()
+      if (error) {
+        console.error('Error fetching exercise:', error)
+        setLoading(false)
+        return
+      }
 
-    if (error) {
-      console.error('Error fetching exercise:', error)
+      setInitialValues({
+        name: data.name,
+        primaryMuscleGroup: data.primary_muscle_group,
+        secondaryMuscleGroups: data.secondary_muscle_groups || [],
+        equipmentType: data.equipment_type,
+        category: data.category,
+        notes: data.notes || '',
+      })
       setLoading(false)
-      return
     }
 
-    setName(data.name)
-    setPrimaryMuscleGroup(data.primary_muscle_group)
-    setSecondaryMuscleGroups(data.secondary_muscle_groups || [])
-    setEquipmentType(data.equipment_type)
-    setCategory(data.category)
-    setNotes(data.notes || '')
-    setLoading(false)
-  }
+    fetchExercise()
+  }, [params.id, supabase])
 
-  const toggleSecondaryMuscle = (muscle: string) => {
-    setSecondaryMuscleGroups(prev =>
-      prev.includes(muscle)
-        ? prev.filter(m => m !== muscle)
-        : [...prev, muscle]
-    )
-  }
-
-  const handleUpdateExercise = async () => {
-    if (!name || !primaryMuscleGroup || !equipmentType || !category) {
-      alert('Please fill in all required fields')
-      return
-    }
-
-    setSaving(true)
-
+  const handleUpdate = async (values: ExerciseFormValues) => {
     const { error } = await supabase
       .from('exercise_library')
       .update({
-        name,
-        primary_muscle_group: primaryMuscleGroup,
-        secondary_muscle_groups: secondaryMuscleGroups.length > 0 ? secondaryMuscleGroups : null,
-        equipment_type: equipmentType,
-        category,
-        notes: notes || null,
+        name: values.name,
+        primary_muscle_group: values.primaryMuscleGroup,
+        secondary_muscle_groups:
+          values.secondaryMuscleGroups.length > 0
+            ? values.secondaryMuscleGroups
+            : null,
+        equipment_type: values.equipmentType,
+        category: values.category,
+        notes: values.notes || null,
       })
       .eq('id', params.id)
 
     if (error) {
       console.error('Error updating exercise:', error)
       alert('Failed to update exercise')
-      setSaving(false)
-    } else {
-      router.push('/gym/exercises')
+      return
     }
-  }
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
-        </div>
-      </AppLayout>
-    )
+    router.push('/gym/exercises')
   }
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym/exercises" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
-          ← Back
-        </Link>
-
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
-          Edit Exercise
-        </h1>
-        <p className="text-white/50 text-sm mb-8">
-          Update exercise details
-        </p>
-
-        <div className="max-w-2xl space-y-6">
-          {/* Exercise Name */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Exercise Name *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Bench Press"
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 placeholder:text-white/30"
-            />
-          </div>
-
-          {/* Primary Muscle Group */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Primary Muscle Group *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {MUSCLE_GROUPS.map((muscle) => (
-                <button
-                  key={muscle}
-                  onClick={() => setPrimaryMuscleGroup(muscle)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    primaryMuscleGroup === muscle
-                      ? 'bg-white text-black border-white'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {muscle}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Secondary Muscle Groups */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Secondary Muscle Groups (optional)</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {MUSCLE_GROUPS.filter(m => m !== primaryMuscleGroup).map((muscle) => (
-                <button
-                  key={muscle}
-                  onClick={() => toggleSecondaryMuscle(muscle)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    secondaryMuscleGroups.includes(muscle)
-                      ? 'bg-white/10 text-white border-white/20'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {muscle}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Equipment Type */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Equipment Type *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {EQUIPMENT_TYPES.map((equipment) => (
-                <button
-                  key={equipment}
-                  onClick={() => setEquipmentType(equipment)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    equipmentType === equipment
-                      ? 'bg-white text-black border-white'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {equipment}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Category *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    category === cat
-                      ? 'bg-white text-black border-white'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Notes (optional)</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any notes about this exercise..."
-              rows={3}
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 placeholder:text-white/30 resize-none"
-            />
-          </div>
-
-          {/* Update Button */}
-          <button
-            onClick={handleUpdateExercise}
-            disabled={saving || !name || !primaryMuscleGroup || !equipmentType || !category}
-            className="w-full bg-white text-black hover:bg-white/90 rounded-xl px-4 py-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {saving ? 'Saving...' : 'Update Exercise'}
-          </button>
-        </div>
-      </div>
+      {loading || !initialValues ? (
+        <LoadingState />
+      ) : (
+        <ExerciseForm
+          title="Edit Exercise"
+          subtitle="Update exercise details"
+          backHref="/gym/exercises"
+          submitLabel="Update Exercise"
+          savingLabel="Saving..."
+          initialValues={initialValues}
+          onSubmit={handleUpdate}
+        />
+      )}
     </AppLayout>
   )
 }

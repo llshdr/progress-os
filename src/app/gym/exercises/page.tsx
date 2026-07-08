@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import Link from 'next/link'
-import { Plus, Search, Star, Archive, MoreVertical } from 'lucide-react'
+import { Plus, Search, Star, Archive } from 'lucide-react'
 
 type Exercise = {
   id: string
@@ -169,14 +171,11 @@ export default function ExerciseLibraryPage() {
 
         {/* Exercise List */}
         {loading ? (
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
-          </div>
+          <LoadingState />
         ) : filteredExercises.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">
-              {searchQuery ? 'No exercises found' : 'No exercises yet'}
-            </p>
+          <EmptyState
+            message={searchQuery ? 'No exercises found' : 'No exercises yet'}
+          >
             {!searchQuery && (
               <Link href="/gym/exercises/new">
                 <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
@@ -184,7 +183,7 @@ export default function ExerciseLibraryPage() {
                 </button>
               </Link>
             )}
-          </div>
+          </EmptyState>
         ) : (
           <div className="grid gap-3">
             {filteredExercises.map((exercise) => (
