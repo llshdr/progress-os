@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Check, Clock, ArrowLeft } from 'lucide-react'
@@ -40,6 +41,7 @@ export default function CurrentWorkoutPage() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
   const [showAddExercise, setShowAddExercise] = useState(false)
   const [selectedLibraryExercise, setSelectedLibraryExercise] = useState<string | null>(null)
@@ -54,30 +56,37 @@ export default function CurrentWorkoutPage() {
   }, [params.id])
 
   const fetchLibraryExercises = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Error fetching library exercises (auth):', userError)
+      return
+    }
 
-    const { data, error } = await supabase
+    const { data, error: fetchError } = await supabase
       .from('exercise_library')
       .select('id, name, primary_muscle_group, equipment_type')
       .eq('user_id', user.id)
       .eq('archived', false)
       .order('name', { ascending: true })
 
-    if (error) {
-      console.error('Error fetching library exercises:', error)
+    if (fetchError) {
+      console.error('Error fetching library exercises:', fetchError)
     } else {
       setLibraryExercises(data || [])
     }
   }
 
   const fetchWorkoutData = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    setLoading(true)
+    setError(null)
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Error fetching workout (auth):', userError)
+      setError(userError ? getErrorMessage(userError) : 'You must be signed in to view this workout.')
+      setLoading(false)
+      return
+    }
 
     // Fetch workout
     const { data: workoutData, error: workoutError } = await supabase
@@ -88,6 +97,7 @@ export default function CurrentWorkoutPage() {
 
     if (workoutError) {
       console.error('Error fetching workout:', workoutError)
+      setError(getErrorMessage(workoutError))
       setLoading(false)
       return
     }
@@ -103,6 +113,7 @@ export default function CurrentWorkoutPage() {
 
     if (exercisesError) {
       console.error('Error fetching exercises:', exercisesError)
+      setError(getErrorMessage(exercisesError))
     } else {
       setExercises(exercisesData || [])
     }
@@ -142,7 +153,7 @@ export default function CurrentWorkoutPage() {
 
     if (error) {
       console.error('Error adding exercise:', error)
-      alert('Failed to add exercise')
+      alert(`Failed to add exercise: ${getErrorMessage(error)}`)
     } else {
       // Reset form
       setSelectedLibraryExercise(null)
@@ -161,7 +172,7 @@ export default function CurrentWorkoutPage() {
 
     if (error) {
       console.error('Error completing workout:', error)
-      alert('Failed to complete workout')
+      alert(`Failed to complete workout: ${getErrorMessage(error)}`)
     } else {
       router.push('/gym/workouts')
     }
@@ -182,6 +193,29 @@ export default function CurrentWorkoutPage() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
           <div className="text-white/40">Loading...</div>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Link href="/gym/workouts" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+            ← Back
+          </Link>
+          <div className="border border-red-500/20 rounded-2xl bg-red-500/[0.04] p-12 text-center">
+            <p className="text-red-400 mb-4" role="alert">
+              Couldn&apos;t load this workout: {error}
+            </p>
+            <button
+              onClick={() => fetchWorkoutData()}
+              className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors"
+            >
+              Try again
+            </button>
+          </div>
         </div>
       </AppLayout>
     )

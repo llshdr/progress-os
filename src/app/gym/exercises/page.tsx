@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Search, Star, Archive, MoreVertical } from 'lucide-react'
@@ -21,6 +22,7 @@ export default function ExerciseLibraryPage() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFavorites, setShowFavorites] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
@@ -35,20 +37,27 @@ export default function ExerciseLibraryPage() {
   }, [exercises, searchQuery, showFavorites, showArchived])
 
   const fetchExercises = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    setLoading(true)
+    setError(null)
 
-    const { data, error } = await supabase
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Error fetching exercises (auth):', userError)
+      setError(userError ? getErrorMessage(userError) : 'You must be signed in to view your exercise library.')
+      setLoading(false)
+      return
+    }
+
+    const { data, error: fetchError } = await supabase
       .from('exercise_library')
       .select('*')
       .eq('user_id', user.id)
       .order('favorite', { ascending: false })
       .order('name', { ascending: true })
 
-    if (error) {
-      console.error('Error fetching exercises:', error)
+    if (fetchError) {
+      console.error('Error fetching exercises:', fetchError)
+      setError(getErrorMessage(fetchError))
     } else {
       setExercises(data || [])
     }
@@ -87,6 +96,7 @@ export default function ExerciseLibraryPage() {
 
     if (error) {
       console.error('Error toggling favorite:', error)
+      alert(`Failed to update favorite: ${getErrorMessage(error)}`)
     } else {
       fetchExercises()
     }
@@ -100,6 +110,7 @@ export default function ExerciseLibraryPage() {
 
     if (error) {
       console.error('Error toggling archive:', error)
+      alert(`Failed to update archive status: ${getErrorMessage(error)}`)
     } else {
       fetchExercises()
     }
@@ -171,6 +182,18 @@ export default function ExerciseLibraryPage() {
         {loading ? (
           <div className="flex items-center justify-center min-h-[50vh]">
             <div className="text-white/40">Loading...</div>
+          </div>
+        ) : error ? (
+          <div className="border border-red-500/20 rounded-2xl bg-red-500/[0.04] p-12 text-center">
+            <p className="text-red-400 mb-4" role="alert">
+              Couldn&apos;t load exercises: {error}
+            </p>
+            <button
+              onClick={() => fetchExercises()}
+              className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors"
+            >
+              Try again
+            </button>
           </div>
         ) : filteredExercises.length === 0 ? (
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">

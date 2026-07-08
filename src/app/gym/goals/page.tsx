@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,6 +36,7 @@ type Goal = {
 export default function GoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newGoal, setNewGoal] = useState({
     title: '',
@@ -48,21 +50,28 @@ export default function GoalsPage() {
   }, [])
 
   const fetchGoals = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    setLoading(true)
+    setError(null)
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Error fetching goals (auth):', userError)
+      setError(userError ? getErrorMessage(userError) : 'You must be signed in to view goals.')
+      setLoading(false)
+      return
+    }
 
     const weekStart = getWeekStart()
-    const { data, error } = await supabase
+    const { data, error: fetchError } = await supabase
       .from('weekly_goals')
       .select('*')
       .eq('user_id', user.id)
       .eq('week_start_date', weekStart)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching goals:', error)
+    if (fetchError) {
+      console.error('Error fetching goals:', fetchError)
+      setError(getErrorMessage(fetchError))
     } else {
       setGoals(data || [])
     }
@@ -79,10 +88,12 @@ export default function GoalsPage() {
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Error adding goal (auth):', userError)
+      alert(`Failed to add goal: ${userError ? getErrorMessage(userError) : 'you must be signed in.'}`)
+      return
+    }
 
     const { error } = await supabase.from('weekly_goals').insert({
       user_id: user.id,
@@ -94,7 +105,7 @@ export default function GoalsPage() {
 
     if (error) {
       console.error('Error adding goal:', error)
-      alert('Failed to add goal')
+      alert(`Failed to add goal: ${getErrorMessage(error)}`)
     } else {
       setNewGoal({ title: '', description: '', category: 'fitness' })
       setIsDialogOpen(false)
@@ -110,6 +121,7 @@ export default function GoalsPage() {
 
     if (error) {
       console.error('Error updating goal:', error)
+      alert(`Failed to update goal: ${getErrorMessage(error)}`)
     } else {
       fetchGoals()
     }
@@ -123,6 +135,7 @@ export default function GoalsPage() {
 
     if (error) {
       console.error('Error deleting goal:', error)
+      alert(`Failed to delete goal: ${getErrorMessage(error)}`)
     } else {
       fetchGoals()
     }
@@ -247,7 +260,20 @@ export default function GoalsPage() {
         </div>
 
         <div className="grid gap-3">
-          {goals.length === 0 ? (
+          {error ? (
+            <div className="border border-red-500/20 rounded-2xl bg-red-500/[0.04] p-12 text-center">
+              <p className="text-red-400 mb-4" role="alert">
+                Couldn&apos;t load goals: {error}
+              </p>
+              <Button
+                onClick={() => fetchGoals()}
+                variant="outline"
+                className="border-white/10 text-white hover:bg-white/5"
+              >
+                Try again
+              </Button>
+            </div>
+          ) : goals.length === 0 ? (
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
               <p className="text-white/40 mb-4">No goals for this week yet</p>
               <Button

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,6 +29,7 @@ type WeightEntry = {
 export default function WeightPage() {
   const [entries, setEntries] = useState<WeightEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newEntry, setNewEntry] = useState({
     weight: '',
@@ -41,19 +43,26 @@ export default function WeightPage() {
   }, [])
 
   const fetchEntries = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    setLoading(true)
+    setError(null)
 
-    const { data, error } = await supabase
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Error fetching entries (auth):', userError)
+      setError(userError ? getErrorMessage(userError) : 'You must be signed in to view weight entries.')
+      setLoading(false)
+      return
+    }
+
+    const { data, error: fetchError } = await supabase
       .from('weight_entries')
       .select('*')
       .eq('user_id', user.id)
       .order('recorded_at', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching entries:', error)
+    if (fetchError) {
+      console.error('Error fetching entries:', fetchError)
+      setError(getErrorMessage(fetchError))
     } else {
       setEntries(data || [])
     }
@@ -62,10 +71,12 @@ export default function WeightPage() {
 
   const handleAddEntry = async (e: React.FormEvent) => {
     e.preventDefault()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Error adding entry (auth):', userError)
+      alert(`Failed to add entry: ${userError ? getErrorMessage(userError) : 'you must be signed in.'}`)
+      return
+    }
 
     const { error } = await supabase.from('weight_entries').insert({
       user_id: user.id,
@@ -78,7 +89,7 @@ export default function WeightPage() {
 
     if (error) {
       console.error('Error adding entry:', error)
-      alert('Failed to add entry')
+      alert(`Failed to add entry: ${getErrorMessage(error)}`)
     } else {
       setNewEntry({ weight: '', body_fat_percentage: '', notes: '' })
       setIsDialogOpen(false)
@@ -94,6 +105,7 @@ export default function WeightPage() {
 
     if (error) {
       console.error('Error deleting entry:', error)
+      alert(`Failed to delete entry: ${getErrorMessage(error)}`)
     } else {
       fetchEntries()
     }
@@ -214,7 +226,20 @@ export default function WeightPage() {
           </p>
         </div>
 
-        {entries.length === 0 ? (
+        {error ? (
+          <div className="border border-red-500/20 rounded-2xl bg-red-500/[0.04] p-12 text-center">
+            <p className="text-red-400 mb-4" role="alert">
+              Couldn&apos;t load weight entries: {error}
+            </p>
+            <Button
+              onClick={() => fetchEntries()}
+              variant="outline"
+              className="border-white/10 text-white hover:bg-white/5"
+            >
+              Try again
+            </Button>
+          </div>
+        ) : entries.length === 0 ? (
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
             <p className="text-white/40 mb-4">No weight entries yet</p>
             <Button

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Clock, Calendar } from 'lucide-react'
@@ -18,6 +19,7 @@ type Workout = {
 export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -25,20 +27,27 @@ export default function WorkoutsPage() {
   }, [])
 
   const fetchWorkouts = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    setLoading(true)
+    setError(null)
 
-    const { data, error } = await supabase
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Error fetching workouts (auth):', userError)
+      setError(userError ? getErrorMessage(userError) : 'You must be signed in to view workouts.')
+      setLoading(false)
+      return
+    }
+
+    const { data, error: fetchError } = await supabase
       .from('workouts')
       .select('*')
       .eq('user_id', user.id)
       .order('date', { ascending: false })
       .order('started_at', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching workouts:', error)
+    if (fetchError) {
+      console.error('Error fetching workouts:', fetchError)
+      setError(getErrorMessage(fetchError))
     } else {
       setWorkouts(data || [])
     }
@@ -93,6 +102,18 @@ export default function WorkoutsPage() {
         {loading ? (
           <div className="flex items-center justify-center min-h-[50vh]">
             <div className="text-white/40">Loading...</div>
+          </div>
+        ) : error ? (
+          <div className="border border-red-500/20 rounded-2xl bg-red-500/[0.04] p-12 text-center">
+            <p className="text-red-400 mb-4" role="alert">
+              Couldn&apos;t load workouts: {error}
+            </p>
+            <button
+              onClick={() => fetchWorkouts()}
+              className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors"
+            >
+              Try again
+            </button>
           </div>
         ) : workouts.length === 0 ? (
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">

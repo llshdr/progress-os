@@ -1,6 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import AppLayout from '@/components/app-layout'
 import { User } from '@supabase/supabase-js'
 import { LogOut } from 'lucide-react'
@@ -13,7 +14,12 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const supabase = createClient()
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Error signing out:', error)
+      alert(`Failed to sign out: ${getErrorMessage(error)}`)
+      return
+    }
     window.location.href = '/auth'
   }
 
