@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import Link from 'next/link'
 
 type WeightEntry = {
   id: string
@@ -117,55 +118,38 @@ export default function WeightPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-white/40">Loading...</div>
+        </div>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950">
-      <header className="border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <a
-              href="/"
-              className="text-xl font-bold text-white hover:text-neutral-300 transition-colors"
-            >
-              ← Back
-            </a>
-            <h1 className="text-xl font-bold text-white">Weight Tracking</h1>
-            <div className="w-16" />
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-2">
-              Weight History
-            </h2>
-            <p className="text-neutral-400">
-              {entries.length} entries recorded
-            </p>
-          </div>
+    <AppLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center gap-3 mb-8">
+          <Link href="/gym" className="text-white/40 hover:text-white/60 transition-colors">
+            ← Back
+          </Link>
+          <div className="flex-1" />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger>
-              <Button className="bg-white text-black hover:bg-neutral-200">
+              <Button className="bg-white text-black hover:bg-white/90 text-sm">
                 Log Weight
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-neutral-900 border-neutral-800 text-white">
+            <DialogContent className="bg-black border-white/10 text-white">
               <DialogHeader>
                 <DialogTitle>Log Weight Entry</DialogTitle>
-                <DialogDescription className="text-neutral-400">
+                <DialogDescription className="text-white/40">
                   Record your current weight and body composition
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleAddEntry} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Weight (kg)</Label>
+                  <Label htmlFor="weight" className="text-white/80">Weight (kg)</Label>
                   <Input
                     id="weight"
                     type="number"
@@ -176,11 +160,11 @@ export default function WeightPage() {
                     }
                     required
                     placeholder="75.5"
-                    className="bg-neutral-800 border-neutral-700 text-white"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="body_fat_percentage">
+                  <Label htmlFor="body_fat_percentage" className="text-white/80">
                     Body Fat % (optional)
                   </Label>
                   <Input
@@ -195,11 +179,11 @@ export default function WeightPage() {
                       })
                     }
                     placeholder="15.5"
-                    className="bg-neutral-800 border-neutral-700 text-white"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (optional)</Label>
+                  <Label htmlFor="notes" className="text-white/80">Notes (optional)</Label>
                   <Textarea
                     id="notes"
                     value={newEntry.notes}
@@ -207,12 +191,12 @@ export default function WeightPage() {
                       setNewEntry({ ...newEntry, notes: e.target.value })
                     }
                     placeholder="Any additional notes..."
-                    className="bg-neutral-800 border-neutral-700 text-white"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                   />
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-white text-black hover:bg-neutral-200"
+                  className="w-full bg-white text-black hover:bg-white/90"
                 >
                   Save Entry
                 </Button>
@@ -221,85 +205,90 @@ export default function WeightPage() {
           </Dialog>
         </div>
 
+        <div className="mb-6">
+          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+            Weight History
+          </h1>
+          <p className="text-white/50 text-sm">
+            {entries.length} entries recorded
+          </p>
+        </div>
+
         {entries.length === 0 ? (
-          <Card className="bg-neutral-900 border-neutral-800">
-            <CardContent className="py-12 text-center">
-              <p className="text-neutral-400 mb-4">No weight entries yet</p>
-              <Button
-                onClick={() => setIsDialogOpen(true)}
-                variant="outline"
-                className="border-neutral-700 text-white hover:bg-neutral-800"
-              >
-                Log your first entry
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
+            <p className="text-white/40 mb-4">No weight entries yet</p>
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              variant="outline"
+              className="border-white/10 text-white hover:bg-white/5"
+            >
+              Log your first entry
+            </Button>
+          </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {entries.map((entry, index) => {
               const weightChange = getWeightChange(index)
               return (
-                <Card
+                <div
                   key={entry.id}
-                  className="bg-neutral-900 border-neutral-800"
+                  className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
                 >
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="text-3xl font-bold text-white">
-                          {entry.weight}
-                          <span className="text-lg font-normal text-neutral-400 ml-1">
-                            kg
-                          </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-3xl font-semibold text-white">
+                        {entry.weight}
+                        <span className="text-lg font-normal text-white/40 ml-1">
+                          kg
+                        </span>
+                      </div>
+                      {entry.body_fat_percentage && (
+                        <div className="text-sm text-white/40">
+                          {entry.body_fat_percentage}% body fat
                         </div>
-                        {entry.body_fat_percentage && (
-                          <div className="text-sm text-neutral-400">
-                            {entry.body_fat_percentage}% body fat
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-white font-medium">
+                          {formatDate(entry.recorded_at)}
+                        </div>
+                        {weightChange !== null && (
+                          <div
+                            className={`text-sm ${
+                              weightChange > 0
+                                ? 'text-red-400'
+                                : weightChange < 0
+                                ? 'text-green-400'
+                                : 'text-white/40'
+                            }`}
+                          >
+                            {weightChange > 0 ? '+' : ''}
+                            {weightChange.toFixed(1)} kg
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="text-white font-medium">
-                            {formatDate(entry.recorded_at)}
-                          </div>
-                          {weightChange !== null && (
-                            <div
-                              className={`text-sm ${
-                                weightChange > 0
-                                  ? 'text-red-400'
-                                  : weightChange < 0
-                                  ? 'text-green-400'
-                                  : 'text-neutral-400'
-                              }`}
-                            >
-                              {weightChange > 0 ? '+' : ''}
-                              {weightChange.toFixed(1)} kg
-                            </div>
-                          )}
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteEntry(entry.id)}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteEntry(entry.id)}
+                        className="text-white/40 hover:text-white/60 hover:bg-white/5"
+                      >
+                        Delete
+                      </Button>
                     </div>
-                    {entry.notes && (
-                      <p className="text-neutral-400 text-sm mt-4">
-                        {entry.notes}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
+                  </div>
+                  {entry.notes && (
+                    <p className="text-white/40 text-sm mt-4">
+                      {entry.notes}
+                    </p>
+                  )}
+                </div>
               )
             })}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   )
 }

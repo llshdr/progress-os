@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -22,6 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import Link from 'next/link'
 
 type Goal = {
   id: string
@@ -129,74 +130,57 @@ export default function GoalsPage() {
 
   const getCategoryColor = (category: Goal['category']) => {
     const colors = {
-      fitness: 'bg-green-500/10 text-green-400 border-green-500/20',
-      business: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-      productivity: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-      self_improvement: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+      fitness: 'bg-white/5 text-white/80 border-white/10',
+      business: 'bg-white/5 text-white/80 border-white/10',
+      productivity: 'bg-white/5 text-white/80 border-white/10',
+      self_improvement: 'bg-white/5 text-white/80 border-white/10',
     }
     return colors[category]
   }
 
   const getStatusColor = (status: Goal['status']) => {
     const colors = {
-      pending: 'bg-neutral-500/10 text-neutral-400 border-neutral-500/20',
-      in_progress: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-      completed: 'bg-green-500/10 text-green-400 border-green-500/20',
+      pending: 'bg-white/5 text-white/60 border-white/10',
+      in_progress: 'bg-white/5 text-white/60 border-white/10',
+      completed: 'bg-white/5 text-white/60 border-white/10',
     }
     return colors[status]
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-white/40">Loading...</div>
+        </div>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950">
-      <header className="border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <a
-              href="/"
-              className="text-xl font-bold text-white hover:text-neutral-300 transition-colors"
-            >
-              ← Back
-            </a>
-            <h1 className="text-xl font-bold text-white">Weekly Goals</h1>
-            <div className="w-16" />
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-2">
-              This Week's Goals
-            </h2>
-            <p className="text-neutral-400">
-              {goals.filter((g) => g.status === 'completed').length} of {goals.length} completed
-            </p>
-          </div>
+    <AppLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center gap-3 mb-8">
+          <Link href="/gym" className="text-white/40 hover:text-white/60 transition-colors">
+            ← Back
+          </Link>
+          <div className="flex-1" />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger>
-              <Button className="bg-white text-black hover:bg-neutral-200">
+              <Button className="bg-white text-black hover:bg-white/90 text-sm">
                 Add Goal
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-neutral-900 border-neutral-800 text-white">
+            <DialogContent className="bg-black border-white/10 text-white">
               <DialogHeader>
                 <DialogTitle>Add New Goal</DialogTitle>
-                <DialogDescription className="text-neutral-400">
+                <DialogDescription className="text-white/40">
                   Create a new goal for this week
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleAddGoal} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
+                  <Label htmlFor="title" className="text-white/80">Title</Label>
                   <Input
                     id="title"
                     value={newGoal.title}
@@ -204,11 +188,11 @@ export default function GoalsPage() {
                       setNewGoal({ ...newGoal, title: e.target.value })
                     }
                     required
-                    className="bg-neutral-800 border-neutral-700 text-white"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category" className="text-white/80">Category</Label>
                   <Select
                     value={newGoal.category}
                     onValueChange={(value) =>
@@ -218,10 +202,10 @@ export default function GoalsPage() {
                       })
                     }
                   >
-                    <SelectTrigger className="bg-neutral-800 border-neutral-700 text-white">
+                    <SelectTrigger className="bg-white/5 border-white/10 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-neutral-900 border-neutral-800">
+                    <SelectContent className="bg-black border-white/10">
                       <SelectItem value="fitness">Fitness</SelectItem>
                       <SelectItem value="business">Business</SelectItem>
                       <SelectItem value="productivity">Productivity</SelectItem>
@@ -232,19 +216,19 @@ export default function GoalsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description (optional)</Label>
+                  <Label htmlFor="description" className="text-white/80">Description (optional)</Label>
                   <Textarea
                     id="description"
                     value={newGoal.description}
                     onChange={(e) =>
                       setNewGoal({ ...newGoal, description: e.target.value })
                     }
-                    className="bg-neutral-800 border-neutral-700 text-white"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                   />
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-white text-black hover:bg-neutral-200"
+                  className="w-full bg-white text-black hover:bg-white/90"
                 >
                   Add Goal
                 </Button>
@@ -253,88 +237,93 @@ export default function GoalsPage() {
           </Dialog>
         </div>
 
-        <div className="grid gap-4">
+        <div className="mb-6">
+          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+            Weekly Goals
+          </h1>
+          <p className="text-white/50 text-sm">
+            {goals.filter((g) => g.status === 'completed').length} of {goals.length} completed
+          </p>
+        </div>
+
+        <div className="grid gap-3">
           {goals.length === 0 ? (
-            <Card className="bg-neutral-900 border-neutral-800">
-              <CardContent className="py-12 text-center">
-                <p className="text-neutral-400 mb-4">No goals for this week yet</p>
-                <Button
-                  onClick={() => setIsDialogOpen(true)}
-                  variant="outline"
-                  className="border-neutral-700 text-white hover:bg-neutral-800"
-                >
-                  Add your first goal
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
+              <p className="text-white/40 mb-4">No goals for this week yet</p>
+              <Button
+                onClick={() => setIsDialogOpen(true)}
+                variant="outline"
+                className="border-white/10 text-white hover:bg-white/5"
+              >
+                Add your first goal
+              </Button>
+            </div>
           ) : (
             goals.map((goal) => (
-              <Card
+              <div
                 key={goal.id}
-                className="bg-neutral-900 border-neutral-800"
+                className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
               >
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium border ${getCategoryColor(
-                            goal.category
-                          )}`}
-                        >
-                          {goal.category}
-                        </span>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                            goal.status
-                          )}`}
-                        >
-                          {goal.status.replace('_', ' ')}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        {goal.title}
-                      </h3>
-                      {goal.description && (
-                        <p className="text-neutral-400 text-sm">
-                          {goal.description}
-                        </p>
-                      )}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium border ${getCategoryColor(
+                          goal.category
+                        )}`}
+                      >
+                        {goal.category}
+                      </span>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                          goal.status
+                        )}`}
+                      >
+                        {goal.status.replace('_', ' ')}
+                      </span>
                     </div>
-                    <div className="flex gap-2">
-                      {goal.status !== 'completed' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            handleUpdateStatus(
-                              goal.id,
-                              goal.status === 'pending'
-                                ? 'in_progress'
-                                : 'completed'
-                            )
-                          }
-                          className="border-neutral-700 text-white hover:bg-neutral-800"
-                        >
-                          {goal.status === 'pending' ? 'Start' : 'Complete'}
-                        </Button>
-                      )}
+                    <h3 className="text-lg font-medium text-white mb-1">
+                      {goal.title}
+                    </h3>
+                    {goal.description && (
+                      <p className="text-white/40 text-sm">
+                        {goal.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {goal.status !== 'completed' && (
                       <Button
                         size="sm"
-                        variant="ghost"
-                        onClick={() => handleDeleteGoal(goal.id)}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        variant="outline"
+                        onClick={() =>
+                          handleUpdateStatus(
+                            goal.id,
+                            goal.status === 'pending'
+                              ? 'in_progress'
+                              : 'completed'
+                          )
+                        }
+                        className="border-white/10 text-white hover:bg-white/5"
                       >
-                        Delete
+                        {goal.status === 'pending' ? 'Start' : 'Complete'}
                       </Button>
-                    </div>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteGoal(goal.id)}
+                      className="text-white/40 hover:text-white/60 hover:bg-white/5"
+                    >
+                      Delete
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   )
 }

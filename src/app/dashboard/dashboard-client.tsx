@@ -1,9 +1,9 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import AppLayout from '@/components/app-layout'
 import { User } from '@supabase/supabase-js'
+import { LogOut } from 'lucide-react'
 
 interface DashboardClientProps {
   user: User
@@ -18,60 +18,57 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950">
-      <header className="border-b border-neutral-800 bg-neutral-950/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <h1 className="text-xl font-bold text-white">Progress OS</h1>
-            <Button
-              onClick={handleSignOut}
-              variant="ghost"
-              className="text-neutral-400 hover:text-white"
-            >
-              Sign out
-            </Button>
+    <AppLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+              What should I do next?
+            </h1>
+            <p className="text-white/50 text-sm">
+              Welcome back, {user.email}
+            </p>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <a href="/gym" className="group">
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200">
+              <div className="mb-4">
+                <h2 className="text-lg font-medium text-white mb-1">Gym</h2>
+                <p className="text-white/40 text-sm">
+                  Track workouts, goals, and body composition
+                </p>
+              </div>
+            </div>
+          </a>
+
+          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 opacity-50">
+            <div className="mb-4">
+              <h2 className="text-lg font-medium text-white mb-1">Nutrition</h2>
+              <p className="text-white/40 text-sm">
+                Coming soon
+              </p>
+            </div>
+          </div>
+
+          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 opacity-50">
+            <div className="mb-4">
+              <h2 className="text-lg font-medium text-white mb-1">Projects</h2>
+              <p className="text-white/40 text-sm">
+                Coming soon
+              </p>
+            </div>
           </div>
         </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-white mb-2">
-            What should I do next?
-          </h2>
-          <p className="text-neutral-400">
-            Welcome back, {user.email}
-          </p>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <a href="/goals">
-            <Card className="bg-neutral-900 border-neutral-800 hover:border-neutral-700 transition-colors cursor-pointer h-full">
-              <CardHeader>
-                <CardTitle className="text-white">Weekly Goals</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-neutral-400 text-sm">
-                  Set and track your weekly objectives
-                </p>
-              </CardContent>
-            </Card>
-          </a>
-
-          <a href="/weight">
-            <Card className="bg-neutral-900 border-neutral-800 hover:border-neutral-700 transition-colors cursor-pointer h-full">
-              <CardHeader>
-                <CardTitle className="text-white">Weight Tracking</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-neutral-400 text-sm">
-                  Monitor your body composition progress
-                </p>
-              </CardContent>
-            </Card>
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   )
 }

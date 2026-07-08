@@ -45,70 +45,68 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-950 p-4">
-      <Card className="w-full max-w-md bg-neutral-900 border-neutral-800">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-white">
+    <div className="min-h-screen flex items-center justify-center bg-black p-4">
+      <div className="w-full max-w-md border border-white/10 rounded-2xl bg-white/[0.02] p-8">
+        <div className="space-y-1 mb-8">
+          <h1 className="text-2xl font-semibold tracking-tight text-white">
             {isSignUp ? 'Create account' : 'Welcome back'}
-          </CardTitle>
-          <CardDescription className="text-neutral-400">
+          </h1>
+          <p className="text-white/50 text-sm">
             {isSignUp
               ? 'Enter your details to get started'
               : 'Enter your credentials to access your account'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-neutral-300">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-neutral-300">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500"
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full bg-white text-black hover:bg-neutral-200"
-              disabled={loading}
-            >
-              {loading ? 'Loading...' : isSignUp ? 'Sign up' : 'Sign in'}
-            </Button>
-          </form>
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-neutral-400 hover:text-white transition-colors"
-            >
-              {isSignUp
-                ? 'Already have an account? Sign in'
-                : "Don't have an account? Sign up"}
-            </button>
+          </p>
+        </div>
+        <form onSubmit={handleAuth} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-white/80">
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            />
           </div>
-        </CardContent>
-      </Card>
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-white/80">
+              Password
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full bg-white text-black hover:bg-white/90"
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : isSignUp ? 'Sign up' : 'Sign in'}
+          </Button>
+        </form>
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="text-sm text-white/40 hover:text-white/60 transition-colors"
+          >
+            {isSignUp
+              ? 'Already have an account? Sign in'
+              : "Don't have an account? Sign up"}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
