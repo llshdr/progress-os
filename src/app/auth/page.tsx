@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,12 +14,14 @@ export default function AuthPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setErrorMessage(null)
 
     try {
       if (isSignUp) {
@@ -38,7 +41,7 @@ export default function AuthPage() {
       router.refresh()
     } catch (error) {
       console.error('Auth error:', error)
-      alert(isSignUp ? 'Sign up failed' : 'Login failed')
+      setErrorMessage(getErrorMessage(error))
     } finally {
       setLoading(false)
     }
@@ -87,6 +90,14 @@ export default function AuthPage() {
               className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
             />
           </div>
+          {errorMessage && (
+            <p
+              role="alert"
+              className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"
+            >
+              {errorMessage}
+            </p>
+          )}
           <Button
             type="submit"
             className="w-full bg-white text-black hover:bg-white/90"
@@ -98,7 +109,10 @@ export default function AuthPage() {
         <div className="mt-6 text-center">
           <button
             type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              setIsSignUp(!isSignUp)
+              setErrorMessage(null)
+            }}
             className="text-sm text-white/40 hover:text-white/60 transition-colors"
           >
             {isSignUp

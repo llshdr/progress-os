@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -30,10 +31,10 @@ export default function NewWorkoutPage() {
 
     setLoading(true)
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Error creating workout (auth):', userError)
+      alert(`Failed to create workout: ${userError ? getErrorMessage(userError) : 'you must be signed in.'}`)
       setLoading(false)
       return
     }
@@ -51,7 +52,7 @@ export default function NewWorkoutPage() {
 
     if (error) {
       console.error('Error creating workout:', error)
-      alert('Failed to create workout')
+      alert(`Failed to create workout: ${getErrorMessage(error)}`)
       setLoading(false)
     } else {
       router.push(`/gym/workouts/${data.id}`)

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -47,6 +48,7 @@ export default function EditExercisePage() {
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -54,6 +56,9 @@ export default function EditExercisePage() {
   }, [params.id])
 
   const fetchExercise = async () => {
+    setLoading(true)
+    setError(null)
+
     const { data, error } = await supabase
       .from('exercise_library')
       .select('*')
@@ -62,6 +67,7 @@ export default function EditExercisePage() {
 
     if (error) {
       console.error('Error fetching exercise:', error)
+      setError(getErrorMessage(error))
       setLoading(false)
       return
     }
@@ -105,7 +111,7 @@ export default function EditExercisePage() {
 
     if (error) {
       console.error('Error updating exercise:', error)
-      alert('Failed to update exercise')
+      alert(`Failed to update exercise: ${getErrorMessage(error)}`)
       setSaving(false)
     } else {
       router.push('/gym/exercises')
@@ -117,6 +123,29 @@ export default function EditExercisePage() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
           <div className="text-white/40">Loading...</div>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Link href="/gym/exercises" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+            ← Back
+          </Link>
+          <div className="border border-red-500/20 rounded-2xl bg-red-500/[0.04] p-12 text-center">
+            <p className="text-red-400 mb-4" role="alert">
+              Couldn&apos;t load this exercise: {error}
+            </p>
+            <button
+              onClick={() => fetchExercise()}
+              className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors"
+            >
+              Try again
+            </button>
+          </div>
         </div>
       </AppLayout>
     )

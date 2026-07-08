@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Check, X } from 'lucide-react'
@@ -32,10 +33,11 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
   }, [exerciseId])
 
   const fetchPreviousSet = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      if (userError) console.error('Error fetching previous set (auth):', userError)
+      return
+    }
 
     // Get the most recent completed set for this exercise
     const { data, error } = await supabase
@@ -47,7 +49,15 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
       .limit(1)
       .single()
 
-    if (data && !error) {
+    if (error) {
+      // PGRST116 = no rows found, which is expected when no prior set exists.
+      if (error.code !== 'PGRST116') {
+        console.error('Error fetching previous set:', error)
+      }
+      return
+    }
+
+    if (data) {
       setPreviousSet({
         weight: data.weight,
         reps: data.reps,
@@ -73,7 +83,7 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
 
     if (error) {
       console.error('Error saving set:', error)
-      alert('Failed to save set')
+      alert(`Failed to save set: ${getErrorMessage(error)}`)
       setLoading(false)
       return
     }
