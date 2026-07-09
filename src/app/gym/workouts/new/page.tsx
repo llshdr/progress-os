@@ -1,61 +1,132 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
-const WORKOUT_TYPES = [
-  'Push',
-  'Pull',
-  'Legs',
-  'Upper Body',
-  'Lower Body',
-  'Full Body',
-  'Cardio',
-  'Custom',
-]
+type Template = {
+  id: string
+  name: string
+  description: string | null
+  exercise_count?: number
+}
 
 export default function NewWorkoutPage() {
   const router = useRouter()
-  const [workoutType, setWorkoutType] = useState('')
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
   const supabase = createClient()
 
-  const handleCreateWorkout = async () => {
-    if (!workoutType) return
+  useEffect(() => {
+    fetchTemplates()
+  }, [])
 
-    setLoading(true)
+  const fetchTemplates = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data, error } = await supabase
+      .from('workout_templates')
+      .select('*, workout_template_exercises(count)')
+      .eq('user_id', user.id)
+      .eq('archived', false)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching templates:', error)
+    } else {
+      const templatesWithCount = (data || []).map((template: any) => ({
+        ...template,
+        exercise_count: template.workout_template_exercises?.[0]?.count || 0,
+      }))
+      setTemplates(templatesWithCount)
+    }
+    setLoading(false)
+  }
+
+  const handleCreateWorkout = async () => {
+    if (!selectedTemplate) return
+
+    setCreating(true)
 
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) {
-      setLoading(false)
+      setCreating(false)
       return
     }
 
-    const { data, error } = await supabase
+    // Create workout with template reference
+    const { data: workout, error: workoutError } = await supabase
       .from('workouts')
       .insert({
         user_id: user.id,
-        workout_type: workoutType,
+        template_id: selectedTemplate,
         notes: notes || null,
         date: new Date().toISOString().split('T')[0],
       })
       .select()
       .single()
 
-    if (error) {
-      console.error('Error creating workout:', error)
+    if (workoutError) {
+      console.error('Error creating workout:', workoutError)
       alert('Failed to create workout')
-      setLoading(false)
-    } else {
-      router.push(`/gym/workouts/${data.id}`)
+      setCreating(false)
+      return
     }
+
+    // Fetch template exercises
+    const { data: templateExercises, error: exercisesError } = await supabase
+      .from('workout_template_exercises')
+      .select('*')
+      .eq('template_id', selectedTemplate)
+      .order('exercise_order', { ascending: true })
+
+    if (exercisesError) {
+      console.error('Error fetching template exercises:', exercisesError)
+      router.push(`/gym/workouts/${workout.id}`)
+      return
+    }
+
+    // Auto-populate exercises from template
+    if (templateExercises && templateExercises.length > 0) {
+      const exercisesToInsert = templateExercises.map((ex: any) => ({
+        workout_id: workout.id,
+        exercise_library_id: ex.exercise_library_id,
+        exercise_order: ex.exercise_order,
+        notes: ex.notes,
+      }))
+
+      const { error: insertError } = await supabase
+        .from('exercises')
+        .insert(exercisesToInsert)
+
+      if (insertError) {
+        console.error('Error populating exercises:', insertError)
+      }
+    }
+
+    router.push(`/gym/workouts/${workout.id}`)
+  }
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-white/40">Loading...</div>
+        </div>
+      </AppLayout>
+    )
   }
 
   return (
@@ -69,28 +140,55 @@ export default function NewWorkoutPage() {
           New Workout
         </h1>
         <p className="text-white/50 text-sm mb-8">
-          Choose your workout type to get started
+          Choose a template to get started
         </p>
 
-        {/* Workout Type Selection */}
-        <div className="mb-8">
-          <label className="text-white/60 text-sm mb-3 block">Workout Type</label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {WORKOUT_TYPES.map((type) => (
+        {/* Templates Selection */}
+        {templates.length === 0 ? (
+          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
+            <p className="text-white/40 mb-4">No workout templates yet</p>
+            <Link href="/gym/templates/new">
+              <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
+                Create your first template
+              </button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-3 mb-8">
+            {templates.map((template) => (
               <button
-                key={type}
-                onClick={() => setWorkoutType(type)}
-                className={`p-4 rounded-xl border transition-all duration-200 text-center ${
-                  workoutType === type
-                    ? 'bg-white text-black border-white'
-                    : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04] hover:border-white/20'
+                key={template.id}
+                onClick={() => setSelectedTemplate(template.id)}
+                className={`border rounded-2xl p-6 text-left transition-all duration-200 ${
+                  selectedTemplate === template.id
+                    ? 'bg-white/10 border-white/30'
+                    : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-white/15'
                 }`}
               >
-                <span className="font-medium">{type}</span>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-1">
+                      {template.name}
+                    </h3>
+                    {template.description && (
+                      <p className="text-white/40 text-sm mb-1">{template.description}</p>
+                    )}
+                    <p className="text-white/30 text-sm">{template.exercise_count} exercises</p>
+                  </div>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    selectedTemplate === template.id
+                      ? 'border-white bg-white'
+                      : 'border-white/30'
+                  }`}>
+                    {selectedTemplate === template.id && (
+                      <div className="w-3 h-3 rounded-full bg-black" />
+                    )}
+                  </div>
+                </div>
               </button>
             ))}
           </div>
-        </div>
+        )}
 
         {/* Notes (Optional) */}
         <div className="mb-8">
@@ -107,10 +205,10 @@ export default function NewWorkoutPage() {
         {/* Create Button */}
         <button
           onClick={handleCreateWorkout}
-          disabled={!workoutType || loading}
+          disabled={!selectedTemplate || creating || templates.length === 0}
           className="w-full bg-white text-black hover:bg-white/90 rounded-xl px-4 py-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {loading ? 'Creating...' : 'Start Workout'}
+          {creating ? 'Creating...' : 'Start Workout'}
         </button>
       </div>
     </AppLayout>
