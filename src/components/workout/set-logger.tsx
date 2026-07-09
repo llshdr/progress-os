@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, X } from 'lucide-react'
+import { Check, X, Trash2 } from 'lucide-react'
 
 interface SetLoggerProps {
   exerciseId: string
@@ -18,17 +18,26 @@ interface PreviousSet {
   date: string
 }
 
+interface SavedSet {
+  id: string
+  weight: number
+  reps: number
+  set_order: number
+}
+
 export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetLoggerProps) {
   const [weight, setWeight] = useState('')
   const [reps, setReps] = useState('')
   const [currentSetNumber, setCurrentSetNumber] = useState(1)
   const [previousSet, setPreviousSet] = useState<PreviousSet | null>(null)
+  const [savedSets, setSavedSets] = useState<SavedSet[]>([])
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
   // Fetch the last set for this exercise to suggest weight/reps
   useEffect(() => {
     fetchPreviousSet()
+    fetchSavedSets()
   }, [exerciseId])
 
   const fetchPreviousSet = async () => {
@@ -58,6 +67,22 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
     }
   }
 
+  const fetchSavedSets = async () => {
+    const { data, error } = await supabase
+      .from('sets')
+      .select('id, weight, reps, set_order')
+      .eq('exercise_id', exerciseId)
+      .order('set_order', { ascending: true })
+
+    if (!error && data) {
+      setSavedSets(data)
+      // Set current set number to next available
+      if (data.length > 0) {
+        setCurrentSetNumber(data.length + 1)
+      }
+    }
+  }
+
   const handleSaveSet = async () => {
     if (!weight || !reps) return
 
@@ -83,11 +108,37 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
     setReps('')
     // Keep the same weight for next set (common pattern)
     setLoading(false)
+    fetchSavedSets()
   }
 
   const handleSkipSet = () => {
     setCurrentSetNumber(prev => prev + 1)
     setReps('')
+  }
+
+  const handleDeleteSet = async (setId: string) => {
+    if (!confirm('Delete this set?')) return
+
+    const { error } = await supabase
+      .from('sets')
+      .delete()
+      .eq('id', setId)
+
+    if (error) {
+      console.error('Error deleting set:', error)
+      alert('Failed to delete set')
+    } else {
+      fetchSavedSets()
+      // Renumber remaining sets
+      const remainingSets = savedSets.filter(s => s.id !== setId)
+      remainingSets.forEach((set, index) => {
+        supabase
+          .from('sets')
+          .update({ set_order: index + 1 })
+          .eq('id', set.id)
+      })
+      setCurrentSetNumber(remainingSets.length + 1)
+    }
   }
 
   const handleFinishExercise = () => {
@@ -107,6 +158,29 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
           </div>
         )}
       </div>
+
+      {/* Saved Sets */}
+      {savedSets.length > 0 && (
+        <div className="space-y-2">
+          {savedSets.map((set) => (
+            <div
+              key={set.id}
+              className="flex items-center justify-between border border-white/10 rounded-xl bg-white/[0.02] p-4"
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-white/40 text-sm">Set {set.set_order}</span>
+                <span className="text-white font-medium">{set.weight} × {set.reps}</span>
+              </div>
+              <button
+                onClick={() => handleDeleteSet(set.id)}
+                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Current Set */}
       <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">

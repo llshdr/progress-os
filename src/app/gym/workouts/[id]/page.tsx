@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Check, Clock, ArrowLeft } from 'lucide-react'
+import { Plus, Check, Clock, ArrowLeft, Trash2 } from 'lucide-react'
 import SetLogger from '@/components/workout/set-logger'
 
 type Workout = {
@@ -39,6 +39,7 @@ export default function CurrentWorkoutPage() {
   const [workout, setWorkout] = useState<Workout | null>(null)
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([])
+  const [recentExercises, setRecentExercises] = useState<LibraryExercise[]>([])
   const [loading, setLoading] = useState(true)
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
   const [showAddExercise, setShowAddExercise] = useState(false)
@@ -70,6 +71,25 @@ export default function CurrentWorkoutPage() {
       console.error('Error fetching library exercises:', error)
     } else {
       setLibraryExercises(data || [])
+    }
+
+    // Fetch recent exercises (used in recent workouts)
+    const { data: recentData, error: recentError } = await supabase
+      .from('exercises')
+      .select('exercise_library_id, exercise_library(id, name, primary_muscle_group, equipment_type)')
+      .not('exercise_library_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (!recentError && recentData) {
+      // Get unique exercises from recent workouts
+      const uniqueRecentExercises = recentData
+        .map((ex: any) => ex.exercise_library)
+        .filter((ex: any) => ex !== null)
+        .filter((exercise: any, index: number, self: any[]) =>
+          index === self.findIndex((e: any) => e.id === exercise.id)
+        )
+      setRecentExercises(uniqueRecentExercises)
     }
   }
 
@@ -125,14 +145,56 @@ export default function CurrentWorkoutPage() {
       return
     }
 
+    let exerciseLibraryId = selectedLibraryExercise
+
+    // Auto-save custom exercise to library
+    if (!useLibrary && newExerciseName) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Check if exercise already exists in library
+      const { data: existingExercise } = await supabase
+        .from('exercise_library')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('name', newExerciseName)
+        .single()
+
+      if (existingExercise) {
+        // Use existing exercise
+        exerciseLibraryId = existingExercise.id
+      } else {
+        // Create new exercise in library
+        const { data: newLibraryExercise, error: libraryError } = await supabase
+          .from('exercise_library')
+          .insert({
+            user_id: user.id,
+            name: newExerciseName,
+            primary_muscle_group: 'Other',
+            equipment_type: newExerciseEquipment || 'Other',
+            category: 'Isolation',
+          })
+          .select()
+          .single()
+
+        if (libraryError) {
+          console.error('Error creating library exercise:', libraryError)
+          // Continue anyway, will use exercise_name fallback
+        } else {
+          exerciseLibraryId = newLibraryExercise.id
+        }
+      }
+    }
+
     const exerciseData: any = {
       workout_id: params.id,
       exercise_order: exercises.length + 1,
     }
 
-    if (useLibrary && selectedLibraryExercise) {
-      exerciseData.exercise_library_id = selectedLibraryExercise
-      // exercise_name will be null, derived from library
+    if (exerciseLibraryId) {
+      exerciseData.exercise_library_id = exerciseLibraryId
     } else {
       exerciseData.exercise_name = newExerciseName
       exerciseData.equipment = newExerciseEquipment || null
@@ -150,6 +212,7 @@ export default function CurrentWorkoutPage() {
       setNewExerciseEquipment('')
       setShowAddExercise(false)
       fetchWorkoutData()
+      fetchLibraryExercises() // Refresh library to include newly added exercise
     }
   }
 
@@ -164,6 +227,38 @@ export default function CurrentWorkoutPage() {
       alert('Failed to complete workout')
     } else {
       router.push('/gym/workouts')
+    }
+  }
+
+  const handleDeleteWorkout = async () => {
+    if (!confirm('Are you sure you want to delete this workout? This cannot be undone.')) return
+
+    const { error } = await supabase
+      .from('workouts')
+      .delete()
+      .eq('id', params.id)
+
+    if (error) {
+      console.error('Error deleting workout:', error)
+      alert('Failed to delete workout')
+    } else {
+      router.push('/gym/workouts')
+    }
+  }
+
+  const handleDeleteExercise = async (exerciseId: string) => {
+    if (!confirm('Remove this exercise from the workout?')) return
+
+    const { error } = await supabase
+      .from('exercises')
+      .delete()
+      .eq('id', exerciseId)
+
+    if (error) {
+      console.error('Error deleting exercise:', error)
+      alert('Failed to remove exercise')
+    } else {
+      fetchWorkoutData()
     }
   }
 
@@ -233,7 +328,7 @@ export default function CurrentWorkoutPage() {
               ← Back
             </Link>
             <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">
-              {workout.workout_type}
+              {workout.workout_type || 'Workout'}
             </h1>
             <div className="flex items-center gap-3 text-white/40 text-sm">
               <span className="flex items-center gap-1">
@@ -244,13 +339,22 @@ export default function CurrentWorkoutPage() {
               <span>{exercises.length} exercises</span>
             </div>
           </div>
-          <button
-            onClick={handleCompleteWorkout}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors"
-          >
-            <Check className="w-4 h-4" />
-            <span className="text-sm font-medium">Complete</span>
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDeleteWorkout}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="text-sm font-medium">Delete</span>
+            </button>
+            <button
+              onClick={handleCompleteWorkout}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors"
+            >
+              <Check className="w-4 h-4" />
+              <span className="text-sm font-medium">Complete</span>
+            </button>
+          </div>
         </div>
 
         {/* Exercises List */}
@@ -272,25 +376,30 @@ export default function CurrentWorkoutPage() {
               const equipment = (exercise as any)?.exercise_library?.equipment_type || exercise.equipment
               
               return (
-                <button
+                <div
                   key={exercise.id}
-                  onClick={() => setActiveExerciseId(exercise.id)}
-                  className="w-full border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200 text-left"
+                  className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
-                    <div>
+                    <button
+                      onClick={() => setActiveExerciseId(exercise.id)}
+                      className="flex-1 text-left"
+                    >
                       <h3 className="text-lg font-medium text-white mb-1">
                         {exerciseName}
                       </h3>
                       {equipment && (
                         <p className="text-white/40 text-sm">{equipment}</p>
                       )}
-                    </div>
-                    <div className="text-white/30">
-                      →
-                    </div>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteExercise(exercise.id)}
+                      className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                </button>
+                </div>
               )
             })
           )}
@@ -330,7 +439,7 @@ export default function CurrentWorkoutPage() {
                 /* Library Selection */
                 <div>
                   <label className="text-white/60 text-sm mb-3 block">Select Exercise</label>
-                  {libraryExercises.length === 0 ? (
+                  {libraryExercises.length === 0 && recentExercises.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-white/40 mb-3">No exercises in your library</p>
                       <Link
@@ -342,6 +451,32 @@ export default function CurrentWorkoutPage() {
                     </div>
                   ) : (
                     <div className="max-h-60 overflow-y-auto space-y-2">
+                      {/* Recent Exercises */}
+                      {recentExercises.length > 0 && (
+                        <>
+                          <div className="text-white/40 text-xs px-3 py-2">Recent</div>
+                          {recentExercises.map((libExercise) => (
+                            <button
+                              key={libExercise.id}
+                              type="button"
+                              onClick={() => setSelectedLibraryExercise(libExercise.id)}
+                              className={`w-full p-3 rounded-lg border transition-all duration-200 text-left ${
+                                selectedLibraryExercise === libExercise.id
+                                  ? 'bg-white/10 text-white border-white/20'
+                                  : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                              }`}
+                            >
+                              <div className="font-medium text-white">{libExercise.name}</div>
+                              <div className="text-white/40 text-sm">
+                                {libExercise.primary_muscle_group} • {libExercise.equipment_type}
+                              </div>
+                            </button>
+                          ))}
+                          <div className="border-t border-white/10 my-2"></div>
+                        </>
+                      )}
+                      
+                      {/* All Library Exercises */}
                       {libraryExercises.map((libExercise) => (
                         <button
                           key={libExercise.id}

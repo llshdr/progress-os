@@ -54,8 +54,6 @@ export default function NewWorkoutPage() {
   }
 
   const handleCreateWorkout = async () => {
-    if (!selectedTemplate) return
-
     setCreating(true)
 
     const {
@@ -66,12 +64,13 @@ export default function NewWorkoutPage() {
       return
     }
 
-    // Create workout with template reference
+    // Create workout (with or without template)
     const { data: workout, error: workoutError } = await supabase
       .from('workouts')
       .insert({
         user_id: user.id,
-        template_id: selectedTemplate,
+        template_id: selectedTemplate || null,
+        workout_type: selectedTemplate ? null : 'Custom',
         notes: notes || null,
         date: new Date().toISOString().split('T')[0],
       })
@@ -85,34 +84,36 @@ export default function NewWorkoutPage() {
       return
     }
 
-    // Fetch template exercises
-    const { data: templateExercises, error: exercisesError } = await supabase
-      .from('workout_template_exercises')
-      .select('*')
-      .eq('template_id', selectedTemplate)
-      .order('exercise_order', { ascending: true })
+    // Only populate exercises if a template was selected
+    if (selectedTemplate) {
+      const { data: templateExercises, error: exercisesError } = await supabase
+        .from('workout_template_exercises')
+        .select('*')
+        .eq('template_id', selectedTemplate)
+        .order('exercise_order', { ascending: true })
 
-    if (exercisesError) {
-      console.error('Error fetching template exercises:', exercisesError)
-      router.push(`/gym/workouts/${workout.id}`)
-      return
-    }
+      if (exercisesError) {
+        console.error('Error fetching template exercises:', exercisesError)
+        router.push(`/gym/workouts/${workout.id}`)
+        return
+      }
 
-    // Auto-populate exercises from template
-    if (templateExercises && templateExercises.length > 0) {
-      const exercisesToInsert = templateExercises.map((ex: any) => ({
-        workout_id: workout.id,
-        exercise_library_id: ex.exercise_library_id,
-        exercise_order: ex.exercise_order,
-        notes: ex.notes,
-      }))
+      // Auto-populate exercises from template
+      if (templateExercises && templateExercises.length > 0) {
+        const exercisesToInsert = templateExercises.map((ex: any) => ({
+          workout_id: workout.id,
+          exercise_library_id: ex.exercise_library_id,
+          exercise_order: ex.exercise_order,
+          notes: ex.notes,
+        }))
 
-      const { error: insertError } = await supabase
-        .from('exercises')
-        .insert(exercisesToInsert)
+        const { error: insertError } = await supabase
+          .from('exercises')
+          .insert(exercisesToInsert)
 
-      if (insertError) {
-        console.error('Error populating exercises:', insertError)
+        if (insertError) {
+          console.error('Error populating exercises:', insertError)
+        }
       }
     }
 
@@ -140,20 +141,39 @@ export default function NewWorkoutPage() {
           New Workout
         </h1>
         <p className="text-white/50 text-sm mb-8">
-          Choose a template to get started
+          Choose a template or start empty
         </p>
 
-        {/* Templates Selection */}
-        {templates.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">No workout templates yet</p>
-            <Link href="/gym/templates/new">
-              <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
-                Create your first template
-              </button>
-            </Link>
+        {/* Empty Workout Option */}
+        <button
+          onClick={() => setSelectedTemplate(null)}
+          className={`w-full border rounded-2xl p-6 text-left transition-all duration-200 mb-4 ${
+            selectedTemplate === null
+              ? 'bg-white/10 border-white/30'
+              : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-white/15'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-white mb-1">
+                Empty Workout
+              </h3>
+              <p className="text-white/40 text-sm">Start from scratch</p>
+            </div>
+            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+              selectedTemplate === null
+                ? 'border-white bg-white'
+                : 'border-white/30'
+            }`}>
+              {selectedTemplate === null && (
+                <div className="w-3 h-3 rounded-full bg-black" />
+              )}
+            </div>
           </div>
-        ) : (
+        </button>
+
+        {/* Templates Selection */}
+        {templates.length > 0 && (
           <div className="grid gap-3 mb-8">
             {templates.map((template) => (
               <button
@@ -205,7 +225,7 @@ export default function NewWorkoutPage() {
         {/* Create Button */}
         <button
           onClick={handleCreateWorkout}
-          disabled={!selectedTemplate || creating || templates.length === 0}
+          disabled={creating}
           className="w-full bg-white text-black hover:bg-white/90 rounded-xl px-4 py-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {creating ? 'Creating...' : 'Start Workout'}

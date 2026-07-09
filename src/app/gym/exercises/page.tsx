@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Search, Star, Archive, MoreVertical } from 'lucide-react'
+import { Plus, Search, Star, Archive, Trash2 } from 'lucide-react'
 
 type Exercise = {
   id: string
@@ -100,6 +100,22 @@ export default function ExerciseLibraryPage() {
 
     if (error) {
       console.error('Error toggling archive:', error)
+    } else {
+      fetchExercises()
+    }
+  }
+
+  const deleteExercise = async (exerciseId: string) => {
+    if (!confirm('Permanently delete this exercise? This cannot be undone.')) return
+
+    const { error } = await supabase
+      .from('exercise_library')
+      .delete()
+      .eq('id', exerciseId)
+
+    if (error) {
+      console.error('Error deleting exercise:', error)
+      alert('Failed to delete exercise')
     } else {
       fetchExercises()
     }
@@ -227,6 +243,12 @@ export default function ExerciseLibraryPage() {
                       className="p-2 rounded-lg hover:bg-white/5 transition-colors"
                     >
                       <Archive className="w-5 h-5 text-white/40" />
+                    </button>
+                    <button
+                      onClick={() => deleteExercise(exercise.id)}
+                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5 text-white/40" />
                     </button>
                   </div>
                 </div>
