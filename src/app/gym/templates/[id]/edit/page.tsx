@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Trash2, GripVertical, Save } from 'lucide-react'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 type Template = {
   id: string
@@ -47,6 +48,8 @@ export default function EditTemplatePage() {
   const [showAddExercise, setShowAddExercise] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false)
+  const [exerciseToDelete, setExerciseToDelete] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -140,24 +143,31 @@ export default function EditTemplatePage() {
 
     if (error) {
       console.error('Error adding exercise:', error)
-      alert('Failed to add exercise')
     } else {
       setShowAddExercise(false)
       fetchTemplateData()
     }
   }
 
-  const handleRemoveExercise = async (exerciseId: string) => {
+  const handleRemoveExercise = async () => {
+    if (!exerciseToDelete) return
+
     const { error } = await supabase
       .from('workout_template_exercises')
       .delete()
-      .eq('id', exerciseId)
+      .eq('id', exerciseToDelete)
 
     if (error) {
       console.error('Error removing exercise:', error)
     } else {
       fetchTemplateData()
     }
+    setExerciseToDelete(null)
+  }
+
+  const openDeleteExerciseModal = (exerciseId: string) => {
+    setExerciseToDelete(exerciseId)
+    setShowDeleteExerciseModal(true)
   }
 
   const handleUpdateExercise = async (exerciseId: string, field: string, value: any) => {
@@ -336,7 +346,7 @@ export default function EditTemplatePage() {
                             {exercise.exercise_library.name}
                           </h3>
                           <button
-                            onClick={() => handleRemoveExercise(exercise.id)}
+                            onClick={() => openDeleteExerciseModal(exercise.id)}
                             className="p-1 rounded hover:bg-white/5"
                           >
                             <Trash2 className="w-4 h-4 text-white/40" />
@@ -406,6 +416,18 @@ export default function EditTemplatePage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Exercise Confirmation Modal */}
+      <ConfirmationModal
+        open={showDeleteExerciseModal}
+        onOpenChange={setShowDeleteExerciseModal}
+        title="Remove Exercise"
+        description="Are you sure you want to remove this exercise from the template?"
+        confirmText="Remove"
+        cancelText="Cancel"
+        onConfirm={handleRemoveExercise}
+        destructive
+      />
     </AppLayout>
   )
 }

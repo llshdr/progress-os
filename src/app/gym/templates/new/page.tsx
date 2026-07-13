@@ -16,7 +16,6 @@ export default function NewTemplatePage() {
 
   const handleCreateTemplate = async () => {
     if (!name) {
-      alert('Please enter a template name')
       return
     }
 
@@ -43,7 +42,6 @@ export default function NewTemplatePage() {
 
     if (error) {
       console.error('Error creating template:', error)
-      alert('Failed to create template')
       setLoading(false)
     } else {
       router.push(`/gym/templates/${data.id}/edit`)

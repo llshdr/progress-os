@@ -57,7 +57,6 @@ export default function NewExercisePage() {
 
   const handleCreateExercise = async () => {
     if (!name || !primaryMuscleGroup || !equipmentType || !category) {
-      alert('Please fill in all required fields')
       return
     }
 
@@ -83,7 +82,6 @@ export default function NewExercisePage() {
 
     if (error) {
       console.error('Error creating exercise:', error)
-      alert('Failed to create exercise')
       setLoading(false)
     } else {
       router.push('/gym/exercises')

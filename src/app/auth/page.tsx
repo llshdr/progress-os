@@ -38,7 +38,6 @@ export default function AuthPage() {
       router.refresh()
     } catch (error) {
       console.error('Auth error:', error)
-      alert(isSignUp ? 'Sign up failed' : 'Login failed')
     } finally {
       setLoading(false)
     }

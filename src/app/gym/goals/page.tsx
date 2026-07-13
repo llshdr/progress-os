@@ -94,7 +94,6 @@ export default function GoalsPage() {
 
     if (error) {
       console.error('Error adding goal:', error)
-      alert('Failed to add goal')
     } else {
       setNewGoal({ title: '', description: '', category: 'fitness' })
       setIsDialogOpen(false)

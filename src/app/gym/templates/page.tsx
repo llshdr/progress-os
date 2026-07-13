@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Archive, MoreVertical, Copy } from 'lucide-react'
+import { Plus, Archive, MoreVertical, Copy, Trash2 } from 'lucide-react'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 type Template = {
   id: string
@@ -19,6 +20,8 @@ export default function WorkoutTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [showArchived, setShowArchived] = useState(false)
+  const [showDeleteTemplateModal, setShowDeleteTemplateModal] = useState(false)
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -121,19 +124,25 @@ export default function WorkoutTemplatesPage() {
     fetchTemplates()
   }
 
-  const deleteTemplate = async (templateId: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return
+  const deleteTemplate = async () => {
+    if (!templateToDelete) return
 
     const { error } = await supabase
       .from('workout_templates')
       .delete()
-      .eq('id', templateId)
+      .eq('id', templateToDelete)
 
     if (error) {
       console.error('Error deleting template:', error)
     } else {
       fetchTemplates()
     }
+    setTemplateToDelete(null)
+  }
+
+  const openDeleteTemplateModal = (templateId: string) => {
+    setTemplateToDelete(templateId)
+    setShowDeleteTemplateModal(true)
   }
 
   const filteredTemplates = showArchived
@@ -238,11 +247,11 @@ export default function WorkoutTemplatesPage() {
                       <Archive className="w-4 h-4 text-white/40" />
                     </button>
                     <button
-                      onClick={() => deleteTemplate(template.id)}
+                      onClick={() => openDeleteTemplateModal(template.id)}
                       className="p-2 rounded-lg hover:bg-white/5 transition-colors"
                       title="Delete"
                     >
-                      <MoreVertical className="w-4 h-4 text-white/40" />
+                      <Trash2 className="w-4 h-4 text-white/40" />
                     </button>
                   </div>
                 </div>
@@ -251,6 +260,18 @@ export default function WorkoutTemplatesPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Template Confirmation Modal */}
+      <ConfirmationModal
+        open={showDeleteTemplateModal}
+        onOpenChange={setShowDeleteTemplateModal}
+        title="Delete Template"
+        description="Are you sure you want to delete this template? This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={deleteTemplate}
+        destructive
+      />
     </AppLayout>
   )
 }

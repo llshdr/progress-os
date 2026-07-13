@@ -7,6 +7,7 @@ import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Check, Clock, ArrowLeft, Trash2 } from 'lucide-react'
 import SetLogger from '@/components/workout/set-logger'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 type Workout = {
   id: string
@@ -47,6 +48,9 @@ export default function CurrentWorkoutPage() {
   const [newExerciseName, setNewExerciseName] = useState('')
   const [newExerciseEquipment, setNewExerciseEquipment] = useState('')
   const [useLibrary, setUseLibrary] = useState(true)
+  const [showDeleteWorkoutModal, setShowDeleteWorkoutModal] = useState(false)
+  const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false)
+  const [exerciseToDelete, setExerciseToDelete] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -204,7 +208,6 @@ export default function CurrentWorkoutPage() {
 
     if (error) {
       console.error('Error adding exercise:', error)
-      alert('Failed to add exercise')
     } else {
       // Reset form
       setSelectedLibraryExercise(null)
@@ -224,15 +227,12 @@ export default function CurrentWorkoutPage() {
 
     if (error) {
       console.error('Error completing workout:', error)
-      alert('Failed to complete workout')
     } else {
       router.push('/gym/workouts')
     }
   }
 
   const handleDeleteWorkout = async () => {
-    if (!confirm('Are you sure you want to delete this workout? This cannot be undone.')) return
-
     const { error } = await supabase
       .from('workouts')
       .delete()
@@ -240,26 +240,30 @@ export default function CurrentWorkoutPage() {
 
     if (error) {
       console.error('Error deleting workout:', error)
-      alert('Failed to delete workout')
     } else {
       router.push('/gym/workouts')
     }
   }
 
-  const handleDeleteExercise = async (exerciseId: string) => {
-    if (!confirm('Remove this exercise from the workout?')) return
+  const handleDeleteExercise = async () => {
+    if (!exerciseToDelete) return
 
     const { error } = await supabase
       .from('exercises')
       .delete()
-      .eq('id', exerciseId)
+      .eq('id', exerciseToDelete)
 
     if (error) {
       console.error('Error deleting exercise:', error)
-      alert('Failed to remove exercise')
     } else {
       fetchWorkoutData()
     }
+    setExerciseToDelete(null)
+  }
+
+  const openDeleteExerciseModal = (exerciseId: string) => {
+    setExerciseToDelete(exerciseId)
+    setShowDeleteExerciseModal(true)
   }
 
   const formatDuration = (startedAt: string) => {
@@ -341,7 +345,7 @@ export default function CurrentWorkoutPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={handleDeleteWorkout}
+              onClick={() => setShowDeleteWorkoutModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
@@ -393,7 +397,7 @@ export default function CurrentWorkoutPage() {
                       )}
                     </button>
                     <button
-                      onClick={() => handleDeleteExercise(exercise.id)}
+                      onClick={() => openDeleteExerciseModal(exercise.id)}
                       className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -554,6 +558,30 @@ export default function CurrentWorkoutPage() {
           </button>
         )}
       </div>
+
+      {/* Delete Workout Confirmation Modal */}
+      <ConfirmationModal
+        open={showDeleteWorkoutModal}
+        onOpenChange={setShowDeleteWorkoutModal}
+        title="Delete Workout"
+        description="Are you sure you want to delete this workout? This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteWorkout}
+        destructive
+      />
+
+      {/* Delete Exercise Confirmation Modal */}
+      <ConfirmationModal
+        open={showDeleteExerciseModal}
+        onOpenChange={setShowDeleteExerciseModal}
+        title="Remove Exercise"
+        description="Are you sure you want to remove this exercise from the workout?"
+        confirmText="Remove"
+        cancelText="Cancel"
+        onConfirm={handleDeleteExercise}
+        destructive
+      />
     </AppLayout>
   )
 }

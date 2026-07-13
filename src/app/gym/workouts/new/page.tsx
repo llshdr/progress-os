@@ -79,7 +79,6 @@ export default function NewWorkoutPage() {
 
     if (workoutError) {
       console.error('Error creating workout:', workoutError)
-      alert('Failed to create workout')
       setCreating(false)
       return
     }

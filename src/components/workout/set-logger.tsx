@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Check, X, Trash2 } from 'lucide-react'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 interface SetLoggerProps {
   exerciseId: string
@@ -32,6 +33,8 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
   const [previousSet, setPreviousSet] = useState<PreviousSet | null>(null)
   const [savedSets, setSavedSets] = useState<SavedSet[]>([])
   const [loading, setLoading] = useState(false)
+  const [showDeleteSetModal, setShowDeleteSetModal] = useState(false)
+  const [setToDelete, setSetToDelete] = useState<string | null>(null)
   const supabase = createClient()
 
   // Fetch the last set for this exercise to suggest weight/reps
@@ -116,21 +119,20 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
     setReps('')
   }
 
-  const handleDeleteSet = async (setId: string) => {
-    if (!confirm('Delete this set?')) return
+  const handleDeleteSet = async () => {
+    if (!setToDelete) return
 
     const { error } = await supabase
       .from('sets')
       .delete()
-      .eq('id', setId)
+      .eq('id', setToDelete)
 
     if (error) {
       console.error('Error deleting set:', error)
-      alert('Failed to delete set')
     } else {
       fetchSavedSets()
       // Renumber remaining sets
-      const remainingSets = savedSets.filter(s => s.id !== setId)
+      const remainingSets = savedSets.filter(s => s.id !== setToDelete)
       remainingSets.forEach((set, index) => {
         supabase
           .from('sets')
@@ -139,6 +141,12 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
       })
       setCurrentSetNumber(remainingSets.length + 1)
     }
+    setSetToDelete(null)
+  }
+
+  const openDeleteSetModal = (setId: string) => {
+    setSetToDelete(setId)
+    setShowDeleteSetModal(true)
   }
 
   const handleFinishExercise = () => {
@@ -172,7 +180,7 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
                 <span className="text-white font-medium">{set.weight} × {set.reps}</span>
               </div>
               <button
-                onClick={() => handleDeleteSet(set.id)}
+                onClick={() => openDeleteSetModal(set.id)}
                 className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
@@ -250,6 +258,18 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
       >
         Finish Exercise
       </Button>
+
+      {/* Delete Set Confirmation Modal */}
+      <ConfirmationModal
+        open={showDeleteSetModal}
+        onOpenChange={setShowDeleteSetModal}
+        title="Delete Set"
+        description="Are you sure you want to delete this set?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteSet}
+        destructive
+      />
     </div>
   )
 }

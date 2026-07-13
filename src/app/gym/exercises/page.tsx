@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Search, Star, Archive, Trash2 } from 'lucide-react'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 type Exercise = {
   id: string
@@ -24,6 +25,8 @@ export default function ExerciseLibraryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showFavorites, setShowFavorites] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false)
+  const [exerciseToDelete, setExerciseToDelete] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -105,20 +108,25 @@ export default function ExerciseLibraryPage() {
     }
   }
 
-  const deleteExercise = async (exerciseId: string) => {
-    if (!confirm('Permanently delete this exercise? This cannot be undone.')) return
+  const deleteExercise = async () => {
+    if (!exerciseToDelete) return
 
     const { error } = await supabase
       .from('exercise_library')
       .delete()
-      .eq('id', exerciseId)
+      .eq('id', exerciseToDelete)
 
     if (error) {
       console.error('Error deleting exercise:', error)
-      alert('Failed to delete exercise')
     } else {
       fetchExercises()
     }
+    setExerciseToDelete(null)
+  }
+
+  const openDeleteExerciseModal = (exerciseId: string) => {
+    setExerciseToDelete(exerciseId)
+    setShowDeleteExerciseModal(true)
   }
 
   return (
@@ -245,7 +253,7 @@ export default function ExerciseLibraryPage() {
                       <Archive className="w-5 h-5 text-white/40" />
                     </button>
                     <button
-                      onClick={() => deleteExercise(exercise.id)}
+                      onClick={() => openDeleteExerciseModal(exercise.id)}
                       className="p-2 rounded-lg hover:bg-white/5 transition-colors"
                     >
                       <Trash2 className="w-5 h-5 text-white/40" />
@@ -257,6 +265,18 @@ export default function ExerciseLibraryPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Exercise Confirmation Modal */}
+      <ConfirmationModal
+        open={showDeleteExerciseModal}
+        onOpenChange={setShowDeleteExerciseModal}
+        title="Delete Exercise"
+        description="Are you sure you want to permanently delete this exercise? This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={deleteExercise}
+        destructive
+      />
     </AppLayout>
   )
 }

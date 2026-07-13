@@ -78,7 +78,6 @@ export default function WeightPage() {
 
     if (error) {
       console.error('Error adding entry:', error)
-      alert('Failed to add entry')
     } else {
       setNewEntry({ weight: '', body_fat_percentage: '', notes: '' })
       setIsDialogOpen(false)

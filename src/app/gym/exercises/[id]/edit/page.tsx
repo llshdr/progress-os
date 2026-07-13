@@ -85,7 +85,6 @@ export default function EditExercisePage() {
 
   const handleUpdateExercise = async () => {
     if (!name || !primaryMuscleGroup || !equipmentType || !category) {
-      alert('Please fill in all required fields')
       return
     }
 
@@ -105,7 +104,6 @@ export default function EditExercisePage() {
 
     if (error) {
       console.error('Error updating exercise:', error)
-      alert('Failed to update exercise')
       setSaving(false)
     } else {
       router.push('/gym/exercises')
