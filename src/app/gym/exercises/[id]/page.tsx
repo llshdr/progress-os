@@ -200,7 +200,8 @@ export default function ExerciseDetailPage() {
     // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
     let estimated1RM: number | null = null
     if (bestSet) {
-      estimated1RM = bestSet.weight * (1 + bestSet.reps / 30)
+      const { weight, reps } = bestSet
+      estimated1RM = weight * (1 + reps / 30)
     }
 
     setStatistics({

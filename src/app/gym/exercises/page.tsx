@@ -218,26 +218,28 @@ export default function ExerciseLibraryPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-medium text-white">
-                        {exercise.name}
-                      </h3>
-                      {exercise.favorite && (
-                        <Star className="w-4 h-4 fill-white text-white" />
-                      )}
-                      {exercise.archived && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
-                          Archived
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2 text-white/40 text-sm">
-                      <span>{exercise.primary_muscle_group}</span>
-                      <span>•</span>
-                      <span>{exercise.equipment_type}</span>
-                      <span>•</span>
-                      <span>{exercise.category}</span>
-                    </div>
+                    <Link href={`/gym/exercises/${exercise.id}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-lg font-medium text-white hover:text-white/80 transition-colors">
+                          {exercise.name}
+                        </h3>
+                        {exercise.favorite && (
+                          <Star className="w-4 h-4 fill-white text-white" />
+                        )}
+                        {exercise.archived && (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                            Archived
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-white/40 text-sm">
+                        <span>{exercise.primary_muscle_group}</span>
+                        <span>•</span>
+                        <span>{exercise.equipment_type}</span>
+                        <span>•</span>
+                        <span>{exercise.category}</span>
+                      </div>
+                    </Link>
                   </div>
                   <div className="flex gap-2">
                     <button
