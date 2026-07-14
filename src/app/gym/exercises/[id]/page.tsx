@@ -135,14 +135,6 @@ export default function ExerciseDetailPage() {
           (e: any) => e.exercise_library_id === params.id || e.exercise_name === exerciseData.name
         ) || []
 
-        // Collect all sets from all occurrences of this exercise in the workout
-        const allSets: WorkoutSet[] = []
-        thisExerciseEntries.forEach((entry: any) => {
-          if (entry.sets) {
-            allSets.push(...entry.sets)
-          }
-        })
-
         workoutsWithDetails.push({
           id: workoutData.id,
           date: workoutData.date,
@@ -180,12 +172,16 @@ export default function ExerciseDetailPage() {
     workoutData.forEach((workout) => {
       workout.exercises.forEach((exercise) => {
         exercise.sets.forEach((set) => {
+          // Convert weight and reps to numbers (they might be strings from Supabase)
+          const weight = typeof set.weight === 'string' ? parseFloat(set.weight) : set.weight
+          const reps = typeof set.reps === 'string' ? parseInt(set.reps) : set.reps
+
           totalSets++
-          totalVolume += set.weight * set.reps
+          totalVolume += weight * reps
 
           // Track best set (highest weight, then reps)
-          const currentSet: BestSet = { weight: set.weight, reps: set.reps }
-          if (!bestSet || set.weight > bestSet.weight || (set.weight === bestSet.weight && set.reps > bestSet.reps)) {
+          const currentSet: BestSet = { weight, reps }
+          if (!bestSet || weight > bestSet.weight || (weight === bestSet.weight && reps > bestSet.reps)) {
             bestSet = currentSet
           }
         })
