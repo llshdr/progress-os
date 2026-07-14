@@ -105,6 +105,10 @@ export default function ExerciseDetailPage() {
       `)
       .or(`exercise_library_id.eq.${params.id},exercise_name.ilike.${exerciseData.name}`)
 
+    console.log('=== DEBUG: Initial exercises query ===')
+    console.log('Number of exercise entries found:', exercisesData?.length || 0)
+    console.log('Complete exercisesData:', JSON.stringify(exercisesData, null, 2))
+
     if (exercisesError) {
       console.error('Error fetching workouts:', exercisesError)
       setLoading(false)
@@ -113,9 +117,14 @@ export default function ExerciseDetailPage() {
 
     // Get unique workouts with template names
     const workoutIds = [...new Set(exercisesData?.map((e: any) => e.workout.id) || [])]
+    console.log('=== DEBUG: Unique workout IDs ===')
+    console.log('Number of unique workouts:', workoutIds.length)
+    console.log('Workout IDs:', workoutIds)
+
     const workoutsWithDetails: Workout[] = []
 
     for (const workoutId of workoutIds) {
+      console.log('=== DEBUG: Processing workout ===', workoutId)
       const { data: workoutData } = await supabase
         .from('workouts')
         .select('*, workout_templates(name)')
@@ -130,10 +139,27 @@ export default function ExerciseDetailPage() {
           .eq('workout_id', workoutId)
           .order('exercise_order', { ascending: true })
 
+        console.log('=== DEBUG: Workout exercises for workout', workoutId, '===')
+        console.log('Number of exercises in workout:', workoutExercises?.length || 0)
+        console.log('Complete workoutExercises:', JSON.stringify(workoutExercises, null, 2))
+
         // Filter to only this exercise
         const thisExerciseEntries = workoutExercises?.filter(
           (e: any) => e.exercise_library_id === params.id || e.exercise_name === exerciseData.name
         ) || []
+
+        console.log('=== DEBUG: Filtered exercise entries ===')
+        console.log('Number of matching exercises:', thisExerciseEntries.length)
+        console.log('Filtered entries:', JSON.stringify(thisExerciseEntries, null, 2))
+
+        // Count total sets
+        let totalSetsInWorkout = 0
+        thisExerciseEntries.forEach((entry: any) => {
+          if (entry.sets) {
+            totalSetsInWorkout += entry.sets.length
+          }
+        })
+        console.log('Total sets in this workout for this exercise:', totalSetsInWorkout)
 
         workoutsWithDetails.push({
           id: workoutData.id,
@@ -153,6 +179,10 @@ export default function ExerciseDetailPage() {
         })
       }
     }
+
+    console.log('=== DEBUG: Final workoutsWithDetails ===')
+    console.log('Number of workouts with details:', workoutsWithDetails.length)
+    console.log('Complete workoutsWithDetails:', JSON.stringify(workoutsWithDetails, null, 2))
 
     // Sort by date (newest first)
     workoutsWithDetails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
