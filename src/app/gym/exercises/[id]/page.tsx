@@ -105,10 +105,6 @@ export default function ExerciseDetailPage() {
       `)
       .or(`exercise_library_id.eq.${params.id},exercise_name.ilike.${exerciseData.name}`)
 
-    console.log('=== DEBUG: Initial exercises query ===')
-    console.log('Number of exercise entries found:', exercisesData?.length || 0)
-    console.log('Complete exercisesData:', JSON.stringify(exercisesData, null, 2))
-
     if (exercisesError) {
       console.error('Error fetching workouts:', exercisesError)
       setLoading(false)
@@ -117,14 +113,9 @@ export default function ExerciseDetailPage() {
 
     // Get unique workouts with template names
     const workoutIds = [...new Set(exercisesData?.map((e: any) => e.workout.id) || [])]
-    console.log('=== DEBUG: Unique workout IDs ===')
-    console.log('Number of unique workouts:', workoutIds.length)
-    console.log('Workout IDs:', workoutIds)
-
     const workoutsWithDetails: Workout[] = []
 
     for (const workoutId of workoutIds) {
-      console.log('=== DEBUG: Processing workout ===', workoutId)
       const { data: workoutData } = await supabase
         .from('workouts')
         .select('*, workout_templates(name)')
@@ -132,52 +123,17 @@ export default function ExerciseDetailPage() {
         .single()
 
       if (workoutData) {
-        // Fetch all exercises for this workout (without sets first to avoid RLS issue)
+        // Fetch all exercises and sets for this workout
         const { data: workoutExercises } = await supabase
           .from('exercises')
-          .select('*')
+          .select('*, sets(*)')
           .eq('workout_id', workoutId)
           .order('exercise_order', { ascending: true })
-
-        console.log('=== DEBUG: Workout exercises for workout', workoutId, '===')
-        console.log('Number of exercises in workout:', workoutExercises?.length || 0)
-        console.log('Complete workoutExercises:', JSON.stringify(workoutExercises, null, 2))
 
         // Filter to only this exercise
         const thisExerciseEntries = workoutExercises?.filter(
           (e: any) => e.exercise_library_id === params.id || e.exercise_name === exerciseData.name
         ) || []
-
-        console.log('=== DEBUG: Filtered exercise entries ===')
-        console.log('Number of matching exercises:', thisExerciseEntries.length)
-        console.log('Filtered entries:', JSON.stringify(thisExerciseEntries, null, 2))
-
-        // Fetch sets separately for each exercise to avoid RLS relationship issues
-        const exercisesWithSets = await Promise.all(
-          thisExerciseEntries.map(async (exercise: any) => {
-            const { data: exerciseSets } = await supabase
-              .from('sets')
-              .select('*')
-              .eq('exercise_id', exercise.id)
-              .order('set_order', { ascending: true })
-
-            console.log('=== DEBUG: Sets for exercise', exercise.id, '===')
-            console.log('Number of sets:', exerciseSets?.length || 0)
-            console.log('Sets data:', JSON.stringify(exerciseSets, null, 2))
-
-            return {
-              ...exercise,
-              sets: exerciseSets || [],
-            }
-          })
-        )
-
-        // Count total sets
-        let totalSetsInWorkout = 0
-        exercisesWithSets.forEach((entry: any) => {
-          totalSetsInWorkout += entry.sets.length
-        })
-        console.log('Total sets in this workout for this exercise:', totalSetsInWorkout)
 
         workoutsWithDetails.push({
           id: workoutData.id,
@@ -187,7 +143,7 @@ export default function ExerciseDetailPage() {
           template_name: workoutData.workout_templates?.name || null,
           started_at: workoutData.started_at,
           completed_at: workoutData.completed_at,
-          exercises: exercisesWithSets.map((e: any) => ({
+          exercises: thisExerciseEntries.map((e: any) => ({
             id: e.id,
             workout_id: e.workout_id,
             exercise_order: e.exercise_order,
@@ -197,10 +153,6 @@ export default function ExerciseDetailPage() {
         })
       }
     }
-
-    console.log('=== DEBUG: Final workoutsWithDetails ===')
-    console.log('Number of workouts with details:', workoutsWithDetails.length)
-    console.log('Complete workoutsWithDetails:', JSON.stringify(workoutsWithDetails, null, 2))
 
     // Sort by date (newest first)
     workoutsWithDetails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
