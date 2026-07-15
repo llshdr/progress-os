@@ -132,10 +132,10 @@ export default function ExerciseDetailPage() {
         .single()
 
       if (workoutData) {
-        // Fetch all exercises and sets for this workout
+        // Fetch all exercises for this workout (without sets first to avoid RLS issue)
         const { data: workoutExercises } = await supabase
           .from('exercises')
-          .select('*, sets(*)')
+          .select('*')
           .eq('workout_id', workoutId)
           .order('exercise_order', { ascending: true })
 
@@ -152,12 +152,30 @@ export default function ExerciseDetailPage() {
         console.log('Number of matching exercises:', thisExerciseEntries.length)
         console.log('Filtered entries:', JSON.stringify(thisExerciseEntries, null, 2))
 
+        // Fetch sets separately for each exercise to avoid RLS relationship issues
+        const exercisesWithSets = await Promise.all(
+          thisExerciseEntries.map(async (exercise: any) => {
+            const { data: exerciseSets } = await supabase
+              .from('sets')
+              .select('*')
+              .eq('exercise_id', exercise.id)
+              .order('set_order', { ascending: true })
+
+            console.log('=== DEBUG: Sets for exercise', exercise.id, '===')
+            console.log('Number of sets:', exerciseSets?.length || 0)
+            console.log('Sets data:', JSON.stringify(exerciseSets, null, 2))
+
+            return {
+              ...exercise,
+              sets: exerciseSets || [],
+            }
+          })
+        )
+
         // Count total sets
         let totalSetsInWorkout = 0
-        thisExerciseEntries.forEach((entry: any) => {
-          if (entry.sets) {
-            totalSetsInWorkout += entry.sets.length
-          }
+        exercisesWithSets.forEach((entry: any) => {
+          totalSetsInWorkout += entry.sets.length
         })
         console.log('Total sets in this workout for this exercise:', totalSetsInWorkout)
 
@@ -169,7 +187,7 @@ export default function ExerciseDetailPage() {
           template_name: workoutData.workout_templates?.name || null,
           started_at: workoutData.started_at,
           completed_at: workoutData.completed_at,
-          exercises: thisExerciseEntries.map((e: any) => ({
+          exercises: exercisesWithSets.map((e: any) => ({
             id: e.id,
             workout_id: e.workout_id,
             exercise_order: e.exercise_order,
