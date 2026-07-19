@@ -31,7 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-black/50 backdrop-blur-xl">
         <div className="p-6">
           <h1 className="text-xl font-semibold tracking-tight text-white">
-            Progress OS
+            L.A.P.I.S
           </h1>
         </div>
         

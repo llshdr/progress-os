@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Progress OS",
+  title: "L.A.P.I.S",
   description: "Personal operating system for ambitious people",
 };
 
