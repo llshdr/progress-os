@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Check, X, Trash2 } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import { getExerciseRecommendation, RecommendationResult } from '@/lib/ai-coach/client'
 
 interface SetLoggerProps {
   exerciseId: string
   exerciseName: string
+  exerciseLibraryId?: string | null
   onComplete?: () => void
 }
 
@@ -26,7 +28,7 @@ interface SavedSet {
   set_order: number
 }
 
-export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetLoggerProps) {
+export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId, onComplete }: SetLoggerProps) {
   const [weight, setWeight] = useState('')
   const [reps, setReps] = useState('')
   const [currentSetNumber, setCurrentSetNumber] = useState(1)
@@ -35,6 +37,7 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
   const [loading, setLoading] = useState(false)
   const [showDeleteSetModal, setShowDeleteSetModal] = useState(false)
   const [setToDelete, setSetToDelete] = useState<string | null>(null)
+  const [aiSuggestion, setAiSuggestion] = useState<RecommendationResult | null>(null)
   const supabase = createClient()
 
   // Fetch the last set for this exercise to suggest weight/reps
@@ -42,6 +45,21 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
     fetchPreviousSet()
     fetchSavedSets()
   }, [exerciseId])
+
+  // AI Coach suggestion — fails silently, this is a lightweight in-flow hint,
+  // not the primary surface for the feature (that's the exercise detail page).
+  useEffect(() => {
+    let cancelled = false
+    setAiSuggestion(null)
+
+    getExerciseRecommendation({ exerciseLibraryId, exerciseName }).then((res) => {
+      if (!cancelled) setAiSuggestion(res)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [exerciseId, exerciseLibraryId, exerciseName])
 
   const fetchPreviousSet = async () => {
     const {
@@ -163,6 +181,11 @@ export default function SetLogger({ exerciseId, exerciseName, onComplete }: SetL
         {previousSet && (
           <div className="text-white/40 text-sm">
             Last: {previousSet.weight} × {previousSet.reps}
+          </div>
+        )}
+        {aiSuggestion?.status === 'ok' && (
+          <div className="text-white/50 text-sm mt-1">
+            Suggested: {aiSuggestion.weight} kg × {aiSuggestion.reps}
           </div>
         )}
       </div>

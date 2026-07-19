@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award } from 'lucide-react'
+import ExerciseCoachCard from '@/components/ai-coach/exercise-coach-card'
 
 type Exercise = {
   id: string
@@ -345,6 +346,11 @@ export default function ExerciseDetailPage() {
             </div>
           </div>
         )}
+
+        {/* AI Coach Section */}
+        <div className="mb-8">
+          <ExerciseCoachCard exerciseLibraryId={exercise.id} exerciseName={exercise.name} />
+        </div>
 
         {/* Workout History Section */}
         <div>

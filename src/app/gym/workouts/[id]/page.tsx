@@ -315,6 +315,7 @@ export default function CurrentWorkoutPage() {
           <SetLogger
             exerciseId={activeExerciseId}
             exerciseName={exerciseName}
+            exerciseLibraryId={activeExercise?.exercise_library_id ?? null}
             onComplete={() => setActiveExerciseId(null)}
           />
         </div>
