@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Settings } from 'lucide-react'
+import { displayToKg, kgToDisplay, WeightUnit } from '@/lib/weight'
 
 export default function SettingsPage() {
   const [weeklyWorkoutGoal, setWeeklyWorkoutGoal] = useState('5')
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg')
+  const [goalWeight, setGoalWeight] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -30,14 +33,32 @@ export default function SettingsPage() {
 
     const { data } = await supabase
       .from('user_settings')
-      .select('weekly_workout_goal')
+      .select('weekly_workout_goal, weight_unit, goal_weight')
       .eq('user_id', user.id)
       .maybeSingle()
 
     if (data?.weekly_workout_goal) {
       setWeeklyWorkoutGoal(String(data.weekly_workout_goal))
     }
+    const unit: WeightUnit = data?.weight_unit === 'lbs' ? 'lbs' : 'kg'
+    setWeightUnit(unit)
+    if (data?.goal_weight) {
+      setGoalWeight(kgToDisplay(data.goal_weight, unit).toFixed(1))
+    }
     setLoading(false)
+  }
+
+  const handleUnitChange = (unit: WeightUnit) => {
+    // Re-express whatever's already typed in the new unit rather than
+    // silently reinterpreting the same number under a different unit.
+    if (goalWeight) {
+      const kg = displayToKg(parseFloat(goalWeight), weightUnit)
+      if (!Number.isNaN(kg)) {
+        setGoalWeight(kgToDisplay(kg, unit).toFixed(1))
+      }
+    }
+    setWeightUnit(unit)
+    setSaved(false)
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -51,12 +72,20 @@ export default function SettingsPage() {
     const goal = parseInt(weeklyWorkoutGoal, 10)
     if (!goal || goal < 1) return
 
+    const goalWeightKg = goalWeight ? displayToKg(parseFloat(goalWeight), weightUnit) : null
+
     setSaving(true)
     setSaved(false)
 
-    const { error } = await supabase
-      .from('user_settings')
-      .upsert({ user_id: user.id, weekly_workout_goal: goal }, { onConflict: 'user_id' })
+    const { error } = await supabase.from('user_settings').upsert(
+      {
+        user_id: user.id,
+        weekly_workout_goal: goal,
+        weight_unit: weightUnit,
+        goal_weight: goalWeightKg,
+      },
+      { onConflict: 'user_id' }
+    )
 
     setSaving(false)
     if (!error) {
@@ -79,33 +108,90 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 max-w-md">
-          <h2 className="text-lg font-medium text-white mb-1">Weekly Workout Target</h2>
-          <p className="text-white/40 text-sm mb-4">
-            Used for your dashboard progress and daily suggestions.
-          </p>
-
+        <div className="space-y-6 max-w-md">
           {loading ? (
-            <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+            </div>
           ) : (
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="weekly-workout-goal" className="text-white/80">
-                  Workouts per week
-                </Label>
-                <Input
-                  id="weekly-workout-goal"
-                  type="number"
-                  min={1}
-                  max={14}
-                  value={weeklyWorkoutGoal}
-                  onChange={(e) => {
-                    setWeeklyWorkoutGoal(e.target.value)
-                    setSaved(false)
-                  }}
-                  className="bg-white/5 border-white/10 text-white"
-                />
+            <form onSubmit={handleSave} className="space-y-6">
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+                <h2 className="text-lg font-medium text-white mb-1">Weekly Workout Target</h2>
+                <p className="text-white/40 text-sm mb-4">
+                  Used for your dashboard progress and daily suggestions.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="weekly-workout-goal" className="text-white/80">
+                    Workouts per week
+                  </Label>
+                  <Input
+                    id="weekly-workout-goal"
+                    type="number"
+                    min={1}
+                    max={14}
+                    value={weeklyWorkoutGoal}
+                    onChange={(e) => {
+                      setWeeklyWorkoutGoal(e.target.value)
+                      setSaved(false)
+                    }}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
               </div>
+
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+                <h2 className="text-lg font-medium text-white mb-1">Weight Tracking</h2>
+                <p className="text-white/40 text-sm mb-4">
+                  Controls the units used across weight tracking, the trend graph, and the AI insight.
+                </p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-white/80">Unit</Label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleUnitChange('kg')}
+                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          weightUnit === 'kg'
+                            ? 'bg-white text-black'
+                            : 'bg-white/5 text-white/60 hover:bg-white/10'
+                        }`}
+                      >
+                        kg
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUnitChange('lbs')}
+                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          weightUnit === 'lbs'
+                            ? 'bg-white text-black'
+                            : 'bg-white/5 text-white/60 hover:bg-white/10'
+                        }`}
+                      >
+                        lbs
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="goal-weight" className="text-white/80">
+                      Goal weight ({weightUnit}) — optional
+                    </Label>
+                    <Input
+                      id="goal-weight"
+                      type="number"
+                      step="0.1"
+                      value={goalWeight}
+                      onChange={(e) => {
+                        setGoalWeight(e.target.value)
+                        setSaved(false)
+                      }}
+                      placeholder={weightUnit === 'kg' ? '75.0' : '165.0'}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center gap-3">
                 <Button
                   type="submit"

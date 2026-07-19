@@ -17,6 +17,9 @@ import {
 } from '@/components/ui/dialog'
 import Link from 'next/link'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import { displayToKg, formatWeight, kgToDisplay, type WeightUnit } from '@/lib/weight'
+import WeightChart from '@/components/weight/weight-chart'
+import WeightInsightCard from '@/components/weight/weight-insight-card'
 
 type WeightEntry = {
   id: string
@@ -26,8 +29,12 @@ type WeightEntry = {
   recorded_at: string
 }
 
+const MIN_ENTRIES_FOR_TREND = 3
+
 export default function WeightPage() {
   const [entries, setEntries] = useState<WeightEntry[]>([])
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg')
+  const [goalWeightKg, setGoalWeightKg] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newEntry, setNewEntry] = useState({
@@ -37,11 +44,31 @@ export default function WeightPage() {
   })
   const [showDeleteEntryModal, setShowDeleteEntryModal] = useState(false)
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null)
+  // Bumped after an entry is added/deleted so the (server-cached) AI insight
+  // refetches — it only actually regenerates if the underlying data changed.
+  const [insightRefreshKey, setInsightRefreshKey] = useState(0)
   const supabase = createClient()
 
   useEffect(() => {
     fetchEntries()
+    fetchSettings()
   }, [])
+
+  const fetchSettings = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data } = await supabase
+      .from('user_settings')
+      .select('weight_unit, goal_weight')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    setWeightUnit(data?.weight_unit === 'lbs' ? 'lbs' : 'kg')
+    setGoalWeightKg(data?.goal_weight ?? null)
+  }
 
   const fetchEntries = async () => {
     const {
@@ -72,7 +99,7 @@ export default function WeightPage() {
 
     const { error } = await supabase.from('weight_entries').insert({
       user_id: user.id,
-      weight: parseFloat(newEntry.weight),
+      weight: displayToKg(parseFloat(newEntry.weight), weightUnit),
       body_fat_percentage: newEntry.body_fat_percentage
         ? parseFloat(newEntry.body_fat_percentage)
         : null,
@@ -85,6 +112,7 @@ export default function WeightPage() {
       setNewEntry({ weight: '', body_fat_percentage: '', notes: '' })
       setIsDialogOpen(false)
       fetchEntries()
+      setInsightRefreshKey((k) => k + 1)
     }
   }
 
@@ -100,6 +128,7 @@ export default function WeightPage() {
       console.error('Error deleting entry:', error)
     } else {
       fetchEntries()
+      setInsightRefreshKey((k) => k + 1)
     }
     setEntryToDelete(null)
   }
@@ -122,8 +151,9 @@ export default function WeightPage() {
     if (index >= entries.length - 1) return null
     const current = entries[index].weight
     const previous = entries[index + 1].weight
-    const change = current - previous
-    return change
+    // Convert the kg delta once — a linear unit conversion, so this is
+    // equivalent to converting both values first and then subtracting.
+    return kgToDisplay(current - previous, weightUnit)
   }
 
   if (loading) {
@@ -159,7 +189,7 @@ export default function WeightPage() {
               </DialogHeader>
               <form onSubmit={handleAddEntry} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="weight" className="text-white/80">Weight (kg)</Label>
+                  <Label htmlFor="weight" className="text-white/80">Weight ({weightUnit})</Label>
                   <Input
                     id="weight"
                     type="number"
@@ -169,7 +199,7 @@ export default function WeightPage() {
                       setNewEntry({ ...newEntry, weight: e.target.value })
                     }
                     required
-                    placeholder="75.5"
+                    placeholder={weightUnit === 'kg' ? '75.5' : '165.0'}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                   />
                 </div>
@@ -221,8 +251,32 @@ export default function WeightPage() {
           </h1>
           <p className="text-white/50 text-sm">
             {entries.length} entries recorded
+            {goalWeightKg != null && (
+              <> · Goal: {formatWeight(goalWeightKg, weightUnit)} {weightUnit}</>
+            )}
           </p>
         </div>
+
+        {entries.length >= MIN_ENTRIES_FOR_TREND ? (
+          <div className="grid gap-4 mb-6 lg:grid-cols-2">
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <h3 className="text-lg font-medium text-white mb-4">Trend</h3>
+              <WeightChart
+                entries={entries.map((e) => ({ weight: e.weight, recordedAt: e.recorded_at }))}
+                unit={weightUnit}
+                goalWeightKg={goalWeightKg}
+              />
+            </div>
+            <WeightInsightCard refreshKey={insightRefreshKey} />
+          </div>
+        ) : entries.length > 0 ? (
+          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 mb-6">
+            <p className="text-white/40 text-sm">
+              Log {MIN_ENTRIES_FOR_TREND - entries.length} more weigh-in
+              {MIN_ENTRIES_FOR_TREND - entries.length === 1 ? '' : 's'} to see your trend and an AI insight.
+            </p>
+          </div>
+        ) : null}
 
         {entries.length === 0 ? (
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
@@ -247,9 +301,9 @@ export default function WeightPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="text-3xl font-semibold text-white">
-                        {entry.weight}
+                        {formatWeight(entry.weight, weightUnit)}
                         <span className="text-lg font-normal text-white/40 ml-1">
-                          kg
+                          {weightUnit}
                         </span>
                       </div>
                       {entry.body_fat_percentage && (
@@ -274,7 +328,7 @@ export default function WeightPage() {
                             }`}
                           >
                             {weightChange > 0 ? '+' : ''}
-                            {weightChange.toFixed(1)} kg
+                            {weightChange.toFixed(1)} {weightUnit}
                           </div>
                         )}
                       </div>
