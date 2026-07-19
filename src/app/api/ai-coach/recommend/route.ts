@@ -5,7 +5,7 @@ import { getExerciseHistory } from '@/lib/ai-coach/getExerciseHistory'
 
 const MIN_SESSIONS_FOR_RECOMMENDATION = 2
 const MAX_SETS_IN_PROMPT = 20
-const MODEL = 'gemini-2.5-flash-lite'
+const MODEL = 'gemini-2.5-flash'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
