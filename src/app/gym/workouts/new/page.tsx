@@ -15,6 +15,13 @@ type Template = {
   exercise_count?: number
 }
 
+type ActiveWorkout = {
+  id: string
+  workout_type: string | null
+  started_at: string
+  template_name: string | null
+}
+
 export default function NewWorkoutPage() {
   const router = useRouter()
   const [templates, setTemplates] = useState<Template[]>([])
@@ -22,11 +29,38 @@ export default function NewWorkoutPage() {
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
     fetchTemplates()
+    checkActiveWorkout()
   }, [])
+
+  const checkActiveWorkout = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data } = await supabase
+      .from('workouts')
+      .select('id, workout_type, started_at, workout_templates(name)')
+      .eq('user_id', user.id)
+      .is('completed_at', null)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (data) {
+      setActiveWorkout({
+        id: data.id,
+        workout_type: data.workout_type,
+        started_at: data.started_at,
+        template_name: (data as any).workout_templates?.name ?? null,
+      })
+    }
+  }
 
   const fetchTemplates = async () => {
     const {
@@ -120,11 +154,49 @@ export default function NewWorkoutPage() {
     router.push(`/gym/workouts/${workout.id}`)
   }
 
+  const formatStartedAgo = (startedAt: string) => {
+    const minutes = Math.floor((Date.now() - new Date(startedAt).getTime()) / 60000)
+    if (minutes < 60) return `${minutes}m ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    return `${days}d ago`
+  }
+
   if (loading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
           <div className="text-white/40">Loading...</div>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  if (activeWorkout) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Link href="/gym/workouts" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+            ← Back
+          </Link>
+
+          <div className="border border-white/10 rounded-3xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-8 backdrop-blur-sm">
+            <h2 className="text-2xl font-semibold text-white mb-2">You have an unfinished workout</h2>
+            <p className="text-white/60 mb-6">
+              {activeWorkout.template_name || activeWorkout.workout_type || 'Workout'} — started{' '}
+              {formatStartedAgo(activeWorkout.started_at)}
+            </p>
+            <button
+              onClick={() => router.push(`/gym/workouts/${activeWorkout.id}`)}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-medium hover:bg-white/90 transition-colors"
+            >
+              Continue Workout
+            </button>
+            <p className="text-white/40 text-sm mt-4">
+              Want to start fresh instead? Open that workout and delete it first.
+            </p>
+          </div>
         </div>
       </AppLayout>
     )

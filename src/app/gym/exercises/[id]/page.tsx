@@ -90,27 +90,35 @@ export default function ExerciseDetailPage() {
 
     setExercise(exerciseData)
 
-    // Fetch all workouts containing this exercise
-    const { data: exercisesData, error: exercisesError } = await supabase
-      .from('exercises')
-      .select(`
-        workout_id,
-        workout:workouts!inner(
-          id,
-          date,
-          workout_type,
-          template_id,
-          started_at,
-          completed_at
-        )
-      `)
-      .or(`exercise_library_id.eq.${params.id},exercise_name.ilike.${exerciseData.name}`)
+    // Fetch all workouts containing this exercise. Two separate,
+    // properly-parameterized queries instead of a single .or() built via
+    // string interpolation — an exercise name containing a comma or other
+    // PostgREST-significant character would otherwise break or misbehave.
+    const workoutSelect = `
+      workout_id,
+      workout:workouts!inner(
+        id,
+        date,
+        workout_type,
+        template_id,
+        started_at,
+        completed_at
+      )
+    `
+    const [byLibraryId, byName] = await Promise.all([
+      supabase.from('exercises').select(workoutSelect).eq('exercise_library_id', params.id),
+      supabase.from('exercises').select(workoutSelect).ilike('exercise_name', exerciseData.name),
+    ])
 
-    if (exercisesError) {
-      console.error('Error fetching workouts:', exercisesError)
+    if (byLibraryId.error || byName.error) {
+      console.error('Error fetching workouts:', byLibraryId.error || byName.error)
       setLoading(false)
       return
     }
+
+    // A workout_id appearing in both result sets just collapses into one
+    // entry below — no further deduping needed.
+    const exercisesData = [...(byLibraryId.data || []), ...(byName.data || [])]
 
     // Get unique workouts with template names
     const workoutIds = [...new Set(exercisesData?.map((e: any) => e.workout.id) || [])]

@@ -4,37 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-
-const MUSCLE_GROUPS = [
-  'Chest',
-  'Back',
-  'Legs',
-  'Shoulders',
-  'Arms',
-  'Core',
-  'Full Body',
-]
-
-const EQUIPMENT_TYPES = [
-  'Barbell',
-  'Dumbbell',
-  'Machine',
-  'Cable',
-  'Bodyweight',
-  'Kettlebell',
-  'Resistance Band',
-  'Other',
-]
-
-const CATEGORIES = [
-  'Compound',
-  'Isolation',
-  'Cardio',
-  'Mobility',
-  'Stretching',
-]
+import ExerciseFormFields from '@/components/gym/exercise-form-fields'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 export default function NewExercisePage() {
   const router = useRouter()
@@ -45,33 +18,20 @@ export default function NewExercisePage() {
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const supabase = createClient()
 
   const toggleSecondaryMuscle = (muscle: string) => {
-    setSecondaryMuscleGroups(prev =>
-      prev.includes(muscle)
-        ? prev.filter(m => m !== muscle)
-        : [...prev, muscle]
+    setSecondaryMuscleGroups((prev) =>
+      prev.includes(muscle) ? prev.filter((m) => m !== muscle) : [...prev, muscle]
     )
   }
 
-  const handleCreateExercise = async () => {
-    if (!name || !primaryMuscleGroup || !equipmentType || !category) {
-      return
-    }
-
+  const createExercise = async (userId: string) => {
     setLoading(true)
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setLoading(false)
-      return
-    }
-
     const { error } = await supabase.from('exercise_library').insert({
-      user_id: user.id,
+      user_id: userId,
       name,
       primary_muscle_group: primaryMuscleGroup,
       secondary_muscle_groups: secondaryMuscleGroups.length > 0 ? secondaryMuscleGroups : null,
@@ -86,6 +46,43 @@ export default function NewExercisePage() {
     } else {
       router.push('/gym/exercises')
     }
+  }
+
+  const handleCreateExercise = async () => {
+    if (!name || !primaryMuscleGroup || !equipmentType || !category) {
+      return
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    // Same-named exercises (case-insensitive) can cross-contaminate each
+    // other's history/stats via the ilike name-matching fallback, so warn
+    // rather than silently allowing it.
+    const { data: existing } = await supabase
+      .from('exercise_library')
+      .select('id')
+      .eq('user_id', user.id)
+      .ilike('name', name)
+      .limit(1)
+      .maybeSingle()
+
+    if (existing) {
+      setShowDuplicateModal(true)
+      return
+    }
+
+    await createExercise(user.id)
+  }
+
+  const handleConfirmDuplicate = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+    await createExercise(user.id)
   }
 
   return (
@@ -103,120 +100,40 @@ export default function NewExercisePage() {
         </p>
 
         <div className="max-w-2xl space-y-6">
-          {/* Exercise Name */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Exercise Name *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Bench Press"
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 placeholder:text-white/30"
-            />
-          </div>
+          <ExerciseFormFields
+            name={name}
+            onNameChange={setName}
+            primaryMuscleGroup={primaryMuscleGroup}
+            onPrimaryMuscleGroupChange={setPrimaryMuscleGroup}
+            secondaryMuscleGroups={secondaryMuscleGroups}
+            onToggleSecondaryMuscle={toggleSecondaryMuscle}
+            equipmentType={equipmentType}
+            onEquipmentTypeChange={setEquipmentType}
+            category={category}
+            onCategoryChange={setCategory}
+            notes={notes}
+            onNotesChange={setNotes}
+          />
 
-          {/* Primary Muscle Group */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Primary Muscle Group *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {MUSCLE_GROUPS.map((muscle) => (
-                <button
-                  key={muscle}
-                  onClick={() => setPrimaryMuscleGroup(muscle)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    primaryMuscleGroup === muscle
-                      ? 'bg-white text-black border-white'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {muscle}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Secondary Muscle Groups */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Secondary Muscle Groups (optional)</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {MUSCLE_GROUPS.filter(m => m !== primaryMuscleGroup).map((muscle) => (
-                <button
-                  key={muscle}
-                  onClick={() => toggleSecondaryMuscle(muscle)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    secondaryMuscleGroups.includes(muscle)
-                      ? 'bg-white/10 text-white border-white/20'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {muscle}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Equipment Type */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Equipment Type *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {EQUIPMENT_TYPES.map((equipment) => (
-                <button
-                  key={equipment}
-                  onClick={() => setEquipmentType(equipment)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    equipmentType === equipment
-                      ? 'bg-white text-black border-white'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {equipment}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Category *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    category === cat
-                      ? 'bg-white text-black border-white'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Notes (optional)</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any notes about this exercise..."
-              rows={3}
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 placeholder:text-white/30 resize-none"
-            />
-          </div>
-
-          {/* Create Button */}
-          <button
+          <Button
             onClick={handleCreateExercise}
             disabled={loading || !name || !primaryMuscleGroup || !equipmentType || !category}
-            className="w-full bg-white text-black hover:bg-white/90 rounded-xl px-4 py-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
           >
             {loading ? 'Creating...' : 'Create Exercise'}
-          </button>
+          </Button>
         </div>
       </div>
+
+      <ConfirmationModal
+        open={showDuplicateModal}
+        onOpenChange={setShowDuplicateModal}
+        title="Exercise Already Exists"
+        description={`You already have an exercise named "${name}". Creating another one with the same name can mix up their history and stats. Create it anyway, or go back and check the existing one?`}
+        confirmText="Create Anyway"
+        cancelText="Go Back"
+        onConfirm={handleConfirmDuplicate}
+      />
     </AppLayout>
   )
 }

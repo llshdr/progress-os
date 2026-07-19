@@ -4,8 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 
 export default function NewTemplatePage() {
   const router = useRouter()
@@ -63,39 +66,38 @@ export default function NewTemplatePage() {
         </p>
 
         <div className="max-w-2xl space-y-6">
-          {/* Template Name */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Template Name *</label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="template-name" className="text-white/80">Template Name *</Label>
+            <Input
+              id="template-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Chest & Shoulders"
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 placeholder:text-white/30"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
               autoFocus
             />
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Description (optional)</label>
-            <textarea
+          <div className="space-y-2">
+            <Label htmlFor="template-description" className="text-white/80">Description (optional)</Label>
+            <Textarea
+              id="template-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Focus on compound movements..."
               rows={3}
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 placeholder:text-white/30 resize-none"
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
             />
           </div>
 
-          {/* Create Button */}
-          <button
+          <Button
             onClick={handleCreateTemplate}
             disabled={loading || !name}
-            className="w-full bg-white text-black hover:bg-white/90 rounded-xl px-4 py-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
           >
             {loading ? 'Creating...' : 'Create Template'}
-          </button>
+          </Button>
         </div>
       </div>
     </AppLayout>

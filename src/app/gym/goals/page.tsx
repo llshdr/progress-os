@@ -227,6 +227,12 @@ export default function GoalsPage() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                  {newGoal.category !== 'fitness' && (
+                    <p className="text-white/30 text-xs">
+                      Business/Productivity/Self-improvement are placeholder categories until a
+                      dedicated module exists — these goals only live here for now.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description" className="text-white/80">Description (optional)</Label>
@@ -301,6 +307,11 @@ export default function GoalsPage() {
                     {goal.description && (
                       <p className="text-white/40 text-sm">
                         {goal.description}
+                      </p>
+                    )}
+                    {goal.category !== 'fitness' && (
+                      <p className="text-white/30 text-xs mt-2">
+                        Placeholder category — no dedicated module yet.
                       </p>
                     )}
                   </div>

@@ -18,22 +18,49 @@ export async function getExerciseHistory(
 ): Promise<HistoricalSet[]> {
   if (!exerciseLibraryId && !exerciseName) return []
 
-  const filters = [
-    exerciseLibraryId ? `exercise_library_id.eq.${exerciseLibraryId}` : null,
-    exerciseName ? `exercise_name.ilike.${exerciseName}` : null,
-  ].filter(Boolean) as string[]
+  // Two separate, properly-parameterized queries instead of a single .or()
+  // built via string interpolation — an exercise name containing a comma or
+  // other PostgREST-significant character would otherwise break or misbehave.
+  const select = 'id, workout:workouts!inner(date), sets(weight, reps, rpe, completed)'
+  const queries: PromiseLike<any>[] = []
 
-  const { data, error } = await supabase
-    .from('exercises')
-    .select('workout:workouts!inner(date), sets(weight, reps, rpe, completed)')
-    .or(filters.join(','))
-    .order('date', { referencedTable: 'workouts', ascending: false })
-    .limit(MAX_WORKOUTS)
+  if (exerciseLibraryId) {
+    queries.push(
+      supabase
+        .from('exercises')
+        .select(select)
+        .eq('exercise_library_id', exerciseLibraryId)
+        .order('date', { referencedTable: 'workouts', ascending: false })
+        .limit(MAX_WORKOUTS)
+    )
+  }
+  if (exerciseName) {
+    queries.push(
+      supabase
+        .from('exercises')
+        .select(select)
+        .ilike('exercise_name', exerciseName)
+        .order('date', { referencedTable: 'workouts', ascending: false })
+        .limit(MAX_WORKOUTS)
+    )
+  }
 
-  if (error || !data) return []
+  const results = await Promise.all(queries)
+  if (results.some((r) => r.error)) return []
+
+  // A row could in principle match both conditions — dedupe by exercises.id.
+  const seen = new Set<string>()
+  const rows: any[] = []
+  for (const result of results) {
+    for (const row of (result.data || []) as any[]) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      rows.push(row)
+    }
+  }
 
   const history: HistoricalSet[] = []
-  for (const row of data as any[]) {
+  for (const row of rows) {
     const workoutDate: string | undefined = row.workout?.date
     if (!workoutDate) continue
 

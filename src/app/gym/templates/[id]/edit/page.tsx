@@ -7,6 +7,9 @@ import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Trash2, GripVertical, Save } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 type Template = {
   id: string
@@ -268,24 +271,26 @@ export default function EditTemplatePage() {
 
         <div className="max-w-2xl space-y-6">
           {/* Template Name */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Template Name</label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="template-name" className="text-white/80">Template Name</Label>
+            <Input
+              id="template-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3"
+              className="bg-white/5 border-white/10 text-white"
             />
           </div>
 
           {/* Description */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Description</label>
-            <textarea
+          <div className="space-y-2">
+            <Label htmlFor="template-description" className="text-white/80">Description</Label>
+            <Textarea
+              id="template-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 resize-none"
+              className="bg-white/5 border-white/10 text-white resize-none"
             />
           </div>
 

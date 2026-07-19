@@ -4,37 +4,9 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
-
-const MUSCLE_GROUPS = [
-  'Chest',
-  'Back',
-  'Legs',
-  'Shoulders',
-  'Arms',
-  'Core',
-  'Full Body',
-]
-
-const EQUIPMENT_TYPES = [
-  'Barbell',
-  'Dumbbell',
-  'Machine',
-  'Cable',
-  'Bodyweight',
-  'Kettlebell',
-  'Resistance Band',
-  'Other',
-]
-
-const CATEGORIES = [
-  'Compound',
-  'Isolation',
-  'Cardio',
-  'Mobility',
-  'Stretching',
-]
+import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 
 export default function EditExercisePage() {
   const params = useParams()
@@ -76,10 +48,8 @@ export default function EditExercisePage() {
   }
 
   const toggleSecondaryMuscle = (muscle: string) => {
-    setSecondaryMuscleGroups(prev =>
-      prev.includes(muscle)
-        ? prev.filter(m => m !== muscle)
-        : [...prev, muscle]
+    setSecondaryMuscleGroups((prev) =>
+      prev.includes(muscle) ? prev.filter((m) => m !== muscle) : [...prev, muscle]
     )
   }
 
@@ -135,118 +105,28 @@ export default function EditExercisePage() {
         </p>
 
         <div className="max-w-2xl space-y-6">
-          {/* Exercise Name */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Exercise Name *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Bench Press"
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 placeholder:text-white/30"
-            />
-          </div>
+          <ExerciseFormFields
+            name={name}
+            onNameChange={setName}
+            primaryMuscleGroup={primaryMuscleGroup}
+            onPrimaryMuscleGroupChange={setPrimaryMuscleGroup}
+            secondaryMuscleGroups={secondaryMuscleGroups}
+            onToggleSecondaryMuscle={toggleSecondaryMuscle}
+            equipmentType={equipmentType}
+            onEquipmentTypeChange={setEquipmentType}
+            category={category}
+            onCategoryChange={setCategory}
+            notes={notes}
+            onNotesChange={setNotes}
+          />
 
-          {/* Primary Muscle Group */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Primary Muscle Group *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {MUSCLE_GROUPS.map((muscle) => (
-                <button
-                  key={muscle}
-                  onClick={() => setPrimaryMuscleGroup(muscle)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    primaryMuscleGroup === muscle
-                      ? 'bg-white text-black border-white'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {muscle}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Secondary Muscle Groups */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Secondary Muscle Groups (optional)</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {MUSCLE_GROUPS.filter(m => m !== primaryMuscleGroup).map((muscle) => (
-                <button
-                  key={muscle}
-                  onClick={() => toggleSecondaryMuscle(muscle)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    secondaryMuscleGroups.includes(muscle)
-                      ? 'bg-white/10 text-white border-white/20'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {muscle}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Equipment Type */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Equipment Type *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {EQUIPMENT_TYPES.map((equipment) => (
-                <button
-                  key={equipment}
-                  onClick={() => setEquipmentType(equipment)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    equipmentType === equipment
-                      ? 'bg-white text-black border-white'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {equipment}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="text-white/60 text-sm mb-3 block">Category *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
-                    category === cat
-                      ? 'bg-white text-black border-white'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="text-white/60 text-sm mb-2 block">Notes (optional)</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any notes about this exercise..."
-              rows={3}
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 placeholder:text-white/30 resize-none"
-            />
-          </div>
-
-          {/* Update Button */}
-          <button
+          <Button
             onClick={handleUpdateExercise}
             disabled={saving || !name || !primaryMuscleGroup || !equipmentType || !category}
-            className="w-full bg-white text-black hover:bg-white/90 rounded-xl px-4 py-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
           >
             {saving ? 'Saving...' : 'Update Exercise'}
-          </button>
+          </Button>
         </div>
       </div>
     </AppLayout>

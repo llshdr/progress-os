@@ -15,16 +15,20 @@ type Workout = {
   completed_at: string | null
 }
 
+const PAGE_SIZE = 20
+
 export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
-    fetchWorkouts()
+    fetchWorkouts(0, false)
   }, [])
 
-  const fetchWorkouts = async () => {
+  const fetchWorkouts = async (offset: number, append: boolean) => {
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -36,13 +40,22 @@ export default function WorkoutsPage() {
       .eq('user_id', user.id)
       .order('date', { ascending: false })
       .order('started_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1)
 
     if (error) {
       console.error('Error fetching workouts:', error)
     } else {
-      setWorkouts(data || [])
+      setWorkouts((prev) => (append ? [...prev, ...(data || [])] : data || []))
+      setHasMore((data?.length ?? 0) === PAGE_SIZE)
     }
     setLoading(false)
+    setLoadingMore(false)
+  }
+
+  const handleLoadMore = () => {
+    setLoadingMore(true)
+    fetchWorkouts(workouts.length, true)
   }
 
   const formatDate = (dateString: string) => {
@@ -104,40 +117,54 @@ export default function WorkoutsPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-3">
-            {workouts.map((workout) => (
-              <Link
-                key={workout.id}
-                href={`/gym/workouts/${workout.id}`}
-                className="block"
-              >
-                <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-white/5">
-                        <Calendar className="w-5 h-5 text-white/60" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-medium text-white mb-1">
-                          {workout.workout_type}
-                        </h3>
-                        <div className="flex items-center gap-3 text-white/40 text-sm">
-                          <span>{formatDate(workout.date)}</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatDuration(workout.started_at, workout.completed_at)}
-                          </span>
+          <>
+            <div className="grid gap-3">
+              {workouts.map((workout) => (
+                <Link
+                  key={workout.id}
+                  href={`/gym/workouts/${workout.id}`}
+                  className="block"
+                >
+                  <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-white/5">
+                          <Calendar className="w-5 h-5 text-white/60" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-medium text-white mb-1">
+                            {workout.workout_type}
+                          </h3>
+                          <div className="flex items-center gap-3 text-white/40 text-sm">
+                            <span>{formatDate(workout.date)}</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formatDuration(workout.started_at, workout.completed_at)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-white/30">
-                      →
+                      <div className="text-white/30">
+                        →
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+
+            {hasMore && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="px-6 py-2.5 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                >
+                  {loadingMore ? 'Loading...' : 'Load More'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </AppLayout>

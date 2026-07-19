@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
@@ -18,9 +18,19 @@ type Exercise = {
   archived: boolean
 }
 
+const PAGE_SIZE = 30
+const SEARCH_DEBOUNCE_MS = 300
+
 export default function ExerciseLibraryPage() {
+  // Paginated browse list (used when there's no active search)
   const [exercises, setExercises] = useState<Exercise[]>([])
-  const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([])
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  // Server-searched results (used when searchQuery is non-empty) — search
+  // result sets are naturally small, so these aren't paginated further.
+  const [searchResults, setSearchResults] = useState<Exercise[] | null>(null)
+  const [searching, setSearching] = useState(false)
+
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFavorites, setShowFavorites] = useState(false)
@@ -28,16 +38,30 @@ export default function ExerciseLibraryPage() {
   const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false)
   const [exerciseToDelete, setExerciseToDelete] = useState<string | null>(null)
   const supabase = createClient()
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    fetchExercises()
+    fetchExercises(0, false)
   }, [])
 
   useEffect(() => {
-    filterExercises()
-  }, [exercises, searchQuery, showFavorites, showArchived])
+    if (searchDebounce.current) clearTimeout(searchDebounce.current)
 
-  const fetchExercises = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults(null)
+      setSearching(false)
+      return
+    }
+
+    setSearching(true)
+    searchDebounce.current = setTimeout(() => runSearch(searchQuery.trim()), SEARCH_DEBOUNCE_MS)
+
+    return () => {
+      if (searchDebounce.current) clearTimeout(searchDebounce.current)
+    }
+  }, [searchQuery])
+
+  const fetchExercises = async (offset: number, append: boolean) => {
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -49,37 +73,85 @@ export default function ExerciseLibraryPage() {
       .eq('user_id', user.id)
       .order('favorite', { ascending: false })
       .order('name', { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1)
 
     if (error) {
       console.error('Error fetching exercises:', error)
     } else {
-      setExercises(data || [])
+      setExercises((prev) => (append ? [...prev, ...(data || [])] : data || []))
+      setHasMore((data?.length ?? 0) === PAGE_SIZE)
     }
     setLoading(false)
+    setLoadingMore(false)
   }
 
-  const filterExercises = () => {
-    let filtered = exercises
+  // Two separate ilike queries merged client-side, rather than a single
+  // .or() built via string interpolation — a search term containing a
+  // comma or other PostgREST-significant character would otherwise break
+  // or misbehave (see the same fix on the exercise detail page).
+  const runSearch = async (query: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
 
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(exercise =>
-        exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        exercise.primary_muscle_group.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    const pattern = `%${query}%`
+    const [byName, byMuscleGroup] = await Promise.all([
+      supabase.from('exercise_library').select('*').eq('user_id', user.id).ilike('name', pattern).limit(200),
+      supabase
+        .from('exercise_library')
+        .select('*')
+        .eq('user_id', user.id)
+        .ilike('primary_muscle_group', pattern)
+        .limit(200),
+    ])
+
+    if (byName.error || byMuscleGroup.error) {
+      console.error('Error searching exercises:', byName.error || byMuscleGroup.error)
+      setSearching(false)
+      return
     }
 
-    // Filter by favorites
+    const seen = new Set<string>()
+    const merged: Exercise[] = []
+    for (const row of [...(byName.data || []), ...(byMuscleGroup.data || [])] as Exercise[]) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      merged.push(row)
+    }
+    merged.sort((a, b) => {
+      if (a.favorite !== b.favorite) return a.favorite ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
+
+    setSearchResults(merged)
+    setSearching(false)
+  }
+
+  const refresh = () => {
+    if (searchQuery.trim()) {
+      runSearch(searchQuery.trim())
+    } else {
+      fetchExercises(0, false)
+    }
+  }
+
+  const handleLoadMore = () => {
+    setLoadingMore(true)
+    fetchExercises(exercises.length, true)
+  }
+
+  const getFilteredExercises = () => {
+    let filtered = searchQuery.trim() ? searchResults ?? [] : exercises
+
     if (showFavorites) {
-      filtered = filtered.filter(exercise => exercise.favorite)
+      filtered = filtered.filter((exercise) => exercise.favorite)
     }
-
-    // Filter by archived
     if (!showArchived) {
-      filtered = filtered.filter(exercise => !exercise.archived)
+      filtered = filtered.filter((exercise) => !exercise.archived)
     }
 
-    setFilteredExercises(filtered)
+    return filtered
   }
 
   const toggleFavorite = async (exerciseId: string, currentFavorite: boolean) => {
@@ -91,7 +163,7 @@ export default function ExerciseLibraryPage() {
     if (error) {
       console.error('Error toggling favorite:', error)
     } else {
-      fetchExercises()
+      refresh()
     }
   }
 
@@ -104,14 +176,14 @@ export default function ExerciseLibraryPage() {
     if (error) {
       console.error('Error toggling archive:', error)
     } else {
-      fetchExercises()
+      refresh()
     }
   }
 
   const deleteExercise = async () => {
     if (!exerciseToDelete) return
 
-    const exercise = exercises.find((e) => e.id === exerciseToDelete)
+    const exercise = [...exercises, ...(searchResults || [])].find((e) => e.id === exerciseToDelete)
 
     // Backfill exercise_name onto any workout history rows first, so past
     // workouts still show the real exercise name after exercise_library_id
@@ -135,7 +207,7 @@ export default function ExerciseLibraryPage() {
     if (error) {
       console.error('Error deleting exercise:', error)
     } else {
-      fetchExercises()
+      refresh()
     }
     setExerciseToDelete(null)
   }
@@ -144,6 +216,9 @@ export default function ExerciseLibraryPage() {
     setExerciseToDelete(exerciseId)
     setShowDeleteExerciseModal(true)
   }
+
+  const filteredExercises = getFilteredExercises()
+  const showLoadMore = !searchQuery.trim() && hasMore
 
   return (
     <AppLayout>
@@ -208,7 +283,7 @@ export default function ExerciseLibraryPage() {
         </div>
 
         {/* Exercise List */}
-        {loading ? (
+        {loading || searching ? (
           <div className="flex items-center justify-center min-h-[50vh]">
             <div className="text-white/40">Loading...</div>
           </div>
@@ -226,61 +301,75 @@ export default function ExerciseLibraryPage() {
             )}
           </div>
         ) : (
-          <div className="grid gap-3">
-            {filteredExercises.map((exercise) => (
-              <div
-                key={exercise.id}
-                className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <Link href={`/gym/exercises/${exercise.id}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-medium text-white hover:text-white/80 transition-colors">
-                          {exercise.name}
-                        </h3>
-                        {exercise.favorite && (
-                          <Star className="w-4 h-4 fill-white text-white" />
-                        )}
-                        {exercise.archived && (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
-                            Archived
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2 text-white/40 text-sm">
-                        <span>{exercise.primary_muscle_group}</span>
-                        <span>•</span>
-                        <span>{exercise.equipment_type}</span>
-                        <span>•</span>
-                        <span>{exercise.category}</span>
-                      </div>
-                    </Link>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => toggleFavorite(exercise.id, exercise.favorite)}
-                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
-                    >
-                      <Star className={`w-5 h-5 ${exercise.favorite ? 'fill-white text-white' : 'text-white/40'}`} />
-                    </button>
-                    <button
-                      onClick={() => toggleArchive(exercise.id, exercise.archived)}
-                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
-                    >
-                      <Archive className="w-5 h-5 text-white/40" />
-                    </button>
-                    <button
-                      onClick={() => openDeleteExerciseModal(exercise.id)}
-                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
-                    >
-                      <Trash2 className="w-5 h-5 text-white/40" />
-                    </button>
+          <>
+            <div className="grid gap-3">
+              {filteredExercises.map((exercise) => (
+                <div
+                  key={exercise.id}
+                  className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <Link href={`/gym/exercises/${exercise.id}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-lg font-medium text-white hover:text-white/80 transition-colors">
+                            {exercise.name}
+                          </h3>
+                          {exercise.favorite && (
+                            <Star className="w-4 h-4 fill-white text-white" />
+                          )}
+                          {exercise.archived && (
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                              Archived
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-white/40 text-sm">
+                          <span>{exercise.primary_muscle_group}</span>
+                          <span>•</span>
+                          <span>{exercise.equipment_type}</span>
+                          <span>•</span>
+                          <span>{exercise.category}</span>
+                        </div>
+                      </Link>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => toggleFavorite(exercise.id, exercise.favorite)}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      >
+                        <Star className={`w-5 h-5 ${exercise.favorite ? 'fill-white text-white' : 'text-white/40'}`} />
+                      </button>
+                      <button
+                        onClick={() => toggleArchive(exercise.id, exercise.archived)}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      >
+                        <Archive className="w-5 h-5 text-white/40" />
+                      </button>
+                      <button
+                        onClick={() => openDeleteExerciseModal(exercise.id)}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5 text-white/40" />
+                      </button>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {showLoadMore && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="px-6 py-2.5 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                >
+                  {loadingMore ? 'Loading...' : 'Load More'}
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
