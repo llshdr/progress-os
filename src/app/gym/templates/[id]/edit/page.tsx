@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
@@ -51,11 +51,18 @@ export default function EditTemplatePage() {
   const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false)
   const [exerciseToDelete, setExerciseToDelete] = useState<string | null>(null)
   const supabase = createClient()
+  const pendingExerciseUpdates = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   useEffect(() => {
     fetchTemplateData()
     fetchLibraryExercises()
   }, [params.id])
+
+  useEffect(() => {
+    return () => {
+      pendingExerciseUpdates.current.forEach((timer) => clearTimeout(timer))
+    }
+  }, [])
 
   const fetchLibraryExercises = async () => {
     const {
@@ -170,17 +177,31 @@ export default function EditTemplatePage() {
     setShowDeleteExerciseModal(true)
   }
 
-  const handleUpdateExercise = async (exerciseId: string, field: string, value: any) => {
-    const { error } = await supabase
-      .from('workout_template_exercises')
-      .update({ [field]: value })
-      .eq('id', exerciseId)
+  const handleUpdateExercise = (exerciseId: string, field: string, value: any) => {
+    // Update local state immediately so typing stays responsive, and debounce
+    // the actual write so a keystroke doesn't fire a DB round trip + refetch.
+    setTemplateExercises((prev) =>
+      prev.map((ex) => (ex.id === exerciseId ? { ...ex, [field]: value } : ex))
+    )
 
-    if (error) {
-      console.error('Error updating exercise:', error)
-    } else {
-      fetchTemplateData()
-    }
+    const key = `${exerciseId}:${field}`
+    const existingTimer = pendingExerciseUpdates.current.get(key)
+    if (existingTimer) clearTimeout(existingTimer)
+
+    const timer = setTimeout(async () => {
+      pendingExerciseUpdates.current.delete(key)
+
+      const { error } = await supabase
+        .from('workout_template_exercises')
+        .update({ [field]: value })
+        .eq('id', exerciseId)
+
+      if (error) {
+        console.error('Error updating exercise:', error)
+      }
+    }, 500)
+
+    pendingExerciseUpdates.current.set(key, timer)
   }
 
   const handleMoveExercise = async (exerciseId: string, direction: 'up' | 'down') => {

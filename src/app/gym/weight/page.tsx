@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import Link from 'next/link'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 type WeightEntry = {
   id: string
@@ -34,6 +35,8 @@ export default function WeightPage() {
     body_fat_percentage: '',
     notes: '',
   })
+  const [showDeleteEntryModal, setShowDeleteEntryModal] = useState(false)
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -85,17 +88,25 @@ export default function WeightPage() {
     }
   }
 
-  const handleDeleteEntry = async (entryId: string) => {
+  const handleDeleteEntry = async () => {
+    if (!entryToDelete) return
+
     const { error } = await supabase
       .from('weight_entries')
       .delete()
-      .eq('id', entryId)
+      .eq('id', entryToDelete)
 
     if (error) {
       console.error('Error deleting entry:', error)
     } else {
       fetchEntries()
     }
+    setEntryToDelete(null)
+  }
+
+  const openDeleteEntryModal = (entryId: string) => {
+    setEntryToDelete(entryId)
+    setShowDeleteEntryModal(true)
   }
 
   const formatDate = (dateString: string) => {
@@ -270,7 +281,7 @@ export default function WeightPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleDeleteEntry(entry.id)}
+                        onClick={() => openDeleteEntryModal(entry.id)}
                         className="text-white/40 hover:text-white/60 hover:bg-white/5"
                       >
                         Delete
@@ -288,6 +299,18 @@ export default function WeightPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Entry Confirmation Modal */}
+      <ConfirmationModal
+        open={showDeleteEntryModal}
+        onOpenChange={setShowDeleteEntryModal}
+        title="Delete Weight Entry"
+        description="Are you sure you want to delete this weight entry? This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteEntry}
+        destructive
+      />
     </AppLayout>
   )
 }

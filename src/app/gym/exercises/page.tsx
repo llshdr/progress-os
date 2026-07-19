@@ -111,6 +111,22 @@ export default function ExerciseLibraryPage() {
   const deleteExercise = async () => {
     if (!exerciseToDelete) return
 
+    const exercise = exercises.find((e) => e.id === exerciseToDelete)
+
+    // Backfill exercise_name onto any workout history rows first, so past
+    // workouts still show the real exercise name after exercise_library_id
+    // is nulled out by ON DELETE SET NULL.
+    if (exercise) {
+      const { error: backfillError } = await supabase
+        .from('exercises')
+        .update({ exercise_name: exercise.name })
+        .eq('exercise_library_id', exerciseToDelete)
+
+      if (backfillError) {
+        console.error('Error backfilling exercise name:', backfillError)
+      }
+    }
+
     const { error } = await supabase
       .from('exercise_library')
       .delete()
@@ -273,7 +289,7 @@ export default function ExerciseLibraryPage() {
         open={showDeleteExerciseModal}
         onOpenChange={setShowDeleteExerciseModal}
         title="Delete Exercise"
-        description="Are you sure you want to permanently delete this exercise? This cannot be undone."
+        description="This permanently removes the exercise from your library and cannot be undone. If you just want to stop seeing it without losing it, use Archive instead — it's reversible and keeps the exercise available."
         confirmText="Delete"
         cancelText="Cancel"
         onConfirm={deleteExercise}

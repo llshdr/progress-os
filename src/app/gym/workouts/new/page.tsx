@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { getLocalDateString } from '@/lib/date'
 
 type Template = {
   id: string
@@ -72,7 +73,7 @@ export default function NewWorkoutPage() {
         template_id: selectedTemplate || null,
         workout_type: selectedTemplate ? null : 'Custom',
         notes: notes || null,
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateString(),
       })
       .select()
       .single()

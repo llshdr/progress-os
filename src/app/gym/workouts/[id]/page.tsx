@@ -16,6 +16,7 @@ type Workout = {
   notes: string | null
   started_at: string
   completed_at: string | null
+  template_name?: string | null
 }
 
 type Exercise = {
@@ -103,10 +104,10 @@ export default function CurrentWorkoutPage() {
     } = await supabase.auth.getUser()
     if (!user) return
 
-    // Fetch workout
+    // Fetch workout (same template join the dashboard's Recent Activity uses)
     const { data: workoutData, error: workoutError } = await supabase
       .from('workouts')
-      .select('*')
+      .select('*, workout_templates(name)')
       .eq('id', params.id)
       .single()
 
@@ -116,7 +117,10 @@ export default function CurrentWorkoutPage() {
       return
     }
 
-    setWorkout(workoutData)
+    setWorkout({
+      ...workoutData,
+      template_name: workoutData.workout_templates?.name ?? null,
+    })
 
     // Fetch exercises with library data
     const { data: exercisesData, error: exercisesError } = await supabase
@@ -333,7 +337,7 @@ export default function CurrentWorkoutPage() {
               ← Back
             </Link>
             <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">
-              {workout.workout_type || 'Workout'}
+              {workout.template_name || workout.workout_type || 'Workout'}
             </h1>
             <div className="flex items-center gap-3 text-white/40 text-sm">
               <span className="flex items-center gap-1">

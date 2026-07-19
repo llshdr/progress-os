@@ -2,14 +2,11 @@ import { GoogleGenAI, Type } from '@google/genai'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getGymSuggestionCandidates } from './gymSuggestions'
 import type { Suggestion, SuggestionCandidate } from './types'
+import { getLocalDateString } from '@/lib/date'
 
 const MODEL = 'gemini-2.5-flash'
 const MAX_SUGGESTIONS = 4
 const MIN_SUGGESTIONS = 2
-
-function todayDateOnly(): string {
-  return new Date().toISOString().split('T')[0]
-}
 
 // Asks the model to pick and rephrase a subset of the deterministic
 // candidates. The model never invents links or numbers: it returns an index
@@ -78,7 +75,7 @@ export async function generateDailySuggestions(
   supabase: SupabaseClient,
   userId: string
 ): Promise<Suggestion[]> {
-  const today = todayDateOnly()
+  const today = getLocalDateString()
 
   const { data: cached } = await supabase
     .from('daily_suggestions')

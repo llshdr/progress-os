@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, X, Trash2 } from 'lucide-react'
+import { Check, X, Trash2, Pencil } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { getExerciseRecommendation, RecommendationResult } from '@/lib/ai-coach/client'
 
@@ -37,6 +37,9 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
   const [loading, setLoading] = useState(false)
   const [showDeleteSetModal, setShowDeleteSetModal] = useState(false)
   const [setToDelete, setSetToDelete] = useState<string | null>(null)
+  const [editingSetId, setEditingSetId] = useState<string | null>(null)
+  const [editWeight, setEditWeight] = useState('')
+  const [editReps, setEditReps] = useState('')
   const [aiSuggestion, setAiSuggestion] = useState<RecommendationResult | null>(null)
   const supabase = createClient()
 
@@ -147,24 +150,61 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
 
     if (error) {
       console.error('Error deleting set:', error)
-    } else {
-      fetchSavedSets()
-      // Renumber remaining sets
-      const remainingSets = savedSets.filter(s => s.id !== setToDelete)
-      remainingSets.forEach((set, index) => {
-        supabase
-          .from('sets')
-          .update({ set_order: index + 1 })
-          .eq('id', set.id)
-      })
-      setCurrentSetNumber(remainingSets.length + 1)
+      alert('Failed to delete set')
+      setSetToDelete(null)
+      return
     }
+
+    // Renumber remaining sets before refetching, so what we display next
+    // reflects the final order rather than a stale in-between state.
+    const remainingSets = savedSets.filter((s) => s.id !== setToDelete)
+    const renumberResults = await Promise.all(
+      remainingSets.map((set, index) =>
+        supabase.from('sets').update({ set_order: index + 1 }).eq('id', set.id)
+      )
+    )
+
+    const renumberError = renumberResults.find((r) => r.error)?.error
+    if (renumberError) {
+      console.error('Error renumbering sets:', renumberError)
+      alert('Set deleted, but renumbering the remaining sets failed. Please refresh.')
+    }
+
+    await fetchSavedSets()
     setSetToDelete(null)
   }
 
   const openDeleteSetModal = (setId: string) => {
     setSetToDelete(setId)
     setShowDeleteSetModal(true)
+  }
+
+  const startEditSet = (set: SavedSet) => {
+    setEditingSetId(set.id)
+    setEditWeight(set.weight.toString())
+    setEditReps(set.reps.toString())
+  }
+
+  const cancelEditSet = () => {
+    setEditingSetId(null)
+  }
+
+  const handleUpdateSet = async () => {
+    if (!editingSetId || !editWeight || !editReps) return
+
+    const { error } = await supabase
+      .from('sets')
+      .update({ weight: parseFloat(editWeight), reps: parseInt(editReps) })
+      .eq('id', editingSetId)
+
+    if (error) {
+      console.error('Error updating set:', error)
+      alert('Failed to update set')
+      return
+    }
+
+    setEditingSetId(null)
+    fetchSavedSets()
   }
 
   const handleFinishExercise = () => {
@@ -198,16 +238,64 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
               key={set.id}
               className="flex items-center justify-between border border-white/10 rounded-xl bg-white/[0.02] p-4"
             >
-              <div className="flex items-center gap-4">
-                <span className="text-white/40 text-sm">Set {set.set_order}</span>
-                <span className="text-white font-medium">{set.weight} × {set.reps}</span>
-              </div>
-              <button
-                onClick={() => openDeleteSetModal(set.id)}
-                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {editingSetId === set.id ? (
+                <>
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="text-white/40 text-sm shrink-0">Set {set.set_order}</span>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={editWeight}
+                      onChange={(e) => setEditWeight(e.target.value)}
+                      className="bg-white/5 border-white/10 text-white h-9 w-20 text-center"
+                      autoFocus
+                    />
+                    <span className="text-white/40">×</span>
+                    <Input
+                      type="number"
+                      value={editReps}
+                      onChange={(e) => setEditReps(e.target.value)}
+                      className="bg-white/5 border-white/10 text-white h-9 w-16 text-center"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleUpdateSet}
+                      disabled={!editWeight || !editReps}
+                      className="p-2 rounded-lg hover:bg-white/5 text-white/60 hover:text-white transition-colors disabled:opacity-30"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={cancelEditSet}
+                      className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-4">
+                    <span className="text-white/40 text-sm">Set {set.set_order}</span>
+                    <span className="text-white font-medium">{set.weight} × {set.reps}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => startEditSet(set)}
+                      className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => openDeleteSetModal(set.id)}
+                      className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>

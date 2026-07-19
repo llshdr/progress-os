@@ -1,14 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getExerciseHistory } from './getExerciseHistory'
 import type { SuggestionCandidate } from './types'
+import { getLocalDateString } from '@/lib/date'
 
 const RECENT_EXERCISE_LIMIT = 3
 const STALL_SESSION_WINDOW = 3
 const STREAK_MIN_WEEKS = 2
-
-function toDateOnly(date: Date): string {
-  return date.toISOString().split('T')[0]
-}
 
 function startOfWeek(date: Date): Date {
   const start = new Date(date)
@@ -34,7 +31,7 @@ async function getStreakWeeks(
 
   const counts = new Map<string, number>()
   for (const row of data as { date: string }[]) {
-    const key = toDateOnly(startOfWeek(new Date(row.date)))
+    const key = getLocalDateString(startOfWeek(new Date(row.date)))
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
 
@@ -42,7 +39,7 @@ async function getStreakWeeks(
   const cursor = startOfWeek(new Date())
 
   while (true) {
-    const key = toDateOnly(cursor)
+    const key = getLocalDateString(cursor)
     const count = counts.get(key) ?? 0
     if (count >= weeklyGoal) {
       streak++
@@ -139,13 +136,13 @@ export async function getGymSuggestionCandidates(
   weeklyGoal: number
 ): Promise<SuggestionCandidate[]> {
   const candidates: SuggestionCandidate[] = []
-  const today = toDateOnly(new Date())
+  const today = getLocalDateString()
 
   const { data: weekWorkouts } = await supabase
     .from('workouts')
     .select('date')
     .eq('user_id', userId)
-    .gte('date', toDateOnly(startOfWeek(new Date())))
+    .gte('date', getLocalDateString(startOfWeek(new Date())))
     .not('completed_at', 'is', null)
 
   const weeklyCount = weekWorkouts?.length ?? 0

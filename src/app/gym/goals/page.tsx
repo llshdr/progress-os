@@ -23,6 +23,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import Link from 'next/link'
+import { getLocalDateString } from '@/lib/date'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 type Goal = {
   id: string
@@ -41,6 +43,8 @@ export default function GoalsPage() {
     description: '',
     category: 'fitness' as Goal['category'],
   })
+  const [showDeleteGoalModal, setShowDeleteGoalModal] = useState(false)
+  const [goalToDelete, setGoalToDelete] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -70,11 +74,13 @@ export default function GoalsPage() {
   }
 
   const getWeekStart = () => {
+    // Monday-start week (ISO-style), matching this feature's existing convention.
     const now = new Date()
     const day = now.getDay()
     const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-    const weekStart = new Date(now.setDate(diff))
-    return weekStart.toISOString().split('T')[0]
+    const weekStart = new Date(now)
+    weekStart.setDate(diff)
+    return getLocalDateString(weekStart)
   }
 
   const handleAddGoal = async (e: React.FormEvent) => {
@@ -114,17 +120,25 @@ export default function GoalsPage() {
     }
   }
 
-  const handleDeleteGoal = async (goalId: string) => {
+  const handleDeleteGoal = async () => {
+    if (!goalToDelete) return
+
     const { error } = await supabase
       .from('weekly_goals')
       .delete()
-      .eq('id', goalId)
+      .eq('id', goalToDelete)
 
     if (error) {
       console.error('Error deleting goal:', error)
     } else {
       fetchGoals()
     }
+    setGoalToDelete(null)
+  }
+
+  const openDeleteGoalModal = (goalId: string) => {
+    setGoalToDelete(goalId)
+    setShowDeleteGoalModal(true)
   }
 
   const getCategoryColor = (category: Goal['category']) => {
@@ -311,7 +325,7 @@ export default function GoalsPage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleDeleteGoal(goal.id)}
+                      onClick={() => openDeleteGoalModal(goal.id)}
                       className="text-white/40 hover:text-white/60 hover:bg-white/5"
                     >
                       Delete
@@ -323,6 +337,18 @@ export default function GoalsPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Goal Confirmation Modal */}
+      <ConfirmationModal
+        open={showDeleteGoalModal}
+        onOpenChange={setShowDeleteGoalModal}
+        title="Delete Goal"
+        description="Are you sure you want to delete this goal? This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteGoal}
+        destructive
+      />
     </AppLayout>
   )
 }

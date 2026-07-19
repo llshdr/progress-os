@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Calendar, Clock } from 'lucide-react'
 import Link from 'next/link'
 import TodaySuggestionsCard from '@/components/ai-coach/today-suggestions-card'
+import { getLocalWeekStartString } from '@/lib/date'
 
 interface DashboardClientProps {
   user: User
@@ -113,15 +114,11 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       setActiveWorkout(activeWorkoutData)
 
       // Fetch workouts completed this week
-      const startOfWeek = new Date()
-      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
-      startOfWeek.setHours(0, 0, 0, 0)
-
       const { data: weeklyWorkoutsData, count } = await supabase
         .from('workouts')
         .select('*', { count: 'exact', head: false })
         .eq('user_id', user.id)
-        .gte('date', startOfWeek.toISOString())
+        .gte('date', getLocalWeekStartString())
         .not('completed_at', 'is', null)
 
       setWeeklyWorkouts(count || 0)
