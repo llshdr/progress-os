@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Calendar, Clock } from 'lucide-react'
 import Link from 'next/link'
+import TodaySuggestionsCard from '@/components/ai-coach/today-suggestions-card'
 
 interface DashboardClientProps {
   user: User
@@ -336,6 +337,11 @@ export default function DashboardClient({ user }: DashboardClientProps) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Today's Suggestions */}
+        <div className="mb-6">
+          <TodaySuggestionsCard />
         </div>
 
         {/* Stats Grid */}
