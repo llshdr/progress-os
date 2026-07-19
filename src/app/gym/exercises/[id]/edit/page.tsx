@@ -7,6 +7,7 @@ import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
+import ExerciseVariantsManager from '@/components/gym/exercise-variants-manager'
 
 export default function EditExercisePage() {
   const params = useParams()
@@ -119,6 +120,10 @@ export default function EditExercisePage() {
             notes={notes}
             onNotesChange={setNotes}
           />
+
+          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+            <ExerciseVariantsManager exerciseLibraryId={params.id as string} />
+          </div>
 
           <Button
             onClick={handleUpdateExercise}

@@ -5,6 +5,10 @@ export interface HistoricalSet {
   reps: number
   rpe: number | null
   workoutDate: string
+  // The equipment variant used for this exercise-instance, if any was picked
+  // (e.g. "Hammer Strength", "1:1") — null when the exercise has no variants
+  // defined, or none was selected for that session.
+  variantLabel: string | null
 }
 
 const MAX_WORKOUTS = 6
@@ -21,7 +25,8 @@ export async function getExerciseHistory(
   // Two separate, properly-parameterized queries instead of a single .or()
   // built via string interpolation — an exercise name containing a comma or
   // other PostgREST-significant character would otherwise break or misbehave.
-  const select = 'id, workout:workouts!inner(date), sets(weight, reps, rpe, completed)'
+  const select =
+    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(weight, reps, rpe, completed)'
   const queries: PromiseLike<any>[] = []
 
   if (exerciseLibraryId) {
@@ -64,6 +69,8 @@ export async function getExerciseHistory(
     const workoutDate: string | undefined = row.workout?.date
     if (!workoutDate) continue
 
+    const variantLabel: string | null = row.variant?.label ?? null
+
     for (const set of row.sets ?? []) {
       if (!set.completed) continue
       history.push({
@@ -71,6 +78,7 @@ export async function getExerciseHistory(
         reps: typeof set.reps === 'string' ? parseInt(set.reps) : set.reps,
         rpe: set.rpe ?? null,
         workoutDate,
+        variantLabel,
       })
     }
   }

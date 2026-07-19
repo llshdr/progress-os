@@ -89,9 +89,11 @@ async function getExerciseTrendCandidates(supabase: SupabaseClient): Promise<Sug
     if (history.length === 0) continue
 
     const bestWeightBySession = new Map<string, number>()
+    const variantBySession = new Map<string, string | null>()
     for (const set of history) {
       const best = bestWeightBySession.get(set.workoutDate) ?? 0
       bestWeightBySession.set(set.workoutDate, Math.max(best, set.weight))
+      variantBySession.set(set.workoutDate, set.variantLabel)
     }
 
     const sessionsDesc = Array.from(bestWeightBySession.entries()).sort(
@@ -99,7 +101,15 @@ async function getExerciseTrendCandidates(supabase: SupabaseClient): Promise<Sug
     )
     if (sessionsDesc.length < STALL_SESSION_WINDOW) continue
 
-    const recentWeights = sessionsDesc.slice(0, STALL_SESSION_WINDOW).map(([, weight]) => weight)
+    const recentSessionDates = sessionsDesc.slice(0, STALL_SESSION_WINDOW).map(([date]) => date)
+
+    // A stalled/progressing claim spanning two different machines or cable
+    // ratios could easily be wrong, so skip it rather than risk asserting a
+    // trend that isn't really there.
+    const recentVariants = new Set(recentSessionDates.map((date) => variantBySession.get(date) ?? null))
+    if (recentVariants.size > 1) continue
+
+    const recentWeights = recentSessionDates.map((date) => bestWeightBySession.get(date)!)
     const label = ex.exerciseName || 'This exercise'
     const href = ex.exerciseLibraryId ? `/gym/exercises/${ex.exerciseLibraryId}` : null
 

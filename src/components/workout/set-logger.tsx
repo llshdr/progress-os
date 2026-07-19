@@ -28,6 +28,11 @@ interface SavedSet {
   set_order: number
 }
 
+interface Variant {
+  id: string
+  label: string
+}
+
 export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId, onComplete }: SetLoggerProps) {
   const [weight, setWeight] = useState('')
   const [reps, setReps] = useState('')
@@ -41,6 +46,8 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
   const [editWeight, setEditWeight] = useState('')
   const [editReps, setEditReps] = useState('')
   const [aiSuggestion, setAiSuggestion] = useState<RecommendationResult | null>(null)
+  const [variants, setVariants] = useState<Variant[]>([])
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
   const [restStartedAt, setRestStartedAt] = useState<number | null>(null)
   const [restTarget, setRestTarget] = useState(90)
   const [restNow, setRestNow] = useState(Date.now())
@@ -69,20 +76,59 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
     fetchSavedSets()
   }, [exerciseId])
 
+  // Equipment variants defined for this exercise (if any) and whichever one
+  // was already picked for this workout instance, if this page is revisited.
+  useEffect(() => {
+    if (!exerciseLibraryId) {
+      setVariants([])
+      return
+    }
+
+    supabase
+      .from('exercise_variants')
+      .select('id, label')
+      .eq('exercise_library_id', exerciseLibraryId)
+      .order('created_at', { ascending: true })
+      .then(({ data, error }) => {
+        if (!error) setVariants(data || [])
+      })
+  }, [exerciseLibraryId])
+
+  useEffect(() => {
+    supabase
+      .from('exercises')
+      .select('variant_id')
+      .eq('id', exerciseId)
+      .single()
+      .then(({ data, error }) => {
+        if (!error) setSelectedVariantId(data?.variant_id ?? null)
+      })
+  }, [exerciseId])
+
+  const selectedVariantLabel = variants.find((v) => v.id === selectedVariantId)?.label ?? null
+
+  const handleSelectVariant = async (variantId: string | null) => {
+    setSelectedVariantId(variantId)
+    const { error } = await supabase.from('exercises').update({ variant_id: variantId }).eq('id', exerciseId)
+    if (error) {
+      console.error('Error saving variant selection:', error)
+    }
+  }
+
   // AI Coach suggestion — fails silently, this is a lightweight in-flow hint,
   // not the primary surface for the feature (that's the exercise detail page).
   useEffect(() => {
     let cancelled = false
     setAiSuggestion(null)
 
-    getExerciseRecommendation({ exerciseLibraryId, exerciseName }).then((res) => {
+    getExerciseRecommendation({ exerciseLibraryId, exerciseName, variantLabel: selectedVariantLabel }).then((res) => {
       if (!cancelled) setAiSuggestion(res)
     })
 
     return () => {
       cancelled = true
     }
-  }, [exerciseId, exerciseLibraryId, exerciseName])
+  }, [exerciseId, exerciseLibraryId, exerciseName, selectedVariantLabel])
 
   const fetchPreviousSet = async () => {
     const {
@@ -257,6 +303,41 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
           </div>
         )}
       </div>
+
+      {/* Equipment Variant Picker — only shown when this exercise has any
+          defined; optional, defaults to none. */}
+      {variants.length > 0 && (
+        <div>
+          <div className="text-white/40 text-xs mb-2">Equipment (optional)</div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => handleSelectVariant(null)}
+              className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                selectedVariantId === null
+                  ? 'bg-white text-black'
+                  : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              None
+            </button>
+            {variants.map((variant) => (
+              <button
+                key={variant.id}
+                type="button"
+                onClick={() => handleSelectVariant(variant.id)}
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                  selectedVariantId === variant.id
+                    ? 'bg-white text-black'
+                    : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {variant.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Saved Sets */}
       {savedSets.length > 0 && (

@@ -6,6 +6,11 @@ export interface ExerciseSessionPoint {
   date: string // YYYY-MM-DD
   topWeight: number // kg
   volume: number // kg (weight × reps, summed across the session)
+  // Equipment variant used this session, if the exercise has any defined and
+  // one was picked. Sessions with no variant info (the common case) all fall
+  // into the same `null` bucket below, so nothing changes visually unless a
+  // real mix of variants shows up in the data.
+  variantLabel?: string | null
 }
 
 type Metric = 'weight' | 'volume'
@@ -13,6 +18,15 @@ type Metric = 'weight' | 'volume'
 const WIDTH = 600
 const HEIGHT = 220
 const PADDING = { top: 16, right: 12, bottom: 16, left: 12 }
+
+// Differentiate multiple variant lines by stroke style, not color — this
+// chart (and the app generally) is monochrome, and realistically there are
+// only ever 2-3 variants for one exercise, so dash patterns are enough.
+const LINE_STYLES: { dasharray?: string; legendClass: string }[] = [
+  { dasharray: undefined, legendClass: 'border-t-2 border-solid border-white' },
+  { dasharray: '6 4', legendClass: 'border-t-2 border-dashed border-white/70' },
+  { dasharray: '2 3', legendClass: 'border-t-2 border-dotted border-white/70' },
+]
 
 // Reuses the same custom-SVG technique as the weight-tracking chart (viewBox
 // scaling, muted markers + bold line, hover crosshair) — but not its 7-day
@@ -31,6 +45,15 @@ export default function ExerciseProgressChart({ sessions }: { sessions: Exercise
 
   const values = sorted.map((s) => (metric === 'weight' ? s.topWeight : s.volume))
 
+  // Only segment into multiple lines when the data actually contains a real
+  // mix — the overwhelmingly common single-bucket case renders exactly as
+  // before, one solid line, no legend.
+  const bucketKeys = useMemo(() => {
+    const keys = new Set(sorted.map((s) => s.variantLabel ?? null))
+    return Array.from(keys)
+  }, [sorted])
+  const segmented = bucketKeys.length > 1
+
   const minValue = Math.min(...values)
   const maxValue = Math.max(...values)
   const valueRange = maxValue - minValue || 1
@@ -45,7 +68,18 @@ export default function ExerciseProgressChart({ sessions }: { sessions: Exercise
   const yForValue = (v: number) =>
     PADDING.top + plotHeight - ((v - (minValue - yPad)) / (valueRange + yPad * 2)) * plotHeight
 
-  const linePath = values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xForIndex(i)} ${yForValue(v)}`).join(' ')
+  // One path per bucket, connecting only that bucket's own points (in their
+  // chronological subsequence of the shared x-axis) — so a session on a
+  // different variant never gets silently connected into the same trend line.
+  const bucketPaths = bucketKeys.map((key) => {
+    const indices = sorted
+      .map((_, i) => i)
+      .filter((i) => (sorted[i].variantLabel ?? null) === key)
+
+    const path = indices.map((i, j) => `${j === 0 ? 'M' : 'L'} ${xForIndex(i)} ${yForValue(values[i])}`).join(' ')
+
+    return { key, indices, path }
+  })
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const svg = svgRef.current
@@ -105,8 +139,19 @@ export default function ExerciseProgressChart({ sessions }: { sessions: Exercise
           <circle key={`pt-${i}`} cx={xForIndex(i)} cy={yForValue(values[i])} r={3} fill="rgba(255,255,255,0.4)" />
         ))}
 
-        {values.length > 1 && (
-          <path d={linePath} fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        {bucketPaths.map(({ key, indices, path }, bucketIndex) =>
+          indices.length > 1 ? (
+            <path
+              key={key ?? '__none__'}
+              d={path}
+              fill="none"
+              stroke="white"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={LINE_STYLES[bucketIndex % LINE_STYLES.length].dasharray}
+            />
+          ) : null
         )}
 
         {hoverIndex != null && (
@@ -129,9 +174,23 @@ export default function ExerciseProgressChart({ sessions }: { sessions: Exercise
           <>
             {formatDate(sorted[hoverIndex].date)} — {values[hoverIndex].toFixed(metric === 'weight' ? 1 : 0)}{' '}
             {unitLabel}
+            {segmented && (
+              <span className="text-white/40"> · {sorted[hoverIndex].variantLabel ?? 'No variant'}</span>
+            )}
           </>
         )}
       </div>
+
+      {segmented && (
+        <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-white/40">
+          {bucketPaths.map(({ key }, bucketIndex) => (
+            <span key={key ?? '__none__'} className="flex items-center gap-1.5">
+              <span className={`inline-block w-4 ${LINE_STYLES[bucketIndex % LINE_STYLES.length].legendClass}`} />
+              {key ?? 'No variant'}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

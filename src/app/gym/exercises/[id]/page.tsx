@@ -29,6 +29,7 @@ type WorkoutExercise = {
   workout_id: string
   exercise_order: number
   notes: string | null
+  variantLabel: string | null
   sets: WorkoutSet[]
 }
 
@@ -136,7 +137,7 @@ export default function ExerciseDetailPage() {
         // Fetch all exercises and sets for this workout
         const { data: workoutExercises } = await supabase
           .from('exercises')
-          .select('*, sets(*)')
+          .select('*, variant:exercise_variants(label), sets(*)')
           .eq('workout_id', workoutId)
           .order('exercise_order', { ascending: true })
 
@@ -158,6 +159,7 @@ export default function ExerciseDetailPage() {
             workout_id: e.workout_id,
             exercise_order: e.exercise_order,
             notes: e.notes,
+            variantLabel: e.variant?.label ?? null,
             sets: e.sets || [],
           })),
         })
@@ -276,9 +278,17 @@ export default function ExerciseDetailPage() {
         })
       })
 
-      return { date: workout.date, topWeight, volume }
+      // A workout very occasionally logs the same exercise twice (e.g. two
+      // different machines same day) — take the first entry's variant as
+      // this session's label rather than trying to split one session in two.
+      const variantLabel = workout.exercises[0]?.variantLabel ?? null
+
+      return { date: workout.date, topWeight, volume, variantLabel }
     })
     .filter((session) => session.volume > 0)
+
+  const distinctVariants = new Set(chartSessions.map((s) => s.variantLabel ?? null))
+  const hasMixedVariants = distinctVariants.size > 1
 
   return (
     <AppLayout>
@@ -316,8 +326,14 @@ export default function ExerciseDetailPage() {
         {/* Statistics Section */}
         {statistics && (
           <div className="mb-8">
-            <h2 className="text-lg font-medium text-white mb-4">Statistics</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <h2 className="text-lg font-medium text-white mb-1">Statistics</h2>
+            {hasMixedVariants && (
+              <p className="text-white/40 text-xs mb-3">
+                Includes {distinctVariants.size} equipment variants — Best Set and Est. 1RM may not be
+                directly comparable across them.
+              </p>
+            )}
+            <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 ${hasMixedVariants ? '' : 'mt-3'}`}>
               <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp className="w-4 h-4 text-white/40" />
