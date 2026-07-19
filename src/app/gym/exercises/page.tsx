@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Search, Star, Archive, Trash2 } from 'lucide-react'
+import { Plus, Search, Star, Archive, Trash2, Pencil } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 type Exercise = {
@@ -334,6 +334,12 @@ export default function ExerciseLibraryPage() {
                       </Link>
                     </div>
                     <div className="flex gap-2">
+                      <Link
+                        href={`/gym/exercises/${exercise.id}/edit`}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      >
+                        <Pencil className="w-5 h-5 text-white/40" />
+                      </Link>
                       <button
                         onClick={() => toggleFavorite(exercise.id, exercise.favorite)}
                         className="p-2 rounded-lg hover:bg-white/5 transition-colors"

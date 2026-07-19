@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award } from 'lucide-react'
+import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award, Pencil } from 'lucide-react'
 import ExerciseCoachCard from '@/components/ai-coach/exercise-coach-card'
 import ExerciseProgressChart, { type ExerciseSessionPoint } from '@/components/gym/exercise-progress-chart'
 
@@ -303,23 +303,32 @@ export default function ExerciseDetailPage() {
             Back to Library
           </Link>
 
-          <div className="mt-6">
-            <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
-              {exercise.name}
-            </h1>
-            <div className="flex flex-wrap gap-3 text-sm text-white/60">
-              <span className="flex items-center gap-1.5">
-                <Dumbbell className="w-4 h-4" />
-                {exercise.primary_muscle_group}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Award className="w-4 h-4" />
-                {exercise.equipment_type}
-              </span>
+          <div className="mt-6 flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+                {exercise.name}
+              </h1>
+              <div className="flex flex-wrap gap-3 text-sm text-white/60">
+                <span className="flex items-center gap-1.5">
+                  <Dumbbell className="w-4 h-4" />
+                  {exercise.primary_muscle_group}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Award className="w-4 h-4" />
+                  {exercise.equipment_type}
+                </span>
+              </div>
+              {exercise.notes && (
+                <p className="text-white/50 text-sm mt-3">{exercise.notes}</p>
+              )}
             </div>
-            {exercise.notes && (
-              <p className="text-white/50 text-sm mt-3">{exercise.notes}</p>
-            )}
+            <Link
+              href={`/gym/exercises/${exercise.id}/edit`}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-colors shrink-0"
+            >
+              <Pencil className="w-4 h-4" />
+              <span className="text-sm font-medium">Edit</span>
+            </Link>
           </div>
         </div>
 
