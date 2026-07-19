@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Check, Clock, ArrowLeft, Trash2 } from 'lucide-react'
+import { Plus, Check, Clock, ArrowLeft, Trash2, RotateCcw } from 'lucide-react'
 import SetLogger from '@/components/workout/set-logger'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
@@ -236,6 +236,19 @@ export default function CurrentWorkoutPage() {
     }
   }
 
+  const handleReopenWorkout = async () => {
+    const { error } = await supabase
+      .from('workouts')
+      .update({ completed_at: null })
+      .eq('id', params.id)
+
+    if (error) {
+      console.error('Error reopening workout:', error)
+    } else {
+      setWorkout((prev) => (prev ? { ...prev, completed_at: null } : prev))
+    }
+  }
+
   const handleDeleteWorkout = async () => {
     const { error } = await supabase
       .from('workouts')
@@ -336,9 +349,17 @@ export default function CurrentWorkoutPage() {
             <Link href="/gym/workouts" className="text-white/40 hover:text-white/60 transition-colors mb-2 block">
               ← Back
             </Link>
-            <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">
-              {workout.template_name || workout.workout_type || 'Workout'}
-            </h1>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-3xl font-semibold tracking-tight text-white">
+                {workout.template_name || workout.workout_type || 'Workout'}
+              </h1>
+              {workout.completed_at && (
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white/80 border border-white/20">
+                  <Check className="w-3 h-3" />
+                  Completed
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-3 text-white/40 text-sm">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
@@ -356,13 +377,23 @@ export default function CurrentWorkoutPage() {
               <Trash2 className="w-4 h-4" />
               <span className="text-sm font-medium">Delete</span>
             </button>
-            <button
-              onClick={handleCompleteWorkout}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors"
-            >
-              <Check className="w-4 h-4" />
-              <span className="text-sm font-medium">Complete</span>
-            </button>
+            {workout.completed_at ? (
+              <button
+                onClick={handleReopenWorkout}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span className="text-sm font-medium">Reopen</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleCompleteWorkout}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors"
+              >
+                <Check className="w-4 h-4" />
+                <span className="text-sm font-medium">Complete</span>
+              </button>
+            )}
           </div>
         </div>
 

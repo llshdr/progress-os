@@ -96,28 +96,28 @@ export default function ExerciseLibraryPage() {
     if (!user) return
 
     const pattern = `%${query}%`
-    const [byName, byMuscleGroup] = await Promise.all([
-      supabase.from('exercise_library').select('*').eq('user_id', user.id).ilike('name', pattern).limit(200),
-      supabase
-        .from('exercise_library')
-        .select('*')
-        .eq('user_id', user.id)
-        .ilike('primary_muscle_group', pattern)
-        .limit(200),
-    ])
+    const columns = ['name', 'primary_muscle_group', 'equipment_type', 'category'] as const
+    const results = await Promise.all(
+      columns.map((column) =>
+        supabase.from('exercise_library').select('*').eq('user_id', user.id).ilike(column, pattern).limit(200)
+      )
+    )
 
-    if (byName.error || byMuscleGroup.error) {
-      console.error('Error searching exercises:', byName.error || byMuscleGroup.error)
+    const firstError = results.find((r) => r.error)?.error
+    if (firstError) {
+      console.error('Error searching exercises:', firstError)
       setSearching(false)
       return
     }
 
     const seen = new Set<string>()
     const merged: Exercise[] = []
-    for (const row of [...(byName.data || []), ...(byMuscleGroup.data || [])] as Exercise[]) {
-      if (seen.has(row.id)) continue
-      seen.add(row.id)
-      merged.push(row)
+    for (const result of results) {
+      for (const row of (result.data || []) as Exercise[]) {
+        if (seen.has(row.id)) continue
+        seen.add(row.id)
+        merged.push(row)
+      }
     }
     merged.sort((a, b) => {
       if (a.favorite !== b.favorite) return a.favorite ? -1 : 1

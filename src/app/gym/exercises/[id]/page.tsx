@@ -7,6 +7,7 @@ import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award } from 'lucide-react'
 import ExerciseCoachCard from '@/components/ai-coach/exercise-coach-card'
+import ExerciseProgressChart, { type ExerciseSessionPoint } from '@/components/gym/exercise-progress-chart'
 
 type Exercise = {
   id: string
@@ -260,6 +261,25 @@ export default function ExerciseDetailPage() {
     )
   }
 
+  // Derived from the already-fetched workout history — no extra query.
+  const chartSessions: ExerciseSessionPoint[] = workouts
+    .map((workout) => {
+      let topWeight = 0
+      let volume = 0
+
+      workout.exercises.forEach((exerciseEntry) => {
+        exerciseEntry.sets.forEach((set) => {
+          const weight = typeof set.weight === 'string' ? parseFloat(set.weight) : set.weight
+          const reps = typeof set.reps === 'string' ? parseInt(set.reps) : set.reps
+          volume += weight * reps
+          if (weight > topWeight) topWeight = weight
+        })
+      })
+
+      return { date: workout.date, topWeight, volume }
+    })
+    .filter((session) => session.volume > 0)
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -351,6 +371,16 @@ export default function ExerciseDetailPage() {
                 </div>
                 <p className="text-2xl font-semibold text-white">{formatVolume(statistics.totalVolume)} kg</p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Progress Section */}
+        {chartSessions.length >= 2 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-medium text-white mb-4">Progress</h2>
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <ExerciseProgressChart sessions={chartSessions} />
             </div>
           </div>
         )}

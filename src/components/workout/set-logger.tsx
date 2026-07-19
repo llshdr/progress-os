@@ -41,7 +41,27 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
   const [editWeight, setEditWeight] = useState('')
   const [editReps, setEditReps] = useState('')
   const [aiSuggestion, setAiSuggestion] = useState<RecommendationResult | null>(null)
+  const [restStartedAt, setRestStartedAt] = useState<number | null>(null)
+  const [restTarget, setRestTarget] = useState(90)
+  const [restNow, setRestNow] = useState(Date.now())
   const supabase = createClient()
+
+  // Ticks the visible rest timer while it's running. Nothing to rest from
+  // before the first set of this exercise, so it only starts after a save.
+  useEffect(() => {
+    if (restStartedAt === null) return
+    const interval = setInterval(() => setRestNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [restStartedAt])
+
+  const restElapsedSeconds =
+    restStartedAt !== null ? Math.floor((restNow - restStartedAt) / 1000) : 0
+
+  const formatRestTime = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${String(seconds).padStart(2, '0')}`
+  }
 
   // Fetch the last set for this exercise to suggest weight/reps
   useEffect(() => {
@@ -112,12 +132,18 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
 
     setLoading(true)
 
+    // Rest time is however long actually elapsed since the previous set was
+    // saved — the target/presets below are just a visual reference, not
+    // enforced.
+    const restTimeSeconds = restStartedAt !== null ? Math.round((Date.now() - restStartedAt) / 1000) : null
+
     const { error } = await supabase.from('sets').insert({
       exercise_id: exerciseId,
       weight: parseFloat(weight),
       reps: parseInt(reps),
       completed: true,
       set_order: currentSetNumber,
+      rest_time_seconds: restTimeSeconds,
     })
 
     if (error) {
@@ -132,6 +158,8 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
     setReps('')
     // Keep the same weight for next set (common pattern)
     setLoading(false)
+    setRestStartedAt(Date.now())
+    setRestNow(Date.now())
     fetchSavedSets()
   }
 
@@ -298,6 +326,40 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Rest Timer */}
+      {restStartedAt !== null && (
+        <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="text-white/40 text-xs mb-1">Rest</div>
+            <div className="text-2xl font-semibold text-white tabular-nums">
+              {formatRestTime(restElapsedSeconds)}
+            </div>
+            <div className="text-white/30 text-xs mt-1">Target: {formatRestTime(restTarget)}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            {[60, 90, 120].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setRestTarget(preset)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  restTarget === preset ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                }`}
+              >
+                {preset}s
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setRestStartedAt(null)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
+            >
+              Skip
+            </button>
+          </div>
         </div>
       )}
 
