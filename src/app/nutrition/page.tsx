@@ -45,6 +45,7 @@ type FoodItemForm = {
 }
 
 const emptyForm = {
+  date: '',
   calories: '',
   protein: '',
   fat: '',
@@ -123,6 +124,7 @@ export default function NutritionPage() {
   const openDialog = () => {
     if (todayEntry) {
       setForm({
+        date: todayEntry.date,
         calories: String(todayEntry.calories),
         protein: String(todayEntry.protein_g),
         fat: String(todayEntry.fat_g),
@@ -137,7 +139,7 @@ export default function NutritionPage() {
         })),
       })
     } else {
-      setForm(emptyForm)
+      setForm({ ...emptyForm, date: today })
     }
     setIsDialogOpen(true)
   }
@@ -172,7 +174,7 @@ export default function NutritionPage() {
       .upsert(
         {
           user_id: user.id,
-          date: today,
+          date: form.date,
           calories: parseInt(form.calories, 10),
           protein_g: parseFloat(form.protein),
           fat_g: parseFloat(form.fat),
@@ -205,7 +207,7 @@ export default function NutritionPage() {
         validItems.map((item) => ({
           entry_id: entry.id,
           name: item.name.trim(),
-          logged_at: item.loggedAt ? new Date(`${today}T${item.loggedAt}:00`).toISOString() : null,
+          logged_at: item.loggedAt ? new Date(`${form.date}T${item.loggedAt}:00`).toISOString() : null,
           ingredients: item.ingredients.trim() || null,
         }))
       )
@@ -264,6 +266,21 @@ export default function NutritionPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSave} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="entry-date" className="text-white/80">
+                    Date
+                  </Label>
+                  <Input
+                    id="entry-date"
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    required
+                    max={today}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="calories" className="text-white/80">
