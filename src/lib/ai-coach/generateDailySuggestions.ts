@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getGymSuggestionCandidates } from './gymSuggestions'
+import { getProjectsSuggestionCandidates } from './projectsSuggestions'
 import type { Suggestion, SuggestionCandidate } from './types'
 import { getLocalDateString } from '@/lib/date'
 
@@ -96,11 +97,11 @@ export async function generateDailySuggestions(
 
   const weeklyGoal = settings?.weekly_workout_goal ?? 5
 
-  // Gather candidates from every module that has one. Only gym exists today;
-  // future modules (nutrition, business, ...) append their own candidates
-  // here without changing anything else in this pipeline.
+  // Gather candidates from every module that has one. Future modules append
+  // their own candidates here without changing anything else in this pipeline.
   const candidates: SuggestionCandidate[] = [
     ...(await getGymSuggestionCandidates(supabase, userId, weeklyGoal)),
+    ...(await getProjectsSuggestionCandidates(supabase, userId)),
   ]
 
   const suggestions = candidates.length > 0 ? await pickAndRephrase(candidates) : []
