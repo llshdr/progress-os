@@ -8,11 +8,13 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import ExerciseVariantsManager from '@/components/gym/exercise-variants-manager'
+import type { ExerciseType } from '@/lib/exercise-constants'
 
 export default function EditExercisePage() {
   const params = useParams()
   const router = useRouter()
   const [name, setName] = useState('')
+  const [exerciseType, setExerciseType] = useState<ExerciseType>('strength')
   const [primaryMuscleGroup, setPrimaryMuscleGroup] = useState('')
   const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>([])
   const [equipmentType, setEquipmentType] = useState('')
@@ -40,6 +42,7 @@ export default function EditExercisePage() {
     }
 
     setName(data.name)
+    setExerciseType((data.exercise_type as ExerciseType) ?? 'strength')
     setPrimaryMuscleGroup(data.primary_muscle_group)
     setSecondaryMuscleGroups(data.secondary_muscle_groups || [])
     setEquipmentType(data.equipment_type)
@@ -65,6 +68,7 @@ export default function EditExercisePage() {
       .from('exercise_library')
       .update({
         name,
+        exercise_type: exerciseType,
         primary_muscle_group: primaryMuscleGroup,
         secondary_muscle_groups: secondaryMuscleGroups.length > 0 ? secondaryMuscleGroups : null,
         equipment_type: equipmentType,
@@ -109,6 +113,8 @@ export default function EditExercisePage() {
           <ExerciseFormFields
             name={name}
             onNameChange={setName}
+            exerciseType={exerciseType}
+            onExerciseTypeChange={setExerciseType}
             primaryMuscleGroup={primaryMuscleGroup}
             onPrimaryMuscleGroupChange={setPrimaryMuscleGroup}
             secondaryMuscleGroups={secondaryMuscleGroups}

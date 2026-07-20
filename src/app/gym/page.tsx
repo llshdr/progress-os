@@ -48,6 +48,15 @@ export default function GymPage() {
             </div>
           </Link>
 
+          <Link href="/gym/records" className="group">
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200">
+              <h2 className="text-lg font-medium text-white mb-2">Personal Records</h2>
+              <p className="text-white/40 text-sm">
+                Your best lifts and runs, all in one place
+              </p>
+            </div>
+          </Link>
+
           <Link href="/gym/goals" className="group">
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200">
               <h2 className="text-lg font-medium text-white mb-2">Weekly Goals</h2>

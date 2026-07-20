@@ -8,13 +8,28 @@ import Link from 'next/link'
 import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award, Pencil } from 'lucide-react'
 import ExerciseCoachCard from '@/components/ai-coach/exercise-coach-card'
 import ExerciseProgressChart, { type ExerciseSessionPoint } from '@/components/gym/exercise-progress-chart'
+import { estimateOneRepMax } from '@/lib/estimate1rm'
 
 type Exercise = {
   id: string
   name: string
   primary_muscle_group: string
   equipment_type: string
+  exercise_type: string
   notes: string | null
+}
+
+type CardioEntry = {
+  date: string
+  distanceKm: number
+  durationSeconds: number
+}
+
+type CardioStatistics = {
+  timesPerformed: number
+  lastTrained: string | null
+  bestDistance: number | null
+  bestPaceSecondsPerKm: number | null
 }
 
 type WorkoutSet = {
@@ -64,6 +79,8 @@ export default function ExerciseDetailPage() {
   const [exercise, setExercise] = useState<Exercise | null>(null)
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [statistics, setStatistics] = useState<Statistics | null>(null)
+  const [cardioEntries, setCardioEntries] = useState<CardioEntry[]>([])
+  const [cardioStatistics, setCardioStatistics] = useState<CardioStatistics | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
@@ -91,6 +108,12 @@ export default function ExerciseDetailPage() {
     }
 
     setExercise(exerciseData)
+
+    if (exerciseData.exercise_type === 'cardio') {
+      await fetchCardioData(exerciseData.id)
+      setLoading(false)
+      return
+    }
 
     // Fetch all workouts containing this exercise. Two separate,
     // properly-parameterized queries instead of a single .or() built via
@@ -205,11 +228,10 @@ export default function ExerciseDetailPage() {
       }
     })
 
-    // Calculate estimated 1RM using Epley formula: weight × (1 + reps/30)
     let estimated1RM: number | null = null
     if (bestSet) {
-      const { weight, reps } = bestSet
-      estimated1RM = weight * (1 + reps / 30)
+      const { weight, reps } = bestSet as BestSet
+      estimated1RM = estimateOneRepMax(weight, reps)
     }
 
     setStatistics({
@@ -220,6 +242,82 @@ export default function ExerciseDetailPage() {
       totalSets,
       totalVolume,
     })
+  }
+
+  // Cardio's history lives in a flat leaf table (one row per exercise
+  // instance), not a one-to-many `sets` collection, so this is a single
+  // pair of flat queries rather than the strength path's per-workout fetch.
+  const fetchCardioData = async (exerciseLibraryId: string) => {
+    const { data: instances, error: instancesError } = await supabase
+      .from('exercises')
+      .select('id, workout:workouts!inner(date)')
+      .eq('exercise_library_id', exerciseLibraryId)
+
+    if (instancesError) {
+      console.error('Error fetching cardio exercise instances:', instancesError)
+      return
+    }
+
+    const dateByInstanceId = new Map<string, string>()
+    for (const instance of (instances ?? []) as any[]) {
+      dateByInstanceId.set(instance.id, instance.workout.date)
+    }
+
+    const instanceIds = Array.from(dateByInstanceId.keys())
+    if (instanceIds.length === 0) {
+      setCardioEntries([])
+      setCardioStatistics({ timesPerformed: 0, lastTrained: null, bestDistance: null, bestPaceSecondsPerKm: null })
+      return
+    }
+
+    const { data: logs, error: logsError } = await supabase
+      .from('cardio_logs')
+      .select('exercise_id, distance_km, duration_seconds')
+      .in('exercise_id', instanceIds)
+
+    if (logsError) {
+      console.error('Error fetching cardio logs:', logsError)
+      return
+    }
+
+    const entries: CardioEntry[] = (logs ?? [])
+      .map((log) => ({
+        date: dateByInstanceId.get(log.exercise_id)!,
+        distanceKm: typeof log.distance_km === 'string' ? parseFloat(log.distance_km) : log.distance_km,
+        durationSeconds: log.duration_seconds,
+      }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+    setCardioEntries(entries)
+
+    let lastTrained: string | null = null
+    let bestDistance: number | null = null
+    let bestPaceSecondsPerKm: number | null = null
+
+    for (const entry of entries) {
+      if (!lastTrained || new Date(entry.date) > new Date(lastTrained)) lastTrained = entry.date
+      if (bestDistance === null || entry.distanceKm > bestDistance) bestDistance = entry.distanceKm
+      if (entry.distanceKm > 0) {
+        const paceSecondsPerKm = entry.durationSeconds / entry.distanceKm
+        if (bestPaceSecondsPerKm === null || paceSecondsPerKm < bestPaceSecondsPerKm) {
+          bestPaceSecondsPerKm = paceSecondsPerKm
+        }
+      }
+    }
+
+    setCardioStatistics({ timesPerformed: entries.length, lastTrained, bestDistance, bestPaceSecondsPerKm })
+  }
+
+  const formatPace = (secondsPerKm: number): string => {
+    const minutes = Math.floor(secondsPerKm / 60)
+    const seconds = Math.round(secondsPerKm % 60)
+    return `${minutes}:${String(seconds).padStart(2, '0')} /km`
+  }
+
+  const formatCardioDuration = (totalSeconds: number): string => {
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return seconds === 0 ? `${minutes} min` : `${minutes}m ${seconds}s`
   }
 
   const formatDate = (dateString: string) => {
@@ -333,7 +431,7 @@ export default function ExerciseDetailPage() {
         </div>
 
         {/* Statistics Section */}
-        {statistics && (
+        {exercise.exercise_type !== 'cardio' && statistics && (
           <div className="mb-8">
             <h2 className="text-lg font-medium text-white mb-1">Statistics</h2>
             {hasMixedVariants && (
@@ -401,7 +499,7 @@ export default function ExerciseDetailPage() {
         )}
 
         {/* Progress Section */}
-        {chartSessions.length >= 2 && (
+        {exercise.exercise_type !== 'cardio' && chartSessions.length >= 2 && (
           <div className="mb-8">
             <h2 className="text-lg font-medium text-white mb-4">Progress</h2>
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
@@ -410,62 +508,140 @@ export default function ExerciseDetailPage() {
           </div>
         )}
 
-        {/* AI Coach Section */}
-        <div className="mb-8">
-          <ExerciseCoachCard exerciseLibraryId={exercise.id} exerciseName={exercise.name} />
-        </div>
+        {/* AI Coach Section — rep/weight-based, doesn't apply to cardio */}
+        {exercise.exercise_type !== 'cardio' && (
+          <div className="mb-8">
+            <ExerciseCoachCard exerciseLibraryId={exercise.id} exerciseName={exercise.name} />
+          </div>
+        )}
+
+        {/* Cardio Statistics Section */}
+        {exercise.exercise_type === 'cardio' && cardioStatistics && (
+          <div className="mb-8">
+            <h2 className="text-lg font-medium text-white mb-1">Statistics</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-white/40" />
+                  <span className="text-xs text-white/40">Times Performed</span>
+                </div>
+                <p className="text-2xl font-semibold text-white">{cardioStatistics.timesPerformed}</p>
+              </div>
+
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-4 h-4 text-white/40" />
+                  <span className="text-xs text-white/40">Last Trained</span>
+                </div>
+                <p className="text-lg font-semibold text-white">
+                  {cardioStatistics.lastTrained ? formatDate(cardioStatistics.lastTrained) : 'Never'}
+                </p>
+              </div>
+
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Award className="w-4 h-4 text-white/40" />
+                  <span className="text-xs text-white/40">Best Distance</span>
+                </div>
+                <p className="text-lg font-semibold text-white">
+                  {cardioStatistics.bestDistance != null ? `${cardioStatistics.bestDistance} km` : 'N/A'}
+                </p>
+              </div>
+
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-white/40" />
+                  <span className="text-xs text-white/40">Best Pace</span>
+                </div>
+                <p className="text-lg font-semibold text-white">
+                  {cardioStatistics.bestPaceSecondsPerKm != null ? formatPace(cardioStatistics.bestPaceSecondsPerKm) : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Workout History Section */}
-        <div>
-          <h2 className="text-lg font-medium text-white mb-4">Workout History</h2>
-          {workouts.length === 0 ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-              <p className="text-white/40">No workout history yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {workouts.map((workout) => (
-                <div
-                  key={workout.id}
-                  className="border border-white/10 rounded-2xl bg-white/[0.02] p-6"
-                >
-                  <div className="flex items-center justify-between mb-4">
+        {exercise.exercise_type === 'cardio' ? (
+          <div>
+            <h2 className="text-lg font-medium text-white mb-4">Run History</h2>
+            {cardioEntries.length === 0 ? (
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
+                <p className="text-white/40">No runs logged yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {cardioEntries.map((entry, index) => (
+                  <div
+                    key={index}
+                    className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-3">
                       <Calendar className="w-4 h-4 text-white/40" />
-                      <span className="text-white font-medium">{formatDate(workout.date)}</span>
+                      <span className="text-white font-medium">{formatDate(entry.date)}</span>
                     </div>
-                    {workout.template_name && (
-                      <span className="text-sm text-white/50 bg-white/5 px-3 py-1 rounded-full">
-                        {workout.template_name}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-4 text-white/70 text-sm">
+                      <span>{entry.distanceKm} km</span>
+                      <span>{formatCardioDuration(entry.durationSeconds)}</span>
+                      <span className="text-white/40">{formatPace(entry.durationSeconds / entry.distanceKm)}</span>
+                    </div>
                   </div>
-
-                  <div className="space-y-2">
-                    {workout.exercises.map((exerciseEntry) => (
-                      <div key={exerciseEntry.id}>
-                        {exerciseEntry.sets.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {exerciseEntry.sets
-                              .sort((a, b) => a.set_order - b.set_order)
-                              .map((set) => (
-                                <span
-                                  key={set.id}
-                                  className="text-sm text-white/70 bg-white/5 px-3 py-1.5 rounded-lg"
-                                >
-                                  {set.weight} × {set.reps}
-                                </span>
-                              ))}
-                          </div>
-                        )}
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <h2 className="text-lg font-medium text-white mb-4">Workout History</h2>
+            {workouts.length === 0 ? (
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
+                <p className="text-white/40">No workout history yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {workouts.map((workout) => (
+                  <div
+                    key={workout.id}
+                    className="border border-white/10 rounded-2xl bg-white/[0.02] p-6"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-4 h-4 text-white/40" />
+                        <span className="text-white font-medium">{formatDate(workout.date)}</span>
                       </div>
-                    ))}
+                      {workout.template_name && (
+                        <span className="text-sm text-white/50 bg-white/5 px-3 py-1 rounded-full">
+                          {workout.template_name}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      {workout.exercises.map((exerciseEntry) => (
+                        <div key={exerciseEntry.id}>
+                          {exerciseEntry.sets.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {exerciseEntry.sets
+                                .sort((a, b) => a.set_order - b.set_order)
+                                .map((set) => (
+                                  <span
+                                    key={set.id}
+                                    className="text-sm text-white/70 bg-white/5 px-3 py-1.5 rounded-lg"
+                                  >
+                                    {set.weight} × {set.reps}
+                                  </span>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </AppLayout>
   )

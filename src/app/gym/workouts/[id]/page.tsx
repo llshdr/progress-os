@@ -7,6 +7,7 @@ import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Check, Clock, ArrowLeft, Trash2, RotateCcw } from 'lucide-react'
 import SetLogger from '@/components/workout/set-logger'
+import CardioLogger from '@/components/workout/cardio-logger'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 type Workout = {
@@ -33,6 +34,7 @@ type LibraryExercise = {
   name: string
   primary_muscle_group: string
   equipment_type: string
+  exercise_type: string
 }
 
 export default function CurrentWorkoutPage() {
@@ -67,7 +69,7 @@ export default function CurrentWorkoutPage() {
 
     const { data, error } = await supabase
       .from('exercise_library')
-      .select('id, name, primary_muscle_group, equipment_type')
+      .select('id, name, primary_muscle_group, equipment_type, exercise_type')
       .eq('user_id', user.id)
       .eq('archived', false)
       .order('name', { ascending: true })
@@ -81,7 +83,7 @@ export default function CurrentWorkoutPage() {
     // Fetch recent exercises (used in recent workouts)
     const { data: recentData, error: recentError } = await supabase
       .from('exercises')
-      .select('exercise_library_id, exercise_library(id, name, primary_muscle_group, equipment_type)')
+      .select('exercise_library_id, exercise_library(id, name, primary_muscle_group, equipment_type, exercise_type)')
       .not('exercise_library_id', 'is', null)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -125,7 +127,7 @@ export default function CurrentWorkoutPage() {
     // Fetch exercises with library data
     const { data: exercisesData, error: exercisesError } = await supabase
       .from('exercises')
-      .select('*, exercise_library(id, name, primary_muscle_group, equipment_type)')
+      .select('*, exercise_library(id, name, primary_muscle_group, equipment_type, exercise_type)')
       .eq('workout_id', params.id)
       .order('exercise_order', { ascending: true })
 
@@ -318,7 +320,8 @@ export default function CurrentWorkoutPage() {
     const activeExercise = exercises.find(e => e.id === activeExerciseId)
     // Get exercise name from library or fallback to custom name
     const exerciseName = (activeExercise as any)?.exercise_library?.name || activeExercise?.exercise_name || 'Unknown Exercise'
-    
+    const exerciseType = (activeExercise as any)?.exercise_library?.exercise_type ?? 'strength'
+
     return (
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -329,12 +332,20 @@ export default function CurrentWorkoutPage() {
             <ArrowLeft className="w-4 h-4" />
             Back to workout
           </button>
-          <SetLogger
-            exerciseId={activeExerciseId}
-            exerciseName={exerciseName}
-            exerciseLibraryId={activeExercise?.exercise_library_id ?? null}
-            onComplete={() => setActiveExerciseId(null)}
-          />
+          {exerciseType === 'cardio' ? (
+            <CardioLogger
+              exerciseId={activeExerciseId}
+              exerciseName={exerciseName}
+              onComplete={() => setActiveExerciseId(null)}
+            />
+          ) : (
+            <SetLogger
+              exerciseId={activeExerciseId}
+              exerciseName={exerciseName}
+              exerciseLibraryId={activeExercise?.exercise_library_id ?? null}
+              onComplete={() => setActiveExerciseId(null)}
+            />
+          )}
         </div>
       </AppLayout>
     )
@@ -509,13 +520,14 @@ export default function CurrentWorkoutPage() {
                               <div className="font-medium text-white">{libExercise.name}</div>
                               <div className="text-white/40 text-sm">
                                 {libExercise.primary_muscle_group} • {libExercise.equipment_type}
+                                {libExercise.exercise_type === 'cardio' && ' • Cardio'}
                               </div>
                             </button>
                           ))}
                           <div className="border-t border-white/10 my-2"></div>
                         </>
                       )}
-                      
+
                       {/* All Library Exercises */}
                       {libraryExercises.map((libExercise) => (
                         <button
@@ -531,6 +543,7 @@ export default function CurrentWorkoutPage() {
                           <div className="font-medium text-white">{libExercise.name}</div>
                           <div className="text-white/40 text-sm">
                             {libExercise.primary_muscle_group} • {libExercise.equipment_type}
+                            {libExercise.exercise_type === 'cardio' && ' • Cardio'}
                           </div>
                         </button>
                       ))}

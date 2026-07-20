@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import type { ExerciseType } from '@/lib/exercise-constants'
 
 export default function NewExercisePage() {
   const router = useRouter()
   const [name, setName] = useState('')
+  const [exerciseType, setExerciseType] = useState<ExerciseType>('strength')
   const [primaryMuscleGroup, setPrimaryMuscleGroup] = useState('')
   const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>([])
   const [equipmentType, setEquipmentType] = useState('')
@@ -33,6 +35,7 @@ export default function NewExercisePage() {
     const { error } = await supabase.from('exercise_library').insert({
       user_id: userId,
       name,
+      exercise_type: exerciseType,
       primary_muscle_group: primaryMuscleGroup,
       secondary_muscle_groups: secondaryMuscleGroups.length > 0 ? secondaryMuscleGroups : null,
       equipment_type: equipmentType,
@@ -103,6 +106,8 @@ export default function NewExercisePage() {
           <ExerciseFormFields
             name={name}
             onNameChange={setName}
+            exerciseType={exerciseType}
+            onExerciseTypeChange={setExerciseType}
             primaryMuscleGroup={primaryMuscleGroup}
             onPrimaryMuscleGroupChange={setPrimaryMuscleGroup}
             secondaryMuscleGroups={secondaryMuscleGroups}

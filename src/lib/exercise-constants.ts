@@ -26,3 +26,9 @@ export const CATEGORIES = [
   'Mobility',
   'Stretching',
 ]
+
+// Determines the logging shape for this exercise: strength sets
+// (weight/reps) vs a cardio log (distance/duration) - separate from
+// `category` above, which is just descriptive classification.
+export const EXERCISE_TYPES = ['strength', 'cardio'] as const
+export type ExerciseType = (typeof EXERCISE_TYPES)[number]

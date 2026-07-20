@@ -3,11 +3,13 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { MUSCLE_GROUPS, EQUIPMENT_TYPES, CATEGORIES } from '@/lib/exercise-constants'
+import { MUSCLE_GROUPS, EQUIPMENT_TYPES, CATEGORIES, EXERCISE_TYPES, type ExerciseType } from '@/lib/exercise-constants'
 
 interface ExerciseFormFieldsProps {
   name: string
   onNameChange: (value: string) => void
+  exerciseType: ExerciseType
+  onExerciseTypeChange: (value: ExerciseType) => void
   primaryMuscleGroup: string
   onPrimaryMuscleGroupChange: (value: string) => void
   secondaryMuscleGroups: string[]
@@ -25,6 +27,8 @@ interface ExerciseFormFieldsProps {
 export default function ExerciseFormFields({
   name,
   onNameChange,
+  exerciseType,
+  onExerciseTypeChange,
   primaryMuscleGroup,
   onPrimaryMuscleGroupChange,
   secondaryMuscleGroups,
@@ -50,6 +54,31 @@ export default function ExerciseFormFields({
           placeholder="Bench Press"
           className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
         />
+      </div>
+
+      <div>
+        <Label className="text-white/80 mb-3 block">Type *</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {EXERCISE_TYPES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => onExerciseTypeChange(type)}
+              className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
+                exerciseType === type
+                  ? 'bg-white text-black border-white'
+                  : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              {type === 'strength' ? 'Strength' : 'Cardio'}
+            </button>
+          ))}
+        </div>
+        {exerciseType === 'cardio' && (
+          <p className="text-white/40 text-xs mt-2">
+            Logged as distance/duration instead of weight/reps.
+          </p>
+        )}
       </div>
 
       <div>
