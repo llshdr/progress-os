@@ -19,6 +19,11 @@ import { Apple, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 import { getLocalDateString } from '@/lib/date'
 import { getEffectiveTarget, type TrainingIntensity, type TrainingPhase } from '@/lib/nutrition'
+import NutritionChart from '@/components/nutrition/nutrition-chart'
+import NutritionInsightCard from '@/components/nutrition/nutrition-insight-card'
+import type { CaloriePoint } from '@/lib/nutrition-trend'
+
+const MIN_ENTRIES_FOR_TREND = 3
 
 type NutritionEntry = {
   id: string
@@ -61,11 +66,15 @@ export default function NutritionPage() {
   const [trainingPhase, setTrainingPhase] = useState<TrainingPhase | null>(null)
   const [trainingIntensity, setTrainingIntensity] = useState<TrainingIntensity | null>(null)
   const [todayEntry, setTodayEntry] = useState<NutritionEntry | null>(null)
+  const [allEntries, setAllEntries] = useState<NutritionEntry[]>([])
   const [foodItems, setFoodItems] = useState<FoodItem[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  // Bumped after an entry is saved so the (server-cached) AI insight
+  // refetches — it only actually regenerates if the underlying data changed.
+  const [insightRefreshKey, setInsightRefreshKey] = useState(0)
   const supabase = createClient()
 
   useEffect(() => {
@@ -102,6 +111,17 @@ export default function NutritionPage() {
       console.error('Error fetching nutrition entry:', entryError)
     }
     setTodayEntry(entry ?? null)
+
+    const { data: entries, error: entriesError } = await supabase
+      .from('nutrition_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: true })
+
+    if (entriesError) {
+      console.error('Error fetching nutrition entries:', entriesError)
+    }
+    setAllEntries(entries || [])
 
     if (entry) {
       const { data: items, error: itemsError } = await supabase
@@ -219,6 +239,7 @@ export default function NutritionPage() {
     setSaving(false)
     setIsDialogOpen(false)
     fetchData()
+    setInsightRefreshKey((k) => k + 1)
   }
 
   const effectiveTarget = getEffectiveTarget(
@@ -227,6 +248,25 @@ export default function NutritionPage() {
     trainingIntensity,
     todayEntry?.activity_adjustment_kcal ?? null
   )
+
+  // Derived from the already-fetched entries — no extra query.
+  const chartPoints: CaloriePoint[] = allEntries.map((e) => ({
+    date: e.date,
+    calories: e.calories,
+    targetCalories: getEffectiveTarget(maintenanceCalories, trainingPhase, trainingIntensity, e.activity_adjustment_kcal ?? null),
+  }))
+
+  const sevenDaysAgo = new Date(today)
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+  const recentEntries = allEntries.filter((e) => new Date(e.date) >= sevenDaysAgo && new Date(e.date) <= new Date(today))
+  const recentAverages =
+    recentEntries.length > 0
+      ? {
+          protein: recentEntries.reduce((sum, e) => sum + e.protein_g, 0) / recentEntries.length,
+          fat: recentEntries.reduce((sum, e) => sum + e.fat_g, 0) / recentEntries.length,
+          carbs: recentEntries.reduce((sum, e) => sum + e.carbs_g, 0) / recentEntries.length,
+        }
+      : null
 
   if (loading) {
     return (
@@ -434,6 +474,39 @@ export default function NutritionPage() {
             </p>
           </div>
         )}
+
+        {allEntries.length >= MIN_ENTRIES_FOR_TREND ? (
+          <div className="grid gap-4 mb-6 lg:grid-cols-2">
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <h3 className="text-lg font-medium text-white mb-4">Trend</h3>
+              <NutritionChart points={chartPoints} />
+              {recentAverages && (
+                <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/10">
+                  <div>
+                    <p className="text-xs text-white/40 mb-1">Avg Protein (7d)</p>
+                    <p className="text-sm font-semibold text-white">{recentAverages.protein.toFixed(0)}g</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-white/40 mb-1">Avg Fat (7d)</p>
+                    <p className="text-sm font-semibold text-white">{recentAverages.fat.toFixed(0)}g</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-white/40 mb-1">Avg Carbs (7d)</p>
+                    <p className="text-sm font-semibold text-white">{recentAverages.carbs.toFixed(0)}g</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <NutritionInsightCard refreshKey={insightRefreshKey} />
+          </div>
+        ) : allEntries.length > 0 ? (
+          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 mb-6">
+            <p className="text-white/40 text-sm">
+              Log {MIN_ENTRIES_FOR_TREND - allEntries.length} more day
+              {MIN_ENTRIES_FOR_TREND - allEntries.length === 1 ? '' : 's'} to see your trend and an AI insight.
+            </p>
+          </div>
+        ) : null}
 
         {!todayEntry ? (
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
