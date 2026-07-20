@@ -51,6 +51,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(null)
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
   const [weeklyGoal, setWeeklyGoal] = useState(5)
+  const [showTodaySuggestions, setShowTodaySuggestions] = useState(true)
   const [latestWeight, setLatestWeight] = useState<WeightEntry | null>(null)
   const [previousWeight, setPreviousWeight] = useState<WeightEntry | null>(null)
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
@@ -127,14 +128,16 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       try {
         const { data: settings } = await supabase
           .from('user_settings')
-          .select('weekly_workout_goal')
+          .select('weekly_workout_goal, show_today_suggestions')
           .eq('user_id', user.id)
           .single()
 
         setWeeklyGoal(settings?.weekly_workout_goal || 5)
+        setShowTodaySuggestions(settings?.show_today_suggestions ?? true)
       } catch (settingsError) {
         // Settings table might not exist yet, use default
         setWeeklyGoal(5)
+        setShowTodaySuggestions(true)
       }
 
       // Fetch latest weight entries
@@ -337,9 +340,11 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         </div>
 
         {/* Today's Suggestions */}
-        <div className="mb-6">
-          <TodaySuggestionsCard />
-        </div>
+        {showTodaySuggestions && (
+          <div className="mb-6">
+            <TodaySuggestionsCard />
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
