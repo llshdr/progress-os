@@ -53,6 +53,11 @@ export default function ExerciseCoachCard({ exerciseLibraryId, exerciseName }: E
             {result.weight} kg × {result.reps}
           </p>
           {result.reasoning && <p className="text-white/50 text-sm">{result.reasoning}</p>}
+          {result.fallbackWeight != null && result.fallbackReps != null && (
+            <p className="text-white/40 text-sm mt-2">
+              Too hard? Drop to {result.fallbackWeight} kg × {result.fallbackReps}.
+            </p>
+          )}
         </div>
       )}
     </div>

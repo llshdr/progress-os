@@ -1,10 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface HistoricalSet {
+  id: string
   weight: number
   reps: number
   rpe: number | null
   workoutDate: string
+  createdAt: string
   // The equipment variant used for this exercise-instance, if any was picked
   // (e.g. "Hammer Strength", "1:1") — null when the exercise has no variants
   // defined, or none was selected for that session.
@@ -26,7 +28,7 @@ export async function getExerciseHistory(
   // built via string interpolation — an exercise name containing a comma or
   // other PostgREST-significant character would otherwise break or misbehave.
   const select =
-    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(weight, reps, rpe, completed)'
+    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(id, weight, reps, rpe, completed, created_at)'
   const queries: PromiseLike<any>[] = []
 
   if (exerciseLibraryId) {
@@ -74,15 +76,23 @@ export async function getExerciseHistory(
     for (const set of row.sets ?? []) {
       if (!set.completed) continue
       history.push({
+        id: set.id,
         weight: typeof set.weight === 'string' ? parseFloat(set.weight) : set.weight,
         reps: typeof set.reps === 'string' ? parseInt(set.reps) : set.reps,
         rpe: set.rpe ?? null,
         workoutDate,
+        createdAt: set.created_at,
         variantLabel,
       })
     }
   }
 
-  history.sort((a, b) => new Date(b.workoutDate).getTime() - new Date(a.workoutDate).getTime())
+  // createdAt as a tiebreaker so same-day sets sort precisely — needed to
+  // determine the single most-recent set for cache invalidation.
+  history.sort((a, b) => {
+    const dateDiff = new Date(b.workoutDate).getTime() - new Date(a.workoutDate).getTime()
+    if (dateDiff !== 0) return dateDiff
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
   return history
 }

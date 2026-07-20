@@ -28,26 +28,38 @@ export async function POST(request: NextRequest) {
 
   const history = await getExerciseHistory(supabase, exerciseLibraryId, exerciseName)
 
-  // Only relevant once this exercise actually has variant info recorded —
-  // the overwhelmingly common case (no variants ever used) skips all of
-  // this and behaves exactly as before.
-  const hasVariantInfo = history.some((h) => h.variantLabel !== null)
-  const otherVariantCount = hasVariantInfo
-    ? new Set(
-        history.filter((h) => h.variantLabel !== variantLabel).map((h) => h.variantLabel ?? 'unspecified')
-      ).size
-    : 0
-
-  // If a specific variant is currently selected, only that variant's history
-  // counts toward "enough data" and feeds the recommendation — a different
-  // machine/cable ratio isn't a safe basis for a specific weight/rep number.
-  const relevantHistory =
-    hasVariantInfo && variantLabel ? history.filter((h) => h.variantLabel === variantLabel) : history
-
-  const sessionCount = new Set(relevantHistory.map((h) => h.workoutDate)).size
-
+  // Gate on total sessions across all variants — cross-variant history is now
+  // potentially usable input (see variantContext below) rather than being
+  // discarded upfront, so it counts toward "enough data" too.
+  const sessionCount = new Set(history.map((h) => h.workoutDate)).size
   if (sessionCount < MIN_SESSIONS_FOR_RECOMMENDATION) {
     return NextResponse.json({ status: 'not_enough_history' })
+  }
+
+  // history is sorted most-recent-first (see getExerciseHistory), so this is
+  // the single most recent completed set for this exercise(+variant lookup).
+  const latestSetId = history[0]?.id ?? null
+  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}`
+
+  const { data: cachedRow } = await supabase
+    .from('ai_coach_recommendations')
+    .select('weight, reps, reasoning, fallback_weight, fallback_reps, latest_set_id')
+    .eq('user_id', user.id)
+    .eq('cache_key', cacheKey)
+    .maybeSingle()
+
+  // Only regenerate when there's no cached recommendation yet, or a set has
+  // been logged since the cached one was generated. Simply reopening the
+  // page/workout never triggers a new Gemini call on its own.
+  if (cachedRow && cachedRow.latest_set_id === latestSetId) {
+    return NextResponse.json({
+      status: 'ok',
+      weight: cachedRow.weight,
+      reps: cachedRow.reps,
+      reasoning: cachedRow.reasoning,
+      fallbackWeight: cachedRow.fallback_weight,
+      fallbackReps: cachedRow.fallback_reps,
+    })
   }
 
   const apiKey = process.env.GEMINI_API_KEY
@@ -56,25 +68,58 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'error', error: 'AI Coach is not configured' }, { status: 500 })
   }
 
-  const historyText = relevantHistory
+  let primaryMuscleGroup: string | null = null
+  if (exerciseLibraryId) {
+    const { data } = await supabase
+      .from('exercise_library')
+      .select('primary_muscle_group')
+      .eq('id', exerciseLibraryId)
+      .maybeSingle()
+    primaryMuscleGroup = data?.primary_muscle_group ?? null
+  }
+
+  const { data: settingsData } = await supabase
+    .from('user_settings')
+    .select('training_phase, training_intensity')
+    .eq('user_id', user.id)
+    .maybeSingle()
+  const trainingPhase: string | null = settingsData?.training_phase ?? null
+  const trainingIntensity: string | null = settingsData?.training_intensity ?? null
+
+  const hasVariantInfo = history.some((h) => h.variantLabel !== null)
+
+  const historyText = history
     .slice(0, MAX_SETS_IN_PROMPT)
-    .map((set) => `${set.workoutDate}: ${set.weight}kg x ${set.reps}${set.rpe ? ` @RPE ${set.rpe}` : ''}`)
+    .map((set) => {
+      const variantSuffix = hasVariantInfo ? ` [${set.variantLabel ?? 'no variant specified'}]` : ''
+      return `${set.workoutDate}: ${set.weight}kg x ${set.reps}${set.rpe ? ` @RPE ${set.rpe}` : ''}${variantSuffix}`
+    })
     .join('\n')
 
   let variantContext = ''
-  if (hasVariantInfo && variantLabel && otherVariantCount > 0) {
-    variantContext = `\n\nThe history above is filtered to the "${variantLabel}" equipment variant only. The lifter also has history on ${otherVariantCount} other equipment variant(s) for this exercise, which is NOT included above because a different machine/cable ratio isn't directly comparable — do not factor it into the recommended weight.`
-  } else if (hasVariantInfo && !variantLabel) {
-    variantContext = `\n\nNote: this history spans multiple equipment variants (different machines or cable ratios), which aren't directly comparable at the same weight number. Say so briefly in your reasoning rather than treating the weight numbers as one consistent progression.`
+  if (hasVariantInfo) {
+    variantContext = `\n\nThe currently selected equipment variant for this session is "${
+      variantLabel ?? 'none specified'
+    }". Some of the history above may be on different equipment variants (different machine brands or cable/pulley ratios). If you can reasonably estimate a numeric conversion between variants (e.g. cable ratios like 1:1 vs 2:1), use it to inform your recommendation and briefly mention the conversion. If you cannot reasonably estimate a conversion (e.g. different machine brands with unknown leverage/ROM differences), rely primarily on same-variant history and note in your reasoning that you're hedging due to limited directly-comparable data.`
   }
 
-  const prompt = `You are a strength training coach helping a lifter plan their next set.
+  let muscleGroupContext = ''
+  if (primaryMuscleGroup) {
+    muscleGroupContext = `\n\nThis exercise primarily targets: ${primaryMuscleGroup}. Apply general resistance-training principles for expected progression pace for this muscle group (smaller/faster-recovering muscle groups like arms or calves can often progress faster session-to-session than large/slower-recovering groups like quads or back) — reason about this yourself rather than treating all muscle groups the same.`
+  }
+
+  let phaseContext = ''
+  if (trainingPhase) {
+    phaseContext = `\n\nThe lifter's current self-reported training phase is "${trainingPhase}" at "${trainingIntensity}" intensity. Factor this into how aggressive to be: a bulk supports more aggressive progression. A cut does NOT mean progression should stop — a beginner/intermediate lifter can often still gain strength/muscle even while cutting, especially at "mild" intensity, so don't default to "hold the same weight" just because they're cutting. Only pull back meaningfully for an "aggressive" cut.`
+  }
+
+  const prompt = `You are an experienced strength training coach helping a lifter plan their next set. Be direct and appropriately ambitious, not overly conservative — if recent sets were all completed cleanly (full reps, no signs of failure), recommend a real jump rather than a token +1 rep increase.
 
 Below is their recent set history for one exercise, most recent session first (weight in kg):
 
-${historyText}${variantContext}
+${historyText}${variantContext}${muscleGroupContext}${phaseContext}
 
-Recommend the weight and reps for their NEXT set on this exercise. Keep the reasoning to one short sentence.`
+Recommend the weight and reps for their NEXT set on this exercise as an ambitious primary target to attempt. Also provide a fallback weight and reps at roughly 70% effort in case the primary target turns out to be too hard. Keep the reasoning to one short sentence covering your main rationale.`
 
   try {
     const ai = new GoogleGenAI({ apiKey })
@@ -88,9 +133,11 @@ Recommend the weight and reps for their NEXT set on this exercise. Keep the reas
           properties: {
             weight: { type: Type.NUMBER },
             reps: { type: Type.INTEGER },
+            fallbackWeight: { type: Type.NUMBER },
+            fallbackReps: { type: Type.INTEGER },
             reasoning: { type: Type.STRING },
           },
-          required: ['weight', 'reps', 'reasoning'],
+          required: ['weight', 'reps', 'fallbackWeight', 'fallbackReps', 'reasoning'],
         },
       },
     })
@@ -100,9 +147,33 @@ Recommend the weight and reps for their NEXT set on this exercise. Keep the reas
     if (
       typeof parsed.weight !== 'number' ||
       typeof parsed.reps !== 'number' ||
+      typeof parsed.fallbackWeight !== 'number' ||
+      typeof parsed.fallbackReps !== 'number' ||
       typeof parsed.reasoning !== 'string'
     ) {
       throw new Error('Malformed model response')
+    }
+
+    const { error: upsertError } = await supabase.from('ai_coach_recommendations').upsert(
+      {
+        user_id: user.id,
+        cache_key: cacheKey,
+        exercise_library_id: exerciseLibraryId,
+        exercise_name: exerciseName,
+        variant_label: variantLabel,
+        weight: parsed.weight,
+        reps: parsed.reps,
+        reasoning: parsed.reasoning,
+        fallback_weight: parsed.fallbackWeight,
+        fallback_reps: parsed.fallbackReps,
+        latest_set_id: latestSetId,
+        generated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,cache_key' }
+    )
+
+    if (upsertError) {
+      console.error('Error caching AI Coach recommendation:', upsertError)
     }
 
     return NextResponse.json({
@@ -110,6 +181,8 @@ Recommend the weight and reps for their NEXT set on this exercise. Keep the reas
       weight: parsed.weight,
       reps: parsed.reps,
       reasoning: parsed.reasoning,
+      fallbackWeight: parsed.fallbackWeight,
+      fallbackReps: parsed.fallbackReps,
     })
   } catch (err) {
     console.error('AI Coach recommendation failed:', err)
