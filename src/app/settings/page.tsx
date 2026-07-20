@@ -17,7 +17,7 @@ const SECTIONS = [
   },
   {
     title: 'Nutrition',
-    description: 'Coming soon',
+    description: 'Maintenance calories',
     href: '/settings/nutrition',
     icon: Apple,
   },
