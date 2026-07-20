@@ -15,13 +15,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Apple, Plus, X } from 'lucide-react'
+import { Apple, BookOpen, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 import { getLocalDateString } from '@/lib/date'
 import { getEffectiveTarget, type TrainingIntensity, type TrainingPhase } from '@/lib/nutrition'
 import NutritionChart from '@/components/nutrition/nutrition-chart'
 import NutritionInsightCard from '@/components/nutrition/nutrition-insight-card'
 import type { CaloriePoint } from '@/lib/nutrition-trend'
+import MealTagPicker from '@/components/nutrition/meal-tag-picker'
+import { MEAL_TAGS, mealTagLabel, type MealTag } from '@/lib/food-constants'
 
 const MIN_ENTRIES_FOR_TREND = 3
 
@@ -41,12 +43,37 @@ type FoodItem = {
   name: string
   logged_at: string | null
   ingredients: string | null
+  meal_tag: string | null
+  food_library_id: string | null
+  servings: number | null
+  logged_calories: number | null
+  logged_protein_g: number | null
+  logged_fat_g: number | null
+  logged_carbs_g: number | null
+}
+
+type FoodTemplate = {
+  id: string
+  name: string
+  calories: number
+  protein_g: number
+  fat_g: number
+  carbs_g: number
+  default_meal_tag: string | null
+  ingredients: string | null
 }
 
 type FoodItemForm = {
   name: string
   loggedAt: string
   ingredients: string
+  mealTag: MealTag | null
+  foodLibraryId: string | null
+  servings: number
+  loggedCalories: number | null
+  loggedProteinG: number | null
+  loggedFatG: number | null
+  loggedCarbsG: number | null
 }
 
 const emptyForm = {
@@ -68,6 +95,7 @@ export default function NutritionPage() {
   const [todayEntry, setTodayEntry] = useState<NutritionEntry | null>(null)
   const [allEntries, setAllEntries] = useState<NutritionEntry[]>([])
   const [foodItems, setFoodItems] = useState<FoodItem[]>([])
+  const [libraryFoods, setLibraryFoods] = useState<FoodTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -100,6 +128,18 @@ export default function NutritionPage() {
     setTrainingPhase((settings?.training_phase as TrainingPhase) ?? null)
     setTrainingIntensity((settings?.training_intensity as TrainingIntensity) ?? null)
 
+    const { data: foods, error: foodsError } = await supabase
+      .from('food_library')
+      .select('id, name, calories, protein_g, fat_g, carbs_g, default_meal_tag, ingredients')
+      .eq('user_id', user.id)
+      .eq('archived', false)
+      .order('name', { ascending: true })
+
+    if (foodsError) {
+      console.error('Error fetching food library:', foodsError)
+    }
+    setLibraryFoods(foods || [])
+
     const { data: entry, error: entryError } = await supabase
       .from('nutrition_entries')
       .select('*')
@@ -126,7 +166,9 @@ export default function NutritionPage() {
     if (entry) {
       const { data: items, error: itemsError } = await supabase
         .from('nutrition_food_items')
-        .select('*')
+        .select(
+          'id, name, logged_at, ingredients, meal_tag, food_library_id, servings, logged_calories, logged_protein_g, logged_fat_g, logged_carbs_g'
+        )
         .eq('entry_id', entry.id)
         .order('logged_at', { ascending: true })
 
@@ -156,6 +198,13 @@ export default function NutritionPage() {
           name: item.name,
           loggedAt: item.logged_at ? new Date(item.logged_at).toTimeString().slice(0, 5) : '',
           ingredients: item.ingredients ?? '',
+          mealTag: (item.meal_tag as MealTag) ?? null,
+          foodLibraryId: item.food_library_id,
+          servings: item.servings ?? 1,
+          loggedCalories: item.logged_calories,
+          loggedProteinG: item.logged_protein_g,
+          loggedFatG: item.logged_fat_g,
+          loggedCarbsG: item.logged_carbs_g,
         })),
       })
     } else {
@@ -165,7 +214,24 @@ export default function NutritionPage() {
   }
 
   const addFoodItemRow = () => {
-    setForm((prev) => ({ ...prev, items: [...prev.items, { name: '', loggedAt: '', ingredients: '' }] }))
+    setForm((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        {
+          name: '',
+          loggedAt: '',
+          ingredients: '',
+          mealTag: null,
+          foodLibraryId: null,
+          servings: 1,
+          loggedCalories: null,
+          loggedProteinG: null,
+          loggedFatG: null,
+          loggedCarbsG: null,
+        },
+      ],
+    }))
   }
 
   const updateFoodItemRow = (index: number, field: keyof FoodItemForm, value: string) => {
@@ -175,8 +241,58 @@ export default function NutritionPage() {
     }))
   }
 
+  const updateFoodItemMealTag = (index: number, tag: MealTag | null) => {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.map((item, i) => (i === index ? { ...item, mealTag: tag } : item)),
+    }))
+  }
+
+  // Appends a snapshotted item and prefills the editable totals - it never
+  // locks them, so manual typing on top still works and always wins.
+  const addFoodFromLibrary = (food: FoodTemplate) => {
+    setForm((prev) => ({
+      ...prev,
+      calories: String(Math.round(parseFloat(prev.calories || '0') + food.calories)),
+      protein: String((parseFloat(prev.protein || '0') + food.protein_g).toFixed(1)),
+      fat: String((parseFloat(prev.fat || '0') + food.fat_g).toFixed(1)),
+      carbs: String((parseFloat(prev.carbs || '0') + food.carbs_g).toFixed(1)),
+      items: [
+        ...prev.items,
+        {
+          name: food.name,
+          loggedAt: new Date().toTimeString().slice(0, 5),
+          ingredients: food.ingredients ?? '',
+          mealTag: (food.default_meal_tag as MealTag) ?? null,
+          foodLibraryId: food.id,
+          servings: 1,
+          loggedCalories: food.calories,
+          loggedProteinG: food.protein_g,
+          loggedFatG: food.fat_g,
+          loggedCarbsG: food.carbs_g,
+        },
+      ],
+    }))
+  }
+
   const removeFoodItemRow = (index: number) => {
-    setForm((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }))
+    setForm((prev) => {
+      const removed = prev.items[index]
+      const items = prev.items.filter((_, i) => i !== index)
+      // Only library-sourced rows carry a snapshot - manual rows never
+      // touched the totals, so there's nothing to subtract back out.
+      if (removed.loggedCalories == null) {
+        return { ...prev, items }
+      }
+      return {
+        ...prev,
+        items,
+        calories: String(Math.max(0, Math.round(parseFloat(prev.calories || '0') - removed.loggedCalories))),
+        protein: String(Math.max(0, parseFloat(prev.protein || '0') - (removed.loggedProteinG ?? 0)).toFixed(1)),
+        fat: String(Math.max(0, parseFloat(prev.fat || '0') - (removed.loggedFatG ?? 0)).toFixed(1)),
+        carbs: String(Math.max(0, parseFloat(prev.carbs || '0') - (removed.loggedCarbsG ?? 0)).toFixed(1)),
+      }
+    })
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -229,6 +345,13 @@ export default function NutritionPage() {
           name: item.name.trim(),
           logged_at: item.loggedAt ? new Date(`${form.date}T${item.loggedAt}:00`).toISOString() : null,
           ingredients: item.ingredients.trim() || null,
+          food_library_id: item.foodLibraryId,
+          servings: item.servings,
+          meal_tag: item.mealTag,
+          logged_calories: item.loggedCalories,
+          logged_protein_g: item.loggedProteinG,
+          logged_fat_g: item.loggedFatG,
+          logged_carbs_g: item.loggedCarbsG,
         }))
       )
       if (itemsError) {
@@ -292,7 +415,14 @@ export default function NutritionPage() {
             </div>
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <div className="flex items-center gap-3">
+            <Link href="/nutrition/library">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/70 hover:bg-white/5 transition-colors text-sm">
+                <BookOpen className="w-4 h-4" />
+                Library
+              </button>
+            </Link>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger>
               <Button onClick={openDialog} className="bg-white text-black hover:bg-white/90 text-sm">
                 {todayEntry ? 'Edit Today' : 'Log Today'}
@@ -408,6 +538,25 @@ export default function NutritionPage() {
                   </div>
                 </div>
 
+                {libraryFoods.length > 0 && (
+                  <div className="border-t border-white/10 pt-4 space-y-2">
+                    <Label className="text-white/80">Quick add from library</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {libraryFoods.map((food) => (
+                        <button
+                          key={food.id}
+                          type="button"
+                          onClick={() => addFoodFromLibrary(food)}
+                          className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-left hover:bg-white/10 transition-colors"
+                        >
+                          <span className="text-sm text-white">{food.name}</span>
+                          <span className="text-white/40 text-xs ml-2">{food.calories} kcal</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="border-t border-white/10 pt-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-white/80">Food items (optional)</Label>
@@ -451,6 +600,7 @@ export default function NutritionPage() {
                         rows={2}
                         className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
                       />
+                      <MealTagPicker value={item.mealTag} onChange={(tag) => updateFoodItemMealTag(index, tag)} />
                     </div>
                   ))}
                 </div>
@@ -460,7 +610,8 @@ export default function NutritionPage() {
                 </Button>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         {maintenanceCalories == null && (
@@ -560,23 +711,34 @@ export default function NutritionPage() {
             {foodItems.length > 0 && (
               <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
                 <h2 className="text-lg font-medium text-white mb-4">Food Logged Today</h2>
-                <div className="space-y-3">
-                  {foodItems.map((item) => (
-                    <div key={item.id} className="border-b border-white/5 pb-3 last:border-0 last:pb-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-white font-medium">{item.name}</p>
-                        {item.logged_at && (
-                          <p className="text-white/40 text-sm">
-                            {new Date(item.logged_at).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                        )}
+                <div className="space-y-5">
+                  {[...MEAL_TAGS.map((t) => t.value as string | null), null].map((tag) => {
+                    const group = foodItems.filter((item) => (item.meal_tag ?? null) === tag)
+                    if (group.length === 0) return null
+                    return (
+                      <div key={tag ?? 'untagged'}>
+                        <p className="text-white/40 text-xs uppercase tracking-wide mb-2">{mealTagLabel(tag)}</p>
+                        <div className="space-y-3">
+                          {group.map((item) => (
+                            <div key={item.id} className="border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                              <div className="flex items-center justify-between">
+                                <p className="text-white font-medium">{item.name}</p>
+                                {item.logged_at && (
+                                  <p className="text-white/40 text-sm">
+                                    {new Date(item.logged_at).toLocaleTimeString('en-US', {
+                                      hour: 'numeric',
+                                      minute: '2-digit',
+                                    })}
+                                  </p>
+                                )}
+                              </div>
+                              {item.ingredients && <p className="text-white/40 text-sm mt-1">{item.ingredients}</p>}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      {item.ingredients && <p className="text-white/40 text-sm mt-1">{item.ingredients}</p>}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
