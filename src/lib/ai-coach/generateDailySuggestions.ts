@@ -2,6 +2,7 @@ import { GoogleGenAI, Type } from '@google/genai'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getGymSuggestionCandidates } from './gymSuggestions'
 import { getProjectsSuggestionCandidates } from './projectsSuggestions'
+import { getNutritionSuggestionCandidates } from './nutritionSuggestions'
 import type { Suggestion, SuggestionCandidate } from './types'
 import { getLocalDateString } from '@/lib/date'
 
@@ -102,6 +103,7 @@ export async function generateDailySuggestions(
   const candidates: SuggestionCandidate[] = [
     ...(await getGymSuggestionCandidates(supabase, userId, weeklyGoal)),
     ...(await getProjectsSuggestionCandidates(supabase, userId)),
+    ...(await getNutritionSuggestionCandidates(supabase, userId)),
   ]
 
   const suggestions = candidates.length > 0 ? await pickAndRephrase(candidates) : []
