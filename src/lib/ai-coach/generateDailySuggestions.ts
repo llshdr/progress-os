@@ -6,6 +6,72 @@ import { getNutritionSuggestionCandidates } from './nutritionSuggestions'
 import type { Suggestion, SuggestionCandidate } from './types'
 import { getLocalDateString } from '@/lib/date'
 
+// Combined fingerprint of every contributing signal across gym, nutrition,
+// and projects, plus every setting these prompts/candidates depend on -
+// regenerates when any of it actually changes, not on a calendar-day timer.
+async function buildDailySuggestionsFingerprint(supabase: SupabaseClient, userId: string) {
+  const [
+    { data: latestSet },
+    { data: latestWorkout },
+    { data: latestNutritionEntry },
+    { count: nutritionEntryCount },
+    { data: latestGoal },
+    { data: latestProject },
+    { data: settings },
+  ] = await Promise.all([
+    supabase.from('sets').select('id').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase
+      .from('workouts')
+      .select('updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('nutrition_entries')
+      .select('id')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from('nutrition_entries').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    supabase
+      .from('goals')
+      .select('updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('projects')
+      .select('updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('user_settings')
+      .select('maintenance_calories, training_phase, training_intensity, weekly_workout_goal')
+      .eq('user_id', userId)
+      .maybeSingle(),
+  ])
+
+  const parts = [
+    latestSet?.id,
+    latestWorkout?.updated_at,
+    latestNutritionEntry?.id,
+    nutritionEntryCount,
+    latestGoal?.updated_at,
+    latestProject?.updated_at,
+    settings?.maintenance_calories,
+    settings?.training_phase,
+    settings?.training_intensity,
+    settings?.weekly_workout_goal,
+  ]
+
+  return { fingerprint: parts.map((p) => String(p ?? 'null')).join('|'), weeklyGoal: settings?.weekly_workout_goal ?? 5 }
+}
+
 const MODEL = 'gemini-2.5-flash'
 const MAX_SUGGESTIONS = 4
 const MIN_SUGGESTIONS = 2
@@ -77,26 +143,17 @@ export async function generateDailySuggestions(
   supabase: SupabaseClient,
   userId: string
 ): Promise<Suggestion[]> {
-  const today = getLocalDateString()
+  const { fingerprint, weeklyGoal } = await buildDailySuggestionsFingerprint(supabase, userId)
 
   const { data: cached } = await supabase
     .from('daily_suggestions')
-    .select('suggestions')
+    .select('suggestions, fingerprint')
     .eq('user_id', userId)
-    .eq('suggestion_date', today)
     .maybeSingle()
 
-  if (cached?.suggestions) {
+  if (cached && cached.fingerprint === fingerprint) {
     return cached.suggestions as Suggestion[]
   }
-
-  const { data: settings } = await supabase
-    .from('user_settings')
-    .select('weekly_workout_goal')
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  const weeklyGoal = settings?.weekly_workout_goal ?? 5
 
   // Gather candidates from every module that has one. Future modules append
   // their own candidates here without changing anything else in this pipeline.
@@ -111,10 +168,12 @@ export async function generateDailySuggestions(
   await supabase.from('daily_suggestions').upsert(
     {
       user_id: userId,
-      suggestion_date: today,
+      suggestion_date: getLocalDateString(),
+      fingerprint,
+      generated_at: new Date().toISOString(),
       suggestions,
     },
-    { onConflict: 'user_id,suggestion_date' }
+    { onConflict: 'user_id' }
   )
 
   return suggestions

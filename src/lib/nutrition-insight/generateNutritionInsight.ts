@@ -32,18 +32,6 @@ export async function generateNutritionInsight(
 
   const latestEntry = entries[entries.length - 1]
 
-  // Cache is keyed by the latest entry id + total count, so both new entries
-  // and edits/deletes anywhere in the history correctly invalidate it.
-  const { data: cached } = await supabase
-    .from('nutrition_insight_cache')
-    .select('latest_entry_id, entry_count, insight_text')
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (cached && cached.latest_entry_id === latestEntry.id && cached.entry_count === entries.length) {
-    return { status: 'ok', text: cached.insight_text }
-  }
-
   const { data: settings } = await supabase
     .from('user_settings')
     .select('maintenance_calories, training_phase, training_intensity')
@@ -53,6 +41,28 @@ export async function generateNutritionInsight(
   const maintenanceCalories: number | null = settings?.maintenance_calories ?? null
   const trainingPhase: TrainingPhase | null = (settings?.training_phase as TrainingPhase) ?? null
   const trainingIntensity: TrainingIntensity | null = (settings?.training_intensity as TrainingIntensity) ?? null
+
+  // A settings change (maintenance calories, training phase/intensity)
+  // changes the target the trend is compared against, so it has to
+  // invalidate the cache alongside the entry id/count below.
+  const settingsFingerprint = `${maintenanceCalories ?? 'null'}|${trainingPhase ?? 'null'}|${trainingIntensity ?? 'null'}`
+
+  // Cache is keyed by the latest entry id + total count, so both new entries
+  // and edits/deletes anywhere in the history correctly invalidate it.
+  const { data: cached } = await supabase
+    .from('nutrition_insight_cache')
+    .select('latest_entry_id, entry_count, settings_fingerprint, insight_text')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (
+    cached &&
+    cached.latest_entry_id === latestEntry.id &&
+    cached.entry_count === entries.length &&
+    cached.settings_fingerprint === settingsFingerprint
+  ) {
+    return { status: 'ok', text: cached.insight_text }
+  }
 
   const points: CaloriePoint[] = entries.map((e) => ({
     date: e.date,
@@ -190,6 +200,7 @@ Write 1-2 short, plain-language sentences total: first describing the calorie tr
         user_id: userId,
         latest_entry_id: latestEntry.id,
         entry_count: entries.length,
+        settings_fingerprint: settingsFingerprint,
         insight_text: text,
       },
       { onConflict: 'user_id' }
