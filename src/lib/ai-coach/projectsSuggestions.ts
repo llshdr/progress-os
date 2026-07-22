@@ -36,6 +36,8 @@ export async function getProjectsSuggestionCandidates(
       module: 'projects',
       text,
       action: { label: 'View', href: top.editHref },
+      sourceTable: top.kind === 'goal' ? 'goals' : 'projects',
+      sourceId: top.id,
     },
   ]
 }

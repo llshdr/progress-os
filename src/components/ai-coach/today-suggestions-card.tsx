@@ -3,32 +3,54 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
-import type { Suggestion } from '@/lib/ai-coach/types'
+import { createClient } from '@/lib/supabase/client'
+import { getLocalDateString } from '@/lib/date'
 
-type State = { status: 'loading' } | { status: 'error' } | { status: 'ok'; suggestions: Suggestion[] }
+type State = { status: 'loading' } | { status: 'error' } | { status: 'ok'; count: number }
 
+// Slim dashboard teaser — the full interactive list (dismiss/reorder/done)
+// lives on the dedicated /today page, not here.
 export default function TodaySuggestionsCard() {
   const [state, setState] = useState<State>({ status: 'loading' })
+  const supabase = createClient()
 
   useEffect(() => {
     let cancelled = false
 
-    fetch('/api/ai-coach/today')
-      .then(async (res) => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/ai-coach/today')
         if (!res.ok) throw new Error('request failed')
-        return res.json()
-      })
-      .then((data) => {
+        const data = await res.json()
+        if (data.status !== 'ok') throw new Error('bad response')
         if (cancelled) return
-        if (data.status === 'ok') {
-          setState({ status: 'ok', suggestions: data.suggestions ?? [] })
-        } else {
-          setState({ status: 'error' })
+
+        const suggestions: { key: string }[] = data.suggestions ?? []
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        let dismissedKeys = new Set<string>()
+        if (user) {
+          const { data: dismissed } = await supabase
+            .from('dismissed_suggestions')
+            .select('suggestion_key')
+            .eq('user_id', user.id)
+            .eq('dismissed_date', getLocalDateString())
+
+          dismissedKeys = new Set((dismissed ?? []).map((d) => d.suggestion_key))
         }
-      })
-      .catch(() => {
+
+        if (cancelled) return
+        const count = suggestions.filter((s) => !dismissedKeys.has(s.key)).length
+        setState({ status: 'ok', count })
+      } catch {
         if (!cancelled) setState({ status: 'error' })
-      })
+      }
+    }
+
+    load()
 
     return () => {
       cancelled = true
@@ -36,47 +58,27 @@ export default function TodaySuggestionsCard() {
   }, [])
 
   return (
-    <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-5 h-5 text-white/60" />
-        <h3 className="text-lg font-medium text-white">Today&apos;s Suggestions</h3>
-      </div>
-
-      {state.status === 'loading' && (
-        <div className="space-y-3 animate-pulse">
-          <div className="h-4 bg-white/5 rounded w-3/4"></div>
-          <div className="h-4 bg-white/5 rounded w-2/3"></div>
-        </div>
-      )}
-
-      {state.status === 'error' && (
-        <p className="text-white/40 text-sm">Couldn&apos;t load today&apos;s suggestions. Try again later.</p>
-      )}
-
-      {state.status === 'ok' && state.suggestions.length === 0 && (
-        <p className="text-white/40 text-sm">Nothing urgent today — you&apos;re on track.</p>
-      )}
-
-      {state.status === 'ok' && state.suggestions.length > 0 && (
-        <div className="space-y-3">
-          {state.suggestions.map((s, i) => (
-            <div
-              key={i}
-              className="flex items-start justify-between gap-4 border-b border-white/5 pb-3 last:border-0 last:pb-0"
-            >
-              <p className="text-white/80 text-sm">{s.text}</p>
-              {s.action && (
-                <Link
-                  href={s.action.href}
-                  className="shrink-0 text-sm text-white/50 hover:text-white transition-colors"
-                >
-                  {s.action.label} →
-                </Link>
+    <Link href="/today">
+      <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-white/60" />
+            <div>
+              <h3 className="text-lg font-medium text-white">Today's Plan</h3>
+              {state.status === 'loading' && <p className="text-white/40 text-sm">Loading...</p>}
+              {state.status === 'error' && <p className="text-white/40 text-sm">Couldn&apos;t load today&apos;s plan</p>}
+              {state.status === 'ok' && (
+                <p className="text-white/40 text-sm">
+                  {state.count === 0
+                    ? "Nothing urgent today — you're on track."
+                    : `${state.count} thing${state.count === 1 ? '' : 's'} need attention today`}
+                </p>
               )}
             </div>
-          ))}
+          </div>
+          <span className="text-white/40 text-sm shrink-0">View your day →</span>
         </div>
-      )}
-    </div>
+      </div>
+    </Link>
   )
 }

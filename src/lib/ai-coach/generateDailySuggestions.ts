@@ -76,12 +76,17 @@ const MODEL = 'gemini-2.5-flash'
 const MAX_SUGGESTIONS = 4
 const MIN_SUGGESTIONS = 2
 
+// A candidate with a stable identity assigned - candidate `text` can be
+// rephrased differently by the model on every regeneration, so `key` (not
+// text) is what the Today page's dismiss/reorder state keys off.
+type KeyedCandidate = SuggestionCandidate & { key: string }
+
 // Asks the model to pick and rephrase a subset of the deterministic
 // candidates. The model never invents links or numbers: it returns an index
 // into the candidate list plus rewritten text, and we resolve module/action
 // from the original candidate server-side. Falls back to the raw candidates
 // (already full, readable sentences) if anything goes wrong.
-async function pickAndRephrase(candidates: SuggestionCandidate[]): Promise<Suggestion[]> {
+async function pickAndRephrase(candidates: KeyedCandidate[]): Promise<Suggestion[]> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
     console.error('GEMINI_API_KEY is not set')
@@ -128,6 +133,9 @@ Pick the ${MIN_SUGGESTIONS}-${MAX_SUGGESTIONS} most useful and motivating ones f
         module: candidate.module,
         text: item.text,
         action: candidate.action ?? null,
+        sourceTable: candidate.sourceTable,
+        sourceId: candidate.sourceId,
+        key: candidate.key,
       })
       if (suggestions.length >= MAX_SUGGESTIONS) break
     }
@@ -157,11 +165,14 @@ export async function generateDailySuggestions(
 
   // Gather candidates from every module that has one. Future modules append
   // their own candidates here without changing anything else in this pipeline.
-  const candidates: SuggestionCandidate[] = [
+  const rawCandidates: SuggestionCandidate[] = [
     ...(await getGymSuggestionCandidates(supabase, userId, weeklyGoal)),
     ...(await getProjectsSuggestionCandidates(supabase, userId)),
     ...(await getNutritionSuggestionCandidates(supabase, userId)),
   ]
+  // Stable identity assigned once here, not by the modules themselves - a
+  // module-prefixed position within this generation's candidate list.
+  const candidates: KeyedCandidate[] = rawCandidates.map((c, i) => ({ ...c, key: `${c.module}-${i}` }))
 
   const suggestions = candidates.length > 0 ? await pickAndRephrase(candidates) : []
 
