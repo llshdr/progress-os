@@ -7,6 +7,7 @@ import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
+import CatalogSearch, { type CatalogEntry } from '@/components/gym/catalog-search'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import type { ExerciseType } from '@/lib/exercise-constants'
 
@@ -27,6 +28,18 @@ export default function NewExercisePage() {
     setSecondaryMuscleGroups((prev) =>
       prev.includes(muscle) ? prev.filter((m) => m !== muscle) : [...prev, muscle]
     )
+  }
+
+  // Explicit copy into the form's own state — not a save, not a link back
+  // to the catalog. The user still reviews/edits and saves via the same
+  // Create Exercise button as always.
+  const handleCatalogSelect = (entry: CatalogEntry) => {
+    setName(entry.name)
+    setExerciseType(entry.exercise_type as ExerciseType)
+    setPrimaryMuscleGroup(entry.muscle_group)
+    setSecondaryMuscleGroups([])
+    setEquipmentType(entry.equipment_type)
+    setCategory(entry.category)
   }
 
   const createExercise = async (userId: string) => {
@@ -103,22 +116,26 @@ export default function NewExercisePage() {
         </p>
 
         <div className="max-w-2xl space-y-6">
-          <ExerciseFormFields
-            name={name}
-            onNameChange={setName}
-            exerciseType={exerciseType}
-            onExerciseTypeChange={setExerciseType}
-            primaryMuscleGroup={primaryMuscleGroup}
-            onPrimaryMuscleGroupChange={setPrimaryMuscleGroup}
-            secondaryMuscleGroups={secondaryMuscleGroups}
-            onToggleSecondaryMuscle={toggleSecondaryMuscle}
-            equipmentType={equipmentType}
-            onEquipmentTypeChange={setEquipmentType}
-            category={category}
-            onCategoryChange={setCategory}
-            notes={notes}
-            onNotesChange={setNotes}
-          />
+          <CatalogSearch onSelect={handleCatalogSelect} />
+
+          <div className="border-t border-white/10 pt-6 space-y-6">
+            <ExerciseFormFields
+              name={name}
+              onNameChange={setName}
+              exerciseType={exerciseType}
+              onExerciseTypeChange={setExerciseType}
+              primaryMuscleGroup={primaryMuscleGroup}
+              onPrimaryMuscleGroupChange={setPrimaryMuscleGroup}
+              secondaryMuscleGroups={secondaryMuscleGroups}
+              onToggleSecondaryMuscle={toggleSecondaryMuscle}
+              equipmentType={equipmentType}
+              onEquipmentTypeChange={setEquipmentType}
+              category={category}
+              onCategoryChange={setCategory}
+              notes={notes}
+              onNotesChange={setNotes}
+            />
+          </div>
 
           <Button
             onClick={handleCreateExercise}
