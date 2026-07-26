@@ -10,6 +10,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import ExerciseAlternativesManager from '@/components/gym/exercise-alternatives-manager'
 
 type Template = {
   id: string
@@ -433,6 +434,12 @@ export default function EditTemplatePage() {
                             />
                           </div>
                         </div>
+
+                        <ExerciseAlternativesManager
+                          templateExerciseId={exercise.id}
+                          excludeExerciseLibraryId={exercise.exercise_library_id}
+                          libraryExercises={libraryExercises}
+                        />
                       </div>
                     </div>
                   </div>

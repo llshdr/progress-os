@@ -180,6 +180,7 @@ function NewWorkoutPageInner() {
           exercise_library_id: ex.exercise_library_id,
           exercise_order: ex.exercise_order,
           notes: ex.notes,
+          template_exercise_id: ex.id,
         }))
 
         const { error: insertError } = await supabase

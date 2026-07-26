@@ -12,6 +12,8 @@ interface SetLoggerProps {
   exerciseId: string
   exerciseName: string
   exerciseLibraryId?: string | null
+  templateExerciseId?: string | null
+  onSwap?: () => void
   onComplete?: () => void
 }
 
@@ -33,7 +35,19 @@ interface Variant {
   label: string
 }
 
-export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId, onComplete }: SetLoggerProps) {
+interface Alternative {
+  exerciseLibraryId: string
+  name: string
+}
+
+export default function SetLogger({
+  exerciseId,
+  exerciseName,
+  exerciseLibraryId,
+  templateExerciseId,
+  onSwap,
+  onComplete,
+}: SetLoggerProps) {
   const [weight, setWeight] = useState('')
   const [reps, setReps] = useState('')
   const [currentSetNumber, setCurrentSetNumber] = useState(1)
@@ -48,6 +62,8 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
   const [aiSuggestion, setAiSuggestion] = useState<RecommendationResult | null>(null)
   const [variants, setVariants] = useState<Variant[]>([])
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
+  const [alternatives, setAlternatives] = useState<Alternative[]>([])
+  const [swapping, setSwapping] = useState(false)
   const [restStartedAt, setRestStartedAt] = useState<number | null>(null)
   const [restTarget, setRestTarget] = useState(90)
   const [restNow, setRestNow] = useState(Date.now())
@@ -113,6 +129,58 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
     if (error) {
       console.error('Error saving variant selection:', error)
     }
+  }
+
+  // Alternatives defined on this exercise's template slot (if it came from
+  // one) - a live-workout counterpart to equipment variants, but swapping
+  // the whole exercise rather than just its equipment.
+  useEffect(() => {
+    if (!templateExerciseId) {
+      setAlternatives([])
+      return
+    }
+
+    supabase
+      .from('workout_template_exercise_alternatives')
+      .select('alternative_exercise_library_id, exercise_library(name)')
+      .eq('template_exercise_id', templateExerciseId)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error fetching exercise alternatives:', error)
+          return
+        }
+        setAlternatives(
+          (data ?? []).map((row: any) => ({
+            exerciseLibraryId: row.alternative_exercise_library_id,
+            name: row.exercise_library?.name ?? 'Unknown',
+          }))
+        )
+      })
+  }, [templateExerciseId])
+
+  // Only offered before any sets are logged for this instance - a swap is a
+  // pre-session choice, not a mid-set correction. Once sets exist they
+  // genuinely belong to the original exercise, so relabeling them under a
+  // different name would be dishonest; delete-and-re-add remains available
+  // for that case exactly as it already is today. Never touches the
+  // template itself - only this session's exercise row.
+  const handleSwapExercise = async (altId: string) => {
+    if (savedSets.length > 0) return
+
+    setSwapping(true)
+    const { error } = await supabase
+      .from('exercises')
+      .update({ exercise_library_id: altId, variant_id: null })
+      .eq('id', exerciseId)
+    setSwapping(false)
+
+    if (error) {
+      console.error('Error swapping exercise:', error)
+      alert('Failed to swap exercise')
+      return
+    }
+
+    if (onSwap) onSwap()
   }
 
   // AI Coach suggestion — fails silently, this is a lightweight in-flow hint,
@@ -339,6 +407,27 @@ export default function SetLogger({ exerciseId, exerciseName, exerciseLibraryId,
                 }`}
               >
                 {variant.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Swap Exercise — only before any sets are logged for this instance;
+          this never changes the template, just this session's exercise. */}
+      {alternatives.length > 0 && savedSets.length === 0 && (
+        <div>
+          <div className="text-white/40 text-xs mb-2">Swap exercise (optional)</div>
+          <div className="flex flex-wrap gap-2">
+            {alternatives.map((alt) => (
+              <button
+                key={alt.exerciseLibraryId}
+                type="button"
+                disabled={swapping}
+                onClick={() => handleSwapExercise(alt.exerciseLibraryId)}
+                className="px-3 py-1.5 rounded-full text-sm bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-50"
+              >
+                {alt.name}
               </button>
             ))}
           </div>

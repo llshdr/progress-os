@@ -27,6 +27,7 @@ type Exercise = {
   equipment: string | null
   notes: string | null
   exercise_order: number
+  template_exercise_id: string | null
 }
 
 type LibraryExercise = {
@@ -343,6 +344,8 @@ export default function CurrentWorkoutPage() {
               exerciseId={activeExerciseId}
               exerciseName={exerciseName}
               exerciseLibraryId={activeExercise?.exercise_library_id ?? null}
+              templateExerciseId={activeExercise?.template_exercise_id ?? null}
+              onSwap={fetchWorkoutData}
               onComplete={() => setActiveExerciseId(null)}
             />
           )}
