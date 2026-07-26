@@ -17,17 +17,21 @@ export async function getScheduleSuggestionCandidates(
 
   const { data: lastWorkout } = await supabase
     .from('workouts')
-    .select('template_id, date')
+    .select('template_id, schedule_slot_id, date')
     .eq('user_id', userId)
     .not('completed_at', 'is', null)
     .order('date', { ascending: false })
+    .order('completed_at', { ascending: false })
     .limit(1)
     .maybeSingle()
 
   // Already trained today - nothing to nudge toward.
   if (lastWorkout?.date === getLocalDateString()) return []
 
-  const next = computeNextSlot(slots, lastWorkout?.template_id ?? null)
+  const next = computeNextSlot(
+    slots,
+    lastWorkout ? { templateId: lastWorkout.template_id, scheduleSlotId: lastWorkout.schedule_slot_id } : null
+  )
   // No template (e.g. a "Rest Day" slot) means nothing to actually suggest.
   if (!next || !next.templateId) return []
 
@@ -38,7 +42,7 @@ export async function getScheduleSuggestionCandidates(
     {
       module: 'gym',
       text: `Up next in your rotation: ${slotDisplayName(next)}${muscleSuffix}.`,
-      action: { label: 'Start workout', href: '/gym/workouts/new' },
+      action: { label: 'Start workout', href: `/gym/workouts/new?slot=${next.id}` },
     },
   ]
 }

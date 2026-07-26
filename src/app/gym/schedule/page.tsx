@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { CalendarDays, ArrowLeft, ArrowUp, ArrowDown, Trash2, Plus } from 'lucide-react'
+import { CalendarDays, ArrowLeft, ArrowUp, ArrowDown, Trash2, Plus, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,7 +17,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import VolumeInsightCard from '@/components/gym/volume-insight-card'
-import { fetchScheduleSlots, computeNextSlot, computeSlotMuscles, slotDisplayName, type ScheduleSlot } from '@/lib/gym-schedule'
+import {
+  fetchScheduleSlots,
+  computeNextSlot,
+  computeSlotMuscles,
+  slotDisplayName,
+  type ScheduleSlot,
+} from '@/lib/gym-schedule'
 
 type TemplateOption = { id: string; name: string }
 
@@ -60,10 +66,11 @@ export default function SchedulePage() {
         .order('display_order', { ascending: true }),
       supabase
         .from('workouts')
-        .select('template_id')
+        .select('template_id, schedule_slot_id')
         .eq('user_id', user.id)
         .not('completed_at', 'is', null)
         .order('date', { ascending: false })
+        .order('completed_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
     ])
@@ -71,7 +78,10 @@ export default function SchedulePage() {
     setSlots(fetchedSlots)
     setTemplateOptions(templates ?? [])
 
-    const next = computeNextSlot(fetchedSlots, lastWorkout?.template_id ?? null)
+    const next = computeNextSlot(
+      fetchedSlots,
+      lastWorkout ? { templateId: lastWorkout.template_id, scheduleSlotId: lastWorkout.schedule_slot_id } : null
+    )
     setNextSlotId(next?.id ?? null)
 
     const muscleEntries = await Promise.all(
@@ -329,6 +339,15 @@ export default function SchedulePage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      {slot.templateId && (
+                        <Link
+                          href={`/gym/workouts/new?slot=${slot.id}`}
+                          className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                          title="Start this slot"
+                        >
+                          <Play className="w-4 h-4" />
+                        </Link>
+                      )}
                       <button
                         onClick={() => swapSlots(index, index - 1)}
                         disabled={index === 0}

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
@@ -23,7 +23,28 @@ type ActiveWorkout = {
 }
 
 export default function NewWorkoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppLayout>
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-white/40">Loading...</div>
+          </div>
+        </AppLayout>
+      }
+    >
+      <NewWorkoutPageInner />
+    </Suspense>
+  )
+}
+
+function NewWorkoutPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Present only when arriving from a schedule slot (the Today panel's
+  // suggestion, or "Start this slot" on /gym/schedule) - never set for an
+  // ad-hoc workout, same as today.
+  const scheduleSlotId = searchParams.get('slot')
   const [templates, setTemplates] = useState<Template[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
@@ -36,6 +57,25 @@ export default function NewWorkoutPage() {
     fetchTemplates()
     checkActiveWorkout()
   }, [])
+
+  // Prefills the template from the slot - never locks it, the user can
+  // still pick a different one (or Empty Workout) before starting.
+  useEffect(() => {
+    if (!scheduleSlotId) return
+
+    supabase
+      .from('workout_schedule_slots')
+      .select('template_id')
+      .eq('id', scheduleSlotId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error fetching schedule slot:', error)
+          return
+        }
+        if (data?.template_id) setSelectedTemplate(data.template_id)
+      })
+  }, [scheduleSlotId])
 
   const checkActiveWorkout = async () => {
     const {
@@ -108,6 +148,7 @@ export default function NewWorkoutPage() {
         workout_type: selectedTemplate ? null : 'Custom',
         notes: notes || null,
         date: getLocalDateString(),
+        schedule_slot_id: scheduleSlotId || null,
       })
       .select()
       .single()

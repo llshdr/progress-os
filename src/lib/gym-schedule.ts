@@ -36,16 +36,34 @@ export async function fetchScheduleSlots(supabase: SupabaseClient, userId: strin
   }))
 }
 
+export interface LastWorkoutRef {
+  templateId: string | null
+  scheduleSlotId: string | null
+}
+
 // Deliberately stateless: "next" is derived from real workout history each
 // time, not a stored pointer that could drift if slots are reordered/edited
 // or a workout is logged out of sequence. Falls back to the first slot when
-// there's no history, or the last workout's template isn't in the rotation
+// there's no history, or the last workout can't be placed in the rotation
 // at all (ad-hoc session, or the rotation changed since).
-export function computeNextSlot(slots: ScheduleSlot[], lastWorkoutTemplateId: string | null): ScheduleSlot | null {
+export function computeNextSlot(slots: ScheduleSlot[], lastWorkout: LastWorkoutRef | null): ScheduleSlot | null {
   if (slots.length === 0) return null
-  if (!lastWorkoutTemplateId) return slots[0]
+  if (!lastWorkout) return slots[0]
 
-  const lastIndex = slots.findIndex((s) => s.templateId === lastWorkoutTemplateId)
+  // Direct lookup when the workout was started from a known slot - exact
+  // and unambiguous even when the same template appears more than once in
+  // the rotation, unlike matching by template_id below.
+  if (lastWorkout.scheduleSlotId) {
+    const slotIndex = slots.findIndex((s) => s.id === lastWorkout.scheduleSlotId)
+    if (slotIndex !== -1) return slots[(slotIndex + 1) % slots.length]
+    // Slot may have been removed from the rotation since - fall through.
+  }
+
+  // Fallback for workouts logged before this fix existed, or started
+  // ad-hoc without going through a slot. Ambiguous if the template repeats
+  // in the rotation - always resolves to its first occurrence.
+  if (!lastWorkout.templateId) return slots[0]
+  const lastIndex = slots.findIndex((s) => s.templateId === lastWorkout.templateId)
   if (lastIndex === -1) return slots[0]
 
   return slots[(lastIndex + 1) % slots.length]
