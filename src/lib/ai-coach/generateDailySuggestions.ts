@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getGymSuggestionCandidates } from './gymSuggestions'
 import { getProjectsSuggestionCandidates } from './projectsSuggestions'
 import { getNutritionSuggestionCandidates } from './nutritionSuggestions'
+import { getScheduleSuggestionCandidates } from './scheduleSuggestions'
 import type { Suggestion, SuggestionCandidate } from './types'
 import { getLocalDateString } from '@/lib/date'
 
@@ -18,6 +19,7 @@ async function buildDailySuggestionsFingerprint(supabase: SupabaseClient, userId
     { data: latestGoal },
     { data: latestProject },
     { data: settings },
+    { data: scheduleSlots },
   ] = await Promise.all([
     supabase.from('sets').select('id').order('created_at', { ascending: false }).limit(1).maybeSingle(),
     supabase
@@ -54,7 +56,18 @@ async function buildDailySuggestionsFingerprint(supabase: SupabaseClient, userId
       .select('maintenance_calories, training_phase, training_intensity, weekly_workout_goal')
       .eq('user_id', userId)
       .maybeSingle(),
+    supabase
+      .from('workout_schedule_slots')
+      .select('id, template_id, label, slot_order')
+      .eq('user_id', userId)
+      .order('slot_order', { ascending: true }),
   ])
+
+  // Editing the rotation (add/remove/reorder) is itself a contributing
+  // change, same as logging new data - not just whether a workout happened.
+  const scheduleFingerprint = (scheduleSlots ?? [])
+    .map((s) => `${s.id}:${s.template_id ?? s.label}`)
+    .join(',')
 
   const parts = [
     latestSet?.id,
@@ -67,6 +80,7 @@ async function buildDailySuggestionsFingerprint(supabase: SupabaseClient, userId
     settings?.training_phase,
     settings?.training_intensity,
     settings?.weekly_workout_goal,
+    scheduleFingerprint,
   ]
 
   return { fingerprint: parts.map((p) => String(p ?? 'null')).join('|'), weeklyGoal: settings?.weekly_workout_goal ?? 5 }
@@ -169,6 +183,7 @@ export async function generateDailySuggestions(
     ...(await getGymSuggestionCandidates(supabase, userId, weeklyGoal)),
     ...(await getProjectsSuggestionCandidates(supabase, userId)),
     ...(await getNutritionSuggestionCandidates(supabase, userId)),
+    ...(await getScheduleSuggestionCandidates(supabase, userId)),
   ]
   // Stable identity assigned once here, not by the modules themselves - a
   // module-prefixed position within this generation's candidate list.
