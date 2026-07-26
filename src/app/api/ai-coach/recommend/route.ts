@@ -69,13 +69,15 @@ export async function POST(request: NextRequest) {
   }
 
   let primaryMuscleGroup: string | null = null
+  let muscleTargets: string[] | null = null
   if (exerciseLibraryId) {
     const { data } = await supabase
       .from('exercise_library')
-      .select('primary_muscle_group')
+      .select('primary_muscle_group, muscle_targets')
       .eq('id', exerciseLibraryId)
       .maybeSingle()
     primaryMuscleGroup = data?.primary_muscle_group ?? null
+    muscleTargets = data?.muscle_targets ?? null
   }
 
   const { data: settingsData } = await supabase
@@ -105,7 +107,13 @@ export async function POST(request: NextRequest) {
 
   let muscleGroupContext = ''
   if (primaryMuscleGroup) {
-    muscleGroupContext = `\n\nThis exercise primarily targets: ${primaryMuscleGroup}. Apply general resistance-training principles for expected progression pace for this muscle group (smaller/faster-recovering muscle groups like arms or calves can often progress faster session-to-session than large/slower-recovering groups like quads or back) — reason about this yourself rather than treating all muscle groups the same.`
+    // Granular targets (e.g. "Triceps (Long Head)"), when available, sharpen
+    // this from a broad-group guess to the actual muscle(s) worked - but
+    // this degrades gracefully to the broad group alone for the many
+    // exercises that don't have granular data yet.
+    const targetDescription =
+      muscleTargets && muscleTargets.length > 0 ? muscleTargets.join(', ') : primaryMuscleGroup
+    muscleGroupContext = `\n\nThis exercise primarily targets: ${targetDescription}. Apply general resistance-training principles for expected progression pace for this muscle group (smaller/faster-recovering muscle groups like arms or calves can often progress faster session-to-session than large/slower-recovering groups like quads or back) — reason about this yourself rather than treating all muscle groups the same.`
   }
 
   let phaseContext = ''

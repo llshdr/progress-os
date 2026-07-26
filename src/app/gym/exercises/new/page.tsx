@@ -10,6 +10,7 @@ import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import CatalogSearch, { type CatalogEntry } from '@/components/gym/catalog-search'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import type { ExerciseType } from '@/lib/exercise-constants'
+import { inferMuscleTargets } from '@/lib/muscle-targets'
 
 export default function NewExercisePage() {
   const router = useRouter()
@@ -17,6 +18,7 @@ export default function NewExercisePage() {
   const [exerciseType, setExerciseType] = useState<ExerciseType>('strength')
   const [primaryMuscleGroup, setPrimaryMuscleGroup] = useState('')
   const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>([])
+  const [muscleTargets, setMuscleTargets] = useState<string[]>([])
   const [equipmentType, setEquipmentType] = useState('')
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
@@ -30,14 +32,27 @@ export default function NewExercisePage() {
     )
   }
 
+  const toggleMuscleTarget = (target: string) => {
+    setMuscleTargets((prev) => (prev.includes(target) ? prev.filter((t) => t !== target) : [...prev, target]))
+  }
+
+  // Changing the broad group invalidates any refine picks made for the
+  // previous one - the granular options themselves are scoped per group.
+  const handlePrimaryMuscleGroupChange = (value: string) => {
+    setPrimaryMuscleGroup(value)
+    setMuscleTargets([])
+  }
+
   // Explicit copy into the form's own state — not a save, not a link back
   // to the catalog. The user still reviews/edits and saves via the same
-  // Create Exercise button as always.
+  // Create Exercise button as always. Granular muscle targets come along
+  // for free here — this is the primary way they get filled in at all.
   const handleCatalogSelect = (entry: CatalogEntry) => {
     setName(entry.name)
     setExerciseType(entry.exercise_type as ExerciseType)
     setPrimaryMuscleGroup(entry.muscle_group)
     setSecondaryMuscleGroups([])
+    setMuscleTargets(entry.muscle_targets ?? [])
     setEquipmentType(entry.equipment_type)
     setCategory(entry.category)
   }
@@ -45,12 +60,19 @@ export default function NewExercisePage() {
   const createExercise = async (userId: string) => {
     setLoading(true)
 
+    // Only guess when the user hasn't picked anything themselves (via
+    // catalog copy or the optional refine chips) - never overrides an
+    // explicit choice.
+    const finalMuscleTargets =
+      muscleTargets.length > 0 ? muscleTargets : inferMuscleTargets(name, primaryMuscleGroup)
+
     const { error } = await supabase.from('exercise_library').insert({
       user_id: userId,
       name,
       exercise_type: exerciseType,
       primary_muscle_group: primaryMuscleGroup,
       secondary_muscle_groups: secondaryMuscleGroups.length > 0 ? secondaryMuscleGroups : null,
+      muscle_targets: finalMuscleTargets,
       equipment_type: equipmentType,
       category,
       notes: notes || null,
@@ -125,9 +147,11 @@ export default function NewExercisePage() {
               exerciseType={exerciseType}
               onExerciseTypeChange={setExerciseType}
               primaryMuscleGroup={primaryMuscleGroup}
-              onPrimaryMuscleGroupChange={setPrimaryMuscleGroup}
+              onPrimaryMuscleGroupChange={handlePrimaryMuscleGroupChange}
               secondaryMuscleGroups={secondaryMuscleGroups}
               onToggleSecondaryMuscle={toggleSecondaryMuscle}
+              muscleTargets={muscleTargets}
+              onToggleMuscleTarget={toggleMuscleTarget}
               equipmentType={equipmentType}
               onEquipmentTypeChange={setEquipmentType}
               category={category}

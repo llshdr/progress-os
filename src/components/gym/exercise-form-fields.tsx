@@ -1,9 +1,12 @@
 'use client'
 
+import { useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { MUSCLE_GROUPS, EQUIPMENT_TYPES, CATEGORIES, EXERCISE_TYPES, type ExerciseType } from '@/lib/exercise-constants'
+import { MUSCLE_TARGETS_BY_GROUP } from '@/lib/muscle-targets'
 
 interface ExerciseFormFieldsProps {
   name: string
@@ -14,6 +17,8 @@ interface ExerciseFormFieldsProps {
   onPrimaryMuscleGroupChange: (value: string) => void
   secondaryMuscleGroups: string[]
   onToggleSecondaryMuscle: (muscle: string) => void
+  muscleTargets: string[]
+  onToggleMuscleTarget: (target: string) => void
   equipmentType: string
   onEquipmentTypeChange: (value: string) => void
   category: string
@@ -33,6 +38,8 @@ export default function ExerciseFormFields({
   onPrimaryMuscleGroupChange,
   secondaryMuscleGroups,
   onToggleSecondaryMuscle,
+  muscleTargets,
+  onToggleMuscleTarget,
   equipmentType,
   onEquipmentTypeChange,
   category,
@@ -40,6 +47,9 @@ export default function ExerciseFormFields({
   notes,
   onNotesChange,
 }: ExerciseFormFieldsProps) {
+  const [showRefine, setShowRefine] = useState(false)
+  const refineOptions = MUSCLE_TARGETS_BY_GROUP[primaryMuscleGroup] ?? []
+
   return (
     <>
       <div className="space-y-2">
@@ -120,6 +130,43 @@ export default function ExerciseFormFields({
           ))}
         </div>
       </div>
+
+      {refineOptions.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowRefine(!showRefine)}
+            className="flex items-center gap-1.5 text-white/50 hover:text-white/70 transition-colors text-sm"
+          >
+            {showRefine ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            Refine target (optional)
+          </button>
+          {showRefine && (
+            <div className="mt-3">
+              <p className="text-white/40 text-xs mb-3">
+                Skip this if you don't know or don't care — the broad muscle group above is all that's
+                required.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {refineOptions.map((target) => (
+                  <button
+                    key={target}
+                    type="button"
+                    onClick={() => onToggleMuscleTarget(target)}
+                    className={`p-2.5 rounded-lg border transition-all duration-200 text-xs ${
+                      muscleTargets.includes(target)
+                        ? 'bg-white/10 text-white border-white/20'
+                        : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    {target}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <Label className="text-white/80 mb-3 block">Equipment Type *</Label>

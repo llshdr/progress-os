@@ -17,6 +17,7 @@ export default function EditExercisePage() {
   const [exerciseType, setExerciseType] = useState<ExerciseType>('strength')
   const [primaryMuscleGroup, setPrimaryMuscleGroup] = useState('')
   const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>([])
+  const [muscleTargets, setMuscleTargets] = useState<string[]>([])
   const [equipmentType, setEquipmentType] = useState('')
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
@@ -45,6 +46,7 @@ export default function EditExercisePage() {
     setExerciseType((data.exercise_type as ExerciseType) ?? 'strength')
     setPrimaryMuscleGroup(data.primary_muscle_group)
     setSecondaryMuscleGroups(data.secondary_muscle_groups || [])
+    setMuscleTargets(data.muscle_targets || [])
     setEquipmentType(data.equipment_type)
     setCategory(data.category)
     setNotes(data.notes || '')
@@ -55,6 +57,17 @@ export default function EditExercisePage() {
     setSecondaryMuscleGroups((prev) =>
       prev.includes(muscle) ? prev.filter((m) => m !== muscle) : [...prev, muscle]
     )
+  }
+
+  const toggleMuscleTarget = (target: string) => {
+    setMuscleTargets((prev) => (prev.includes(target) ? prev.filter((t) => t !== target) : [...prev, target]))
+  }
+
+  // Changing the broad group invalidates any refine picks made for the
+  // previous one - the granular options themselves are scoped per group.
+  const handlePrimaryMuscleGroupChange = (value: string) => {
+    setPrimaryMuscleGroup(value)
+    setMuscleTargets([])
   }
 
   const handleUpdateExercise = async () => {
@@ -71,6 +84,7 @@ export default function EditExercisePage() {
         exercise_type: exerciseType,
         primary_muscle_group: primaryMuscleGroup,
         secondary_muscle_groups: secondaryMuscleGroups.length > 0 ? secondaryMuscleGroups : null,
+        muscle_targets: muscleTargets.length > 0 ? muscleTargets : null,
         equipment_type: equipmentType,
         category,
         notes: notes || null,
@@ -116,9 +130,11 @@ export default function EditExercisePage() {
             exerciseType={exerciseType}
             onExerciseTypeChange={setExerciseType}
             primaryMuscleGroup={primaryMuscleGroup}
-            onPrimaryMuscleGroupChange={setPrimaryMuscleGroup}
+            onPrimaryMuscleGroupChange={handlePrimaryMuscleGroupChange}
             secondaryMuscleGroups={secondaryMuscleGroups}
             onToggleSecondaryMuscle={toggleSecondaryMuscle}
+            muscleTargets={muscleTargets}
+            onToggleMuscleTarget={toggleMuscleTarget}
             equipmentType={equipmentType}
             onEquipmentTypeChange={setEquipmentType}
             category={category}
