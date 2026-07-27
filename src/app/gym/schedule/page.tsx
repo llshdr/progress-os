@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import VolumeInsightCard from '@/components/gym/volume-insight-card'
 import ScheduleWizard from '@/components/gym/schedule-wizard'
 import ScheduledVolumeCard from '@/components/gym/scheduled-volume-card'
@@ -43,6 +44,7 @@ export default function SchedulePage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [customLabel, setCustomLabel] = useState('')
   const [saving, setSaving] = useState(false)
+  const [slotToRemove, setSlotToRemove] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -139,8 +141,11 @@ export default function SchedulePage() {
     fetchAll()
   }
 
-  const handleRemoveSlot = async (id: string) => {
-    const { error } = await supabase.from('workout_schedule_slots').delete().eq('id', id)
+  const handleRemoveSlot = async () => {
+    if (!slotToRemove) return
+
+    const { error } = await supabase.from('workout_schedule_slots').delete().eq('id', slotToRemove)
+    setSlotToRemove(null)
     if (error) {
       console.error('Error removing schedule slot:', error)
       return
@@ -380,7 +385,7 @@ export default function SchedulePage() {
                         <ArrowDown className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleRemoveSlot(slot.id)}
+                        onClick={() => setSlotToRemove(slot.id)}
                         className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
                         title="Remove"
                       >
@@ -397,6 +402,17 @@ export default function SchedulePage() {
         <VolumeInsightCard refreshKey={volumeRefreshKey} />
         {userId && <ScheduledVolumeCard userId={userId} />}
       </div>
+
+      <ConfirmationModal
+        open={slotToRemove !== null}
+        onOpenChange={(open) => !open && setSlotToRemove(null)}
+        title="Remove Slot"
+        description="Are you sure you want to remove this slot from the rotation?"
+        confirmText="Remove"
+        cancelText="Cancel"
+        onConfirm={handleRemoveSlot}
+        destructive
+      />
     </AppLayout>
   )
 }

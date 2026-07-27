@@ -574,7 +574,7 @@ export default function ExerciseDetailPage() {
                 {cardioEntries.map((entry, index) => (
                   <div
                     key={index}
-                    className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 flex items-center justify-between"
+                    className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 flex items-center justify-between flex-wrap gap-2"
                   >
                     <div className="flex items-center gap-3">
                       <Calendar className="w-4 h-4 text-white/40" />

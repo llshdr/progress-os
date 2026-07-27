@@ -612,7 +612,7 @@ export default function RecordsPage() {
                     const secondaryIsManual = !computedIsHeadline ? false : Boolean(record.manual)
                     const content = (
                       <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="text-lg font-medium text-white">{record.name}</h3>
@@ -688,7 +688,7 @@ export default function RecordsPage() {
 
                     const content = (
                       <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="text-lg font-medium text-white">{record.name}</h3>

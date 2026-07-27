@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { X } from 'lucide-react'
 
 interface Variant {
@@ -20,6 +21,7 @@ export default function ExerciseVariantsManager({ exerciseLibraryId }: { exercis
   const [newLabel, setNewLabel] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [variantToRemove, setVariantToRemove] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -59,8 +61,11 @@ export default function ExerciseVariantsManager({ exerciseLibraryId }: { exercis
     }
   }
 
-  const handleRemoveVariant = async (variantId: string) => {
-    const { error } = await supabase.from('exercise_variants').delete().eq('id', variantId)
+  const handleRemoveVariant = async () => {
+    if (!variantToRemove) return
+
+    const { error } = await supabase.from('exercise_variants').delete().eq('id', variantToRemove)
+    setVariantToRemove(null)
 
     if (error) {
       console.error('Error removing variant:', error)
@@ -91,7 +96,7 @@ export default function ExerciseVariantsManager({ exerciseLibraryId }: { exercis
               {variant.label}
               <button
                 type="button"
-                onClick={() => handleRemoveVariant(variant.id)}
+                onClick={() => setVariantToRemove(variant.id)}
                 className="text-white/40 hover:text-white/70 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
@@ -125,6 +130,17 @@ export default function ExerciseVariantsManager({ exerciseLibraryId }: { exercis
           Add
         </Button>
       </div>
+
+      <ConfirmationModal
+        open={variantToRemove !== null}
+        onOpenChange={(open) => !open && setVariantToRemove(null)}
+        title="Remove Variant"
+        description="Are you sure you want to remove this variant? Sets already logged under it keep their existing label."
+        confirmText="Remove"
+        cancelText="Cancel"
+        onConfirm={handleRemoveVariant}
+        destructive
+      />
     </div>
   )
 }

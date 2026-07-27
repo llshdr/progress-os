@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Label } from '@/components/ui/label'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { X } from 'lucide-react'
 
 interface LibraryExerciseOption {
@@ -36,6 +37,7 @@ export default function ExerciseAlternativesManager({
   const [selectedToAdd, setSelectedToAdd] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [altToRemove, setAltToRemove] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -81,8 +83,11 @@ export default function ExerciseAlternativesManager({
     }
   }
 
-  const handleRemove = async (id: string) => {
-    const { error } = await supabase.from('workout_template_exercise_alternatives').delete().eq('id', id)
+  const handleRemove = async () => {
+    if (!altToRemove) return
+
+    const { error } = await supabase.from('workout_template_exercise_alternatives').delete().eq('id', altToRemove)
+    setAltToRemove(null)
 
     if (error) {
       console.error('Error removing alternative:', error)
@@ -110,7 +115,7 @@ export default function ExerciseAlternativesManager({
               {alt.name}
               <button
                 type="button"
-                onClick={() => handleRemove(alt.id)}
+                onClick={() => setAltToRemove(alt.id)}
                 className="text-white/40 hover:text-white/70 transition-colors"
               >
                 <X className="w-3 h-3" />
@@ -146,6 +151,17 @@ export default function ExerciseAlternativesManager({
           </button>
         </div>
       )}
+
+      <ConfirmationModal
+        open={altToRemove !== null}
+        onOpenChange={(open) => !open && setAltToRemove(null)}
+        title="Remove Alternative"
+        description="Are you sure you want to remove this alternative?"
+        confirmText="Remove"
+        cancelText="Cancel"
+        onConfirm={handleRemove}
+        destructive
+      />
     </div>
   )
 }
