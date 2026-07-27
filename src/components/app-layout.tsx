@@ -10,7 +10,6 @@ import {
   Sparkles,
   BarChart3,
   Settings,
-  User,
 } from 'lucide-react'
 
 const navItems = [
@@ -20,7 +19,6 @@ const navItems = [
   { name: 'Projects', href: '/projects', icon: FolderKanban },
   { name: 'AI Coach', href: '/ai-coach', icon: Sparkles },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'Profile', href: '/profile', icon: User },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 

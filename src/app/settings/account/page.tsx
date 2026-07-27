@@ -141,6 +141,15 @@ export default function AccountSettingsPage() {
                   <Label className="text-white/80">Email</Label>
                   <p className="text-white/50 text-sm">{email}</p>
                 </div>
+                <div className="border-t border-white/10 pt-4">
+                  <Link
+                    href="/profile"
+                    className="flex items-center justify-between text-sm text-white/60 hover:text-white transition-colors"
+                  >
+                    <span>View your rank &amp; public profile</span>
+                    <span className="text-white/30">→</span>
+                  </Link>
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
