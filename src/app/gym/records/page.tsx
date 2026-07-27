@@ -350,7 +350,7 @@ export default function RecordsPage() {
           Back to Gym
         </Link>
 
-        <div className="flex items-center justify-between gap-4 mb-8 mt-6">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-8 mt-6">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
               <Award className="w-8 h-8 text-white/80" />

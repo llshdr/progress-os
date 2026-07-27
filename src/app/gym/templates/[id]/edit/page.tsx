@@ -256,7 +256,7 @@ export default function EditTemplatePage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <Link href="/gym/templates" className="text-white/40 hover:text-white/60 transition-colors">
             ← Back
           </Link>

@@ -404,7 +404,7 @@ export default function NutritionPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
               <Apple className="w-8 h-8 text-white/80" />

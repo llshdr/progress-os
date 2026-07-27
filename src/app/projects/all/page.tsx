@@ -72,7 +72,7 @@ export default function ProjectsListPage() {
           ← Back
         </Link>
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Projects</h1>
             <p className="text-white/50 text-sm">Concrete efforts, each with one next step</p>

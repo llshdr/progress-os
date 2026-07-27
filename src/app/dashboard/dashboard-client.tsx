@@ -29,6 +29,7 @@ interface WeightEntry {
 }
 
 interface PersonalRecord {
+  exerciseLibraryId: string
   exercise_name: string
   weight: number
   reps: number
@@ -155,46 +156,58 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         }
       }
 
-      // Fetch personal records (best sets from completed workouts)
-      const { data: prsData } = await supabase
-        .from('sets')
-        .select(`
-          weight,
-          reps,
-          exercises!inner(
-            exercise_name,
-            workout_id,
-            workouts!inner(
-              date,
-              completed_at
-            )
-          )
-        `)
-        .not('exercises.workouts.completed_at', 'is', null)
-        .eq('exercises.workouts.user_id', user.id)
-        .order('weight', { ascending: false })
-        .limit(10)
+      // Fetch personal records (best sets from completed workouts), grouped
+      // per exercise via exercise_library_id. The previous version grouped
+      // by the legacy exercise_name field, which is null for anything
+      // logged the normal way (via the exercise library) - every set
+      // collapsed into one bucket keyed by "undefined", so only the single
+      // heaviest set app-wide ever surfaced, with no real exercise name.
+      const { data: library } = await supabase
+        .from('exercise_library')
+        .select('id, name')
+        .eq('user_id', user.id)
+
+      const libraryNameById = new Map((library ?? []).map((l) => [l.id, l.name]))
+
+      const { data: instances } = await supabase
+        .from('exercises')
+        .select('id, exercise_library_id, workout:workouts!inner(date, completed_at)')
+        .not('exercise_library_id', 'is', null)
+
+      const instanceInfo = new Map<string, { libraryId: string; date: string }>()
+      for (const row of (instances ?? []) as any[]) {
+        if (!row.workout?.completed_at) continue
+        instanceInfo.set(row.id, { libraryId: row.exercise_library_id, date: row.workout.date })
+      }
+
+      const { data: prsData } = await supabase.from('sets').select('exercise_id, weight, reps').eq('completed', true)
 
       if (prsData) {
-        // Group by exercise and get the best set for each
-        const prMap = new Map<string, PersonalRecord>()
-        prsData.forEach((set: any) => {
-          const exerciseName = set.exercises.exercise_name
-          const currentBest = prMap.get(exerciseName)
+        // Best set per exercise, tracking which instance/date produced it.
+        const bestByLibraryId = new Map<string, PersonalRecord>()
 
-          if (!currentBest || set.weight > currentBest.weight || 
-              (set.weight === currentBest.weight && set.reps > currentBest.reps)) {
-            prMap.set(exerciseName, {
-              exercise_name: exerciseName,
+        for (const set of prsData as any[]) {
+          const info = instanceInfo.get(set.exercise_id)
+          if (!info) continue
+
+          const name = libraryNameById.get(info.libraryId)
+          if (!name) continue
+
+          const existing = bestByLibraryId.get(info.libraryId)
+          if (!existing || set.weight > existing.weight || (set.weight === existing.weight && set.reps > existing.reps)) {
+            bestByLibraryId.set(info.libraryId, {
+              exerciseLibraryId: info.libraryId,
+              exercise_name: name,
               weight: set.weight,
               reps: set.reps,
-              date: set.exercises.workouts.date,
+              date: info.date,
             })
           }
-        })
+        }
 
-        // Get the 3 most recent PRs
-        const sortedPRs = Array.from(prMap.values())
+        // Most recently-achieved PRs first, across all exercises - not just
+        // the single biggest number app-wide.
+        const sortedPRs = Array.from(bestByLibraryId.values())
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 3)
 
@@ -413,13 +426,20 @@ export default function DashboardClient({ user }: DashboardClientProps) {
             </div>
             {personalRecords.length > 0 ? (
               <div className="space-y-3">
-                {personalRecords.map((pr, index) => (
-                  <div key={index} className="border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                {personalRecords.map((pr) => (
+                  <Link
+                    key={pr.exerciseLibraryId}
+                    href={`/gym/exercises/${pr.exerciseLibraryId}`}
+                    className="block border-b border-white/5 pb-2 last:border-0 last:pb-0 hover:opacity-80 transition-opacity"
+                  >
                     <p className="text-white font-medium">{pr.exercise_name}</p>
                     <p className="text-white/60 text-sm">{pr.weight} × {pr.reps}</p>
                     <p className="text-white/40 text-xs">{formatDate(pr.date)}</p>
-                  </div>
+                  </Link>
                 ))}
+                <Link href="/gym/records" className="text-sm text-white/50 hover:text-white transition-colors block pt-1">
+                  View all →
+                </Link>
               </div>
             ) : (
               <p className="text-white/40 text-sm">No PRs yet</p>

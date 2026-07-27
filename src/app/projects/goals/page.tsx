@@ -65,7 +65,7 @@ export default function GoalsListPage() {
           ← Back
         </Link>
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Goals</h1>
             <p className="text-white/50 text-sm">Longer-term outcomes, each with one next concrete step</p>
