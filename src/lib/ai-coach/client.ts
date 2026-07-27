@@ -3,10 +3,6 @@ export interface RecommendationResult {
   weight?: number
   reps?: number
   reasoning?: string
-  // Roughly-70%-effort fallback for if the primary (ambitious) target above
-  // turns out to be too hard.
-  fallbackWeight?: number
-  fallbackReps?: number
 }
 
 interface RecommendationParams {

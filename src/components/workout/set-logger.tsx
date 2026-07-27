@@ -368,12 +368,6 @@ export default function SetLogger({
         {aiSuggestion?.status === 'ok' && (
           <div className="text-white/50 text-sm mt-1">
             Suggested: {aiSuggestion.weight} kg × {aiSuggestion.reps}
-            {aiSuggestion.fallbackWeight != null && aiSuggestion.fallbackReps != null && (
-              <span className="text-white/40">
-                {' '}
-                (too hard? {aiSuggestion.fallbackWeight} kg × {aiSuggestion.fallbackReps})
-              </span>
-            )}
           </div>
         )}
       </div>

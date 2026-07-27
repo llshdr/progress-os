@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
   const { data: cachedRow } = await supabase
     .from('ai_coach_recommendations')
-    .select('weight, reps, reasoning, fallback_weight, fallback_reps, latest_set_id')
+    .select('weight, reps, reasoning, latest_set_id')
     .eq('user_id', user.id)
     .eq('cache_key', cacheKey)
     .maybeSingle()
@@ -57,8 +57,6 @@ export async function POST(request: NextRequest) {
       weight: cachedRow.weight,
       reps: cachedRow.reps,
       reasoning: cachedRow.reasoning,
-      fallbackWeight: cachedRow.fallback_weight,
-      fallbackReps: cachedRow.fallback_reps,
     })
   }
 
@@ -127,7 +125,7 @@ Below is their recent set history for one exercise, most recent session first (w
 
 ${historyText}${variantContext}${muscleGroupContext}${phaseContext}
 
-Recommend the weight and reps for their NEXT set on this exercise as an ambitious primary target to attempt. Also provide a fallback weight and reps at roughly 70% effort in case the primary target turns out to be too hard. Keep the reasoning to one short sentence covering your main rationale.`
+Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale.`
 
   try {
     const ai = new GoogleGenAI({ apiKey })
@@ -141,24 +139,16 @@ Recommend the weight and reps for their NEXT set on this exercise as an ambitiou
           properties: {
             weight: { type: Type.NUMBER },
             reps: { type: Type.INTEGER },
-            fallbackWeight: { type: Type.NUMBER },
-            fallbackReps: { type: Type.INTEGER },
             reasoning: { type: Type.STRING },
           },
-          required: ['weight', 'reps', 'fallbackWeight', 'fallbackReps', 'reasoning'],
+          required: ['weight', 'reps', 'reasoning'],
         },
       },
     })
 
     const parsed = JSON.parse(response.text ?? '{}')
 
-    if (
-      typeof parsed.weight !== 'number' ||
-      typeof parsed.reps !== 'number' ||
-      typeof parsed.fallbackWeight !== 'number' ||
-      typeof parsed.fallbackReps !== 'number' ||
-      typeof parsed.reasoning !== 'string'
-    ) {
+    if (typeof parsed.weight !== 'number' || typeof parsed.reps !== 'number' || typeof parsed.reasoning !== 'string') {
       throw new Error('Malformed model response')
     }
 
@@ -172,8 +162,6 @@ Recommend the weight and reps for their NEXT set on this exercise as an ambitiou
         weight: parsed.weight,
         reps: parsed.reps,
         reasoning: parsed.reasoning,
-        fallback_weight: parsed.fallbackWeight,
-        fallback_reps: parsed.fallbackReps,
         latest_set_id: latestSetId,
         generated_at: new Date().toISOString(),
       },
@@ -189,8 +177,6 @@ Recommend the weight and reps for their NEXT set on this exercise as an ambitiou
       weight: parsed.weight,
       reps: parsed.reps,
       reasoning: parsed.reasoning,
-      fallbackWeight: parsed.fallbackWeight,
-      fallbackReps: parsed.fallbackReps,
     })
   } catch (err) {
     console.error('AI Coach recommendation failed:', err)
