@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Calendar, Clock } from 'lucide-react'
 import Link from 'next/link'
-import TodaySuggestionsCard from '@/components/ai-coach/today-suggestions-card'
+import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 import { getLocalWeekStartString } from '@/lib/date'
 
 interface DashboardClientProps {
@@ -342,7 +342,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         {/* Today's Suggestions */}
         {showTodaySuggestions && (
           <div className="mb-6">
-            <TodaySuggestionsCard />
+            <TodaySuggestionsSection />
           </div>
         )}
 
