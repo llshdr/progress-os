@@ -11,33 +11,51 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 export default function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     setLoading(true)
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data: codeValid, error: codeError } = await supabase.rpc(
+          'check_invite_code',
+          { input: inviteCode }
+        )
+        if (codeError) throw codeError
+        if (!codeValid) {
+          setError('Invalid invite code')
+          return
+        }
+
+        const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: { data: { invite_code: inviteCode } },
         })
-        if (error) throw error
+        if (signUpError) {
+          setError('Signup failed — check your invite code')
+          return
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
-        if (error) throw error
+        if (signInError) throw signInError
       }
       router.push('/')
       router.refresh()
     } catch (error) {
       console.error('Auth error:', error)
+      setError('Something went wrong — please try again')
     } finally {
       setLoading(false)
     }
@@ -86,6 +104,25 @@ export default function AuthPage() {
               className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
             />
           </div>
+          {isSignUp && (
+            <div className="space-y-2">
+              <Label htmlFor="inviteCode" className="text-white/80">
+                Invite code
+              </Label>
+              <Input
+                id="inviteCode"
+                type="text"
+                placeholder="Enter your invite code"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                required
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              />
+            </div>
+          )}
+          {error && (
+            <p className="text-sm text-red-400">{error}</p>
+          )}
           <Button
             type="submit"
             className="w-full bg-white text-black hover:bg-white/90"
@@ -97,7 +134,10 @@ export default function AuthPage() {
         <div className="mt-6 text-center">
           <button
             type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              setIsSignUp(!isSignUp)
+              setError(null)
+            }}
             className="text-sm text-white/40 hover:text-white/60 transition-colors"
           >
             {isSignUp

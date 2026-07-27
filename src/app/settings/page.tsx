@@ -1,6 +1,7 @@
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Settings, User, Dumbbell, Apple, Bell, Info } from 'lucide-react'
+import { Settings, User, Dumbbell, Apple, Bell, Info, KeyRound } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 
 const SECTIONS = [
   {
@@ -35,7 +36,34 @@ const SECTIONS = [
   },
 ]
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let isOwner = false
+  if (user) {
+    const { data: roleRow } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    isOwner = roleRow?.role === 'owner'
+  }
+
+  const sections = isOwner
+    ? [
+        ...SECTIONS,
+        {
+          title: 'Invite Code',
+          description: 'View and rotate the signup invite code',
+          href: '/owner/invite-code',
+          icon: KeyRound,
+        },
+      ]
+    : SECTIONS
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -50,7 +78,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="grid gap-3 max-w-2xl">
-          {SECTIONS.map((section) => {
+          {sections.map((section) => {
             const Icon = section.icon
             return (
               <Link key={section.href} href={section.href} className="block">
