@@ -17,6 +17,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import VolumeInsightCard from '@/components/gym/volume-insight-card'
+import ScheduleWizard from '@/components/gym/schedule-wizard'
+import ScheduledVolumeCard from '@/components/gym/scheduled-volume-card'
 import {
   fetchScheduleSlots,
   computeNextSlot,
@@ -28,6 +30,7 @@ import {
 type TemplateOption = { id: string; name: string }
 
 export default function SchedulePage() {
+  const [userId, setUserId] = useState<string | null>(null)
   const [slots, setSlots] = useState<ScheduleSlot[]>([])
   const [slotMuscles, setSlotMuscles] = useState<Record<string, string[]>>({})
   const [nextSlotId, setNextSlotId] = useState<string | null>(null)
@@ -55,6 +58,8 @@ export default function SchedulePage() {
       setLoading(false)
       return
     }
+
+    setUserId(user.id)
 
     const [fetchedSlots, { data: templates }, { data: lastWorkout }] = await Promise.all([
       fetchScheduleSlots(supabase, user.id),
@@ -200,20 +205,29 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          <Dialog
-            open={showAddModal}
-            onOpenChange={(open) => {
-              setShowAddModal(open)
-              if (!open) resetAddForm()
-            }}
-          >
-            <DialogTrigger>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors">
-                <Plus className="w-4 h-4" />
-                <span className="text-sm font-medium">Add Slot</span>
-              </button>
-            </DialogTrigger>
-            <DialogContent className="bg-black border-white/10 text-white">
+          <div className="flex items-center gap-3">
+            <ScheduleWizard
+              templateOptions={templateOptions}
+              existingSlotCount={slots.length}
+              onComplete={() => {
+                setVolumeRefreshKey((k) => k + 1)
+                fetchAll()
+              }}
+            />
+            <Dialog
+              open={showAddModal}
+              onOpenChange={(open) => {
+                setShowAddModal(open)
+                if (!open) resetAddForm()
+              }}
+            >
+              <DialogTrigger>
+                <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors">
+                  <Plus className="w-4 h-4" />
+                  <span className="text-sm font-medium">Add Slot</span>
+                </button>
+              </DialogTrigger>
+              <DialogContent className="bg-black border-white/10 text-white">
               <DialogHeader>
                 <DialogTitle>Add Schedule Slot</DialogTitle>
                 <DialogDescription className="text-white/40">
@@ -296,6 +310,7 @@ export default function SchedulePage() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <div className="mb-10">
@@ -380,6 +395,7 @@ export default function SchedulePage() {
         </div>
 
         <VolumeInsightCard refreshKey={volumeRefreshKey} />
+        {userId && <ScheduledVolumeCard userId={userId} />}
       </div>
     </AppLayout>
   )

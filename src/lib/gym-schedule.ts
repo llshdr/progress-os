@@ -69,6 +69,33 @@ export function computeNextSlot(slots: ScheduleSlot[], lastWorkout: LastWorkoutR
   return slots[(lastIndex + 1) % slots.length]
 }
 
+export interface WizardRotationRow {
+  user_id: string
+  template_id: string | null
+  label: string | null
+  slot_order: number
+}
+
+// The quick-setup wizard's output: the chosen templates first (slot_order
+// 0..N-1), then Rest Day slots filling out the rest of a 7-slot cycle.
+// Training slots first is the simplest predictable placement - the user
+// can still reorder afterward with the existing up/down controls, so there
+// is no need to auto-interleave rest days between them.
+export function buildWizardRotationRows(userId: string, templateIds: string[]): WizardRotationRow[] {
+  const rows: WizardRotationRow[] = templateIds.map((id, i) => ({
+    user_id: userId,
+    template_id: id,
+    label: null,
+    slot_order: i,
+  }))
+
+  for (let i = templateIds.length; i < 7; i++) {
+    rows.push({ user_id: userId, template_id: null, label: 'Rest Day', slot_order: i })
+  }
+
+  return rows
+}
+
 // Broad muscle groups covered by a template's exercises, deduped - for the
 // slot summary badge (e.g. "Chest, Shoulders, Arms"). Reuses exactly the
 // data already on exercise_library; no new tagging.
