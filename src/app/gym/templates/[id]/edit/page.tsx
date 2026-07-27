@@ -41,6 +41,20 @@ type LibraryExercise = {
   equipment_type: string
 }
 
+// Real defaults, not just placeholder hints - a template exercise saved
+// with these left blank should never silently contribute 0 to plan volume
+// analysis (see computeScheduledMuscleVolume(), which still treats null as
+// 0/skip for older data saved before this default existed).
+const DEFAULT_TARGET_SETS = 3
+const DEFAULT_TARGET_REP_RANGE_MIN = 8
+const DEFAULT_TARGET_REP_RANGE_MAX = 12
+
+const FIELD_DEFAULTS: Record<string, number> = {
+  target_sets: DEFAULT_TARGET_SETS,
+  target_rep_range_min: DEFAULT_TARGET_REP_RANGE_MIN,
+  target_rep_range_max: DEFAULT_TARGET_REP_RANGE_MAX,
+}
+
 export default function EditTemplatePage() {
   const params = useParams()
   const router = useRouter()
@@ -150,6 +164,9 @@ export default function EditTemplatePage() {
       template_id: params.id,
       exercise_library_id: exerciseLibraryId,
       exercise_order: templateExercises.length + 1,
+      target_sets: DEFAULT_TARGET_SETS,
+      target_rep_range_min: DEFAULT_TARGET_REP_RANGE_MIN,
+      target_rep_range_max: DEFAULT_TARGET_REP_RANGE_MAX,
     })
 
     if (error) {
@@ -182,10 +199,16 @@ export default function EditTemplatePage() {
   }
 
   const handleUpdateExercise = (exerciseId: string, field: string, value: any) => {
+    // Clearing target_sets/rep-range back to blank should land on the real
+    // default, not null - leaving it null is how these silently contributed
+    // 0 to plan volume analysis. Other fields (e.g. notes) keep null as a
+    // legitimate empty value.
+    const resolvedValue = value === null && field in FIELD_DEFAULTS ? FIELD_DEFAULTS[field] : value
+
     // Update local state immediately so typing stays responsive, and debounce
     // the actual write so a keystroke doesn't fire a DB round trip + refetch.
     setTemplateExercises((prev) =>
-      prev.map((ex) => (ex.id === exerciseId ? { ...ex, [field]: value } : ex))
+      prev.map((ex) => (ex.id === exerciseId ? { ...ex, [field]: resolvedValue } : ex))
     )
 
     const key = `${exerciseId}:${field}`
@@ -197,7 +220,7 @@ export default function EditTemplatePage() {
 
       const { error } = await supabase
         .from('workout_template_exercises')
-        .update({ [field]: value })
+        .update({ [field]: resolvedValue })
         .eq('id', exerciseId)
 
       if (error) {

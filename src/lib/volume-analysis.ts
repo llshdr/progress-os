@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { MUSCLE_TARGETS_BY_GROUP } from '@/lib/muscle-targets'
+import { getLocalWeekStart } from '@/lib/date'
 
 // Standard, widely-cited resistance-training volume range (working sets per
 // muscle per week) - same "not invented" sourcing discipline already used
@@ -20,15 +21,16 @@ export function classifyVolume(sets: number): VolumeStatus {
   return 'within'
 }
 
-// Completed sets over a rolling window, counted per muscle target (granular
-// when the exercise has it, falling back to the broad primary muscle group
-// otherwise - same graceful-degradation as everywhere else this data is
-// used). A compound movement hitting multiple targets counts toward each.
-// `sets` has no user_id column of its own - RLS (via exercises/workouts)
-// already scopes this to the current user, same as elsewhere in this app.
-export async function computeMuscleVolume(supabase: SupabaseClient, days = 7): Promise<MuscleVolume[]> {
-  const since = new Date()
-  since.setDate(since.getDate() - days)
+// Completed sets since the start of the current calendar week (Monday,
+// via getLocalWeekStart() - the same app-wide "this week" definition used
+// everywhere else), counted per muscle target (granular when the exercise
+// has it, falling back to the broad primary muscle group otherwise - same
+// graceful-degradation as everywhere else this data is used). A compound
+// movement hitting multiple targets counts toward each. `sets` has no
+// user_id column of its own - RLS (via exercises/workouts) already scopes
+// this to the current user, same as elsewhere in this app.
+export async function computeMuscleVolume(supabase: SupabaseClient): Promise<MuscleVolume[]> {
+  const since = getLocalWeekStart()
 
   const { data, error } = await supabase
     .from('sets')
