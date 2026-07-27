@@ -7,7 +7,7 @@ import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import GoalFormFields from '@/components/projects/goal-form-fields'
-import type { ActionItemStatus } from '@/lib/projects'
+import type { ActionItemStatus, GoalScope } from '@/lib/projects'
 
 export default function EditGoalPage() {
   const params = useParams()
@@ -17,6 +17,7 @@ export default function EditGoalPage() {
   const [targetDate, setTargetDate] = useState('')
   const [nextAction, setNextAction] = useState('')
   const [status, setStatus] = useState<ActionItemStatus>('active')
+  const [scope, setScope] = useState<GoalScope | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
@@ -39,6 +40,7 @@ export default function EditGoalPage() {
     setTargetDate(data.target_date || '')
     setNextAction(data.next_action || '')
     setStatus(data.status)
+    setScope(data.scope ?? null)
     setLoading(false)
   }
 
@@ -57,6 +59,7 @@ export default function EditGoalPage() {
         target_date: targetDate || null,
         next_action: nextAction.trim() || null,
         status,
+        scope,
       })
       .eq('id', params.id)
 
@@ -102,6 +105,8 @@ export default function EditGoalPage() {
             onNextActionChange={setNextAction}
             status={status}
             onStatusChange={setStatus}
+            scope={scope}
+            onScopeChange={setScope}
           />
 
           <Button

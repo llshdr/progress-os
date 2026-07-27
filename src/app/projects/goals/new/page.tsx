@@ -7,7 +7,7 @@ import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import GoalFormFields from '@/components/projects/goal-form-fields'
-import type { ActionItemStatus } from '@/lib/projects'
+import type { ActionItemStatus, GoalScope } from '@/lib/projects'
 
 export default function NewGoalPage() {
   const router = useRouter()
@@ -16,6 +16,7 @@ export default function NewGoalPage() {
   const [targetDate, setTargetDate] = useState('')
   const [nextAction, setNextAction] = useState('')
   const [status, setStatus] = useState<ActionItemStatus>('active')
+  const [scope, setScope] = useState<GoalScope | null>(null)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
@@ -38,6 +39,7 @@ export default function NewGoalPage() {
       target_date: targetDate || null,
       next_action: nextAction.trim() || null,
       status,
+      scope,
     })
 
     if (error) {
@@ -70,6 +72,8 @@ export default function NewGoalPage() {
             onNextActionChange={setNextAction}
             status={status}
             onStatusChange={setStatus}
+            scope={scope}
+            onScopeChange={setScope}
           />
 
           <Button

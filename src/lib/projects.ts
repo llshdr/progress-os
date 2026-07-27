@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type ActionItemStatus = 'active' | 'done' | 'archived'
 
+export type GoalScope = 'quick_win' | 'milestone' | 'long_term'
+
 export interface ActionItem {
   id: string
   kind: 'goal' | 'project'

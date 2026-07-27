@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { ActionItemStatus } from '@/lib/projects'
+import type { ActionItemStatus, GoalScope } from '@/lib/projects'
+import { SCOPE_LABELS } from '@/lib/rank'
 
 interface GoalFormFieldsProps {
   title: string
@@ -17,6 +18,8 @@ interface GoalFormFieldsProps {
   onNextActionChange: (value: string) => void
   status: ActionItemStatus
   onStatusChange: (value: ActionItemStatus) => void
+  scope: GoalScope | null
+  onScopeChange: (value: GoalScope | null) => void
 }
 
 // Shared by projects/goals/new and projects/goals/[id]/edit - same fields,
@@ -32,6 +35,8 @@ export default function GoalFormFields({
   onNextActionChange,
   status,
   onStatusChange,
+  scope,
+  onScopeChange,
 }: GoalFormFieldsProps) {
   return (
     <>
@@ -105,6 +110,27 @@ export default function GoalFormFields({
             <SelectItem value="archived">Archived</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-white/80">Scope (optional)</Label>
+        <Select
+          value={scope ?? 'none'}
+          onValueChange={(value) => onScopeChange(value === 'none' ? null : (value as GoalScope))}
+        >
+          <SelectTrigger className="bg-white/5 border-white/10 text-white">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-black border-white/10">
+            <SelectItem value="none">Not set</SelectItem>
+            <SelectItem value="quick_win">{SCOPE_LABELS.quick_win}</SelectItem>
+            <SelectItem value="milestone">{SCOPE_LABELS.milestone}</SelectItem>
+            <SelectItem value="long_term">{SCOPE_LABELS.long_term}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-white/40 text-xs">
+          How big you consider this — affects your rank ceiling, not shown to anyone else.
+        </p>
       </div>
     </>
   )
