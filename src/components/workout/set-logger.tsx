@@ -64,6 +64,9 @@ export default function SetLogger({
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
   const [alternatives, setAlternatives] = useState<Alternative[]>([])
   const [swapping, setSwapping] = useState(false)
+  // Optimistic default while the saved setting loads, corrected below once
+  // it resolves - avoids a flash for the common case (setting is true).
+  const [includeNutrition, setIncludeNutrition] = useState(true)
   const [restStartedAt, setRestStartedAt] = useState<number | null>(null)
   const [restTarget, setRestTarget] = useState(90)
   const [restNow, setRestNow] = useState(Date.now())
@@ -183,20 +186,57 @@ export default function SetLogger({
     if (onSwap) onSwap()
   }
 
+  // Saved default for the nutrition toggle - fetched once, not per exercise.
+  useEffect(() => {
+    supabase
+      .from('user_settings')
+      .select('ai_coach_include_nutrition')
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!error && data) setIncludeNutrition(data.ai_coach_include_nutrition ?? true)
+      })
+  }, [])
+
+  // Flipping it also persists as the new default for next time, same
+  // precedent as variant_id/training_phase already saving immediately.
+  const handleToggleNutrition = async () => {
+    const next = !includeNutrition
+    setIncludeNutrition(next)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase
+      .from('user_settings')
+      .update({ ai_coach_include_nutrition: next })
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error('Error saving nutrition toggle:', error)
+    }
+  }
+
   // AI Coach suggestion — fails silently, this is a lightweight in-flow hint,
   // not the primary surface for the feature (that's the exercise detail page).
   useEffect(() => {
     let cancelled = false
     setAiSuggestion(null)
 
-    getExerciseRecommendation({ exerciseLibraryId, exerciseName, variantLabel: selectedVariantLabel }).then((res) => {
+    getExerciseRecommendation({
+      exerciseLibraryId,
+      exerciseName,
+      variantLabel: selectedVariantLabel,
+      includeNutrition,
+    }).then((res) => {
       if (!cancelled) setAiSuggestion(res)
     })
 
     return () => {
       cancelled = true
     }
-  }, [exerciseId, exerciseLibraryId, exerciseName, selectedVariantLabel])
+  }, [exerciseId, exerciseLibraryId, exerciseName, selectedVariantLabel, includeNutrition])
 
   const fetchPreviousSet = async () => {
     const {
@@ -369,6 +409,15 @@ export default function SetLogger({
           <div className="text-white/50 text-sm mt-1">
             Suggested: {aiSuggestion.weight} kg × {aiSuggestion.reps}
           </div>
+        )}
+        {(aiSuggestion?.status === 'ok' || aiSuggestion?.status === 'not_enough_history') && (
+          <button
+            type="button"
+            onClick={handleToggleNutrition}
+            className="mt-1.5 px-2.5 py-1 rounded-full text-xs bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 transition-colors"
+          >
+            Nutrition {includeNutrition ? 'factored in' : 'not factored in'}
+          </button>
         )}
       </div>
 

@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI, Type } from '@google/genai'
 import { createClient } from '@/lib/supabase/server'
 import { getExerciseHistory } from '@/lib/ai-coach/getExerciseHistory'
+import { getEffectiveTarget, type TrainingPhase, type TrainingIntensity } from '@/lib/nutrition'
+import { computeMuscleVolume } from '@/lib/volume-analysis'
+import { getLocalDateString } from '@/lib/date'
 
 const MIN_SESSIONS_FOR_RECOMMENDATION = 2
 const MAX_SETS_IN_PROMPT = 20
 const MODEL = 'gemini-2.5-flash'
+// Matches the "notable" deviation threshold nutritionSuggestions.ts already
+// uses for its own over/under-target read - same discipline, not a new number.
+const NOTABLE_NUTRITION_DEVIATION_RATIO = 0.15
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -21,6 +27,9 @@ export async function POST(request: NextRequest) {
   const exerciseLibraryId: string | null = body?.exerciseLibraryId ?? null
   const exerciseName: string | null = body?.exerciseName ?? null
   const variantLabel: string | null = body?.variantLabel ?? null
+  // The client already fetched the user's saved default to seed its toggle
+  // UI, so it always sends an explicit value - this is just a safe fallback.
+  const includeNutrition: boolean = body?.includeNutrition ?? true
 
   if (!exerciseLibraryId && !exerciseName) {
     return NextResponse.json({ status: 'error', error: 'Missing exercise identifier' }, { status: 400 })
@@ -39,7 +48,7 @@ export async function POST(request: NextRequest) {
   // history is sorted most-recent-first (see getExerciseHistory), so this is
   // the single most recent completed set for this exercise(+variant lookup).
   const latestSetId = history[0]?.id ?? null
-  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}`
+  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}::nutrition=${includeNutrition}`
 
   const { data: cachedRow } = await supabase
     .from('ai_coach_recommendations')
@@ -80,11 +89,12 @@ export async function POST(request: NextRequest) {
 
   const { data: settingsData } = await supabase
     .from('user_settings')
-    .select('training_phase, training_intensity')
+    .select('training_phase, training_intensity, maintenance_calories')
     .eq('user_id', user.id)
     .maybeSingle()
   const trainingPhase: string | null = settingsData?.training_phase ?? null
   const trainingIntensity: string | null = settingsData?.training_intensity ?? null
+  const maintenanceCalories: number | null = settingsData?.maintenance_calories ?? null
 
   const hasVariantInfo = history.some((h) => h.variantLabel !== null)
 
@@ -119,13 +129,67 @@ export async function POST(request: NextRequest) {
     phaseContext = `\n\nThe lifter's current self-reported training phase is "${trainingPhase}" at "${trainingIntensity}" intensity. Factor this into how aggressive to be: a bulk supports more aggressive progression. A cut does NOT mean progression should stop — a beginner/intermediate lifter can often still gain strength/muscle even while cutting, especially at "mild" intensity, so don't default to "hold the same weight" just because they're cutting. Only pull back meaningfully for an "aggressive" cut.`
   }
 
+  // Optional (toggleable) - only speaks up when today's nutrition is
+  // actually logged and notably off target; otherwise stays silent rather
+  // than manufacturing a signal from nothing.
+  let nutritionContext = ''
+  if (includeNutrition) {
+    const { data: todayEntry } = await supabase
+      .from('nutrition_entries')
+      .select('calories, activity_adjustment_kcal')
+      .eq('user_id', user.id)
+      .eq('date', getLocalDateString())
+      .maybeSingle()
+
+    if (todayEntry) {
+      const target = getEffectiveTarget(
+        maintenanceCalories,
+        trainingPhase as TrainingPhase | null,
+        trainingIntensity as TrainingIntensity | null,
+        todayEntry.activity_adjustment_kcal ?? null
+      )
+
+      if (target != null) {
+        const deviation = (todayEntry.calories - target) / target
+        if (deviation < -NOTABLE_NUTRITION_DEVIATION_RATIO) {
+          nutritionContext = `\n\nToday's logged nutrition (${todayEntry.calories} kcal) is notably under the lifter's effective target (${Math.round(target)} kcal). Let this nudge you toward a more rep-focused, same-weight target today rather than a fresh weight jump — don't abandon progression, just favor reps over load on a lower-fuel day.`
+        } else if (deviation > NOTABLE_NUTRITION_DEVIATION_RATIO) {
+          nutritionContext = `\n\nToday's logged nutrition (${todayEntry.calories} kcal) is comfortably above the lifter's effective target (${Math.round(target)} kcal) - well-fueled today, no need for caution here.`
+        }
+      }
+    }
+  }
+
+  // Muscle-specific weekly volume (from the optional gym schedule/volume
+  // feature) - only relevant when this exercise resolves to a muscle that
+  // actually has logged volume data this week.
+  let volumeContext = ''
+  const resolvedMuscles = muscleTargets && muscleTargets.length > 0 ? muscleTargets : primaryMuscleGroup ? [primaryMuscleGroup] : []
+  if (resolvedMuscles.length > 0) {
+    const volumes = await computeMuscleVolume(supabase)
+    const relevant = volumes.filter((v) => resolvedMuscles.includes(v.muscle))
+    const overTrained = relevant.filter((v) => v.status === 'over')
+    const underTrained = relevant.filter((v) => v.status === 'under')
+
+    if (overTrained.length > 0) {
+      volumeContext = `\n\nThis muscle (${overTrained.map((v) => `${v.muscle}: ${v.sets} sets`).join(', ')}) is already above the ~10-20 sets/week volume guideline for this week. Still push for progress, but a technical/rep-quality emphasis is just as valid as another aggressive jump today.`
+    } else if (underTrained.length > 0) {
+      volumeContext = `\n\nThis muscle (${underTrained.map((v) => `${v.muscle}: ${v.sets} sets`).join(', ')}) is under the ~10-20 sets/week volume guideline for this week - no reason to hold back, plenty of room for an ambitious push.`
+    }
+  }
+
+  // Future hook: once sleep tracking exists, build a context string here the
+  // same way nutritionContext/volumeContext do above, and it'll already be
+  // spliced into the prompt below - no other restructuring needed.
+  const sleepContext = ''
+
   const prompt = `You are an experienced strength training coach helping a lifter plan their next set. Be direct and appropriately ambitious, not overly conservative — if recent sets were all completed cleanly (full reps, no signs of failure), recommend a real jump rather than a token +1 rep increase.
 
 Below is their recent set history for one exercise, most recent session first (weight in kg):
 
-${historyText}${variantContext}${muscleGroupContext}${phaseContext}
+${historyText}${variantContext}${muscleGroupContext}${phaseContext}${nutritionContext}${volumeContext}${sleepContext}
 
-Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale.`
+Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale — if multiple factors above are relevant, mention at most the one or two most decision-relevant ones rather than trying to reference everything.`
 
   try {
     const ai = new GoogleGenAI({ apiKey })

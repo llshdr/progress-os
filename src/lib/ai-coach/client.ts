@@ -12,6 +12,10 @@ interface RecommendationParams {
   // exercise has any defined. Included in the cache key below so switching
   // variants mid-session never reuses a different variant's cached answer.
   variantLabel?: string | null
+  // Whether to factor in today's logged nutrition. Also included in the
+  // cache key - flipping it is a genuinely different question, not just a
+  // different session.
+  includeNutrition?: boolean
 }
 
 // In-memory, per-browser-session cache (resets on page reload). Shared by the
@@ -24,12 +28,13 @@ export function getExerciseRecommendation(params: RecommendationParams): Promise
   const exerciseLibraryId = params.exerciseLibraryId ?? null
   const exerciseName = params.exerciseName ?? null
   const variantLabel = params.variantLabel ?? null
+  const includeNutrition = params.includeNutrition ?? true
   const baseKey = exerciseLibraryId || exerciseName
 
   if (!baseKey) {
     return Promise.resolve({ status: 'error' })
   }
-  const key = `${baseKey}::${variantLabel ?? ''}`
+  const key = `${baseKey}::${variantLabel ?? ''}::${includeNutrition}`
 
   const cached = cache.get(key)
   if (cached) return cached
@@ -37,7 +42,7 @@ export function getExerciseRecommendation(params: RecommendationParams): Promise
   const promise = fetch('/api/ai-coach/recommend', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ exerciseLibraryId, exerciseName, variantLabel }),
+    body: JSON.stringify({ exerciseLibraryId, exerciseName, variantLabel, includeNutrition }),
   })
     .then(async (res) => {
       if (!res.ok) return { status: 'error' as const }
