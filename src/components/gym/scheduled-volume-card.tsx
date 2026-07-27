@@ -81,6 +81,12 @@ export default function ScheduledVolumeCard({ userId }: { userId: string }) {
                   }}
                 />
               </div>
+              {v.imbalance && (
+                <p className="text-white/30 text-xs mt-1">
+                  Uneven: {v.imbalance.highHead} ({v.imbalance.highSets} sets) vs{' '}
+                  {v.imbalance.lowHead} ({v.imbalance.lowSets} sets)
+                </p>
+              )}
             </div>
           ))}
           <Button

@@ -9,16 +9,103 @@ export const MUSCLE_VOLUME_GUIDELINE = { minSetsPerWeek: 10, maxSetsPerWeek: 20 
 
 export type VolumeStatus = 'under' | 'within' | 'over'
 
+export interface MuscleImbalance {
+  highHead: string
+  highSets: number
+  lowHead: string
+  lowSets: number
+}
+
 export interface MuscleVolume {
   muscle: string
   sets: number
   status: VolumeStatus
+  imbalance?: MuscleImbalance
 }
 
 export function classifyVolume(sets: number): VolumeStatus {
   if (sets < MUSCLE_VOLUME_GUIDELINE.minSetsPerWeek) return 'under'
   if (sets > MUSCLE_VOLUME_GUIDELINE.maxSetsPerWeek) return 'over'
   return 'within'
+}
+
+// The 10-20 sets/week guideline is meant for the whole muscle, not one
+// head - only these four muscles actually have multiple defined heads in
+// MUSCLE_TARGETS_BY_GROUP. Everything else in that taxonomy (Quadriceps,
+// Hamstrings, each Back/Core entry, etc.) is already 1:1 with its true
+// muscle despite being nested under a broader category key there, so it's
+// deliberately NOT included here - rolling up to MUSCLE_TARGETS_BY_GROUP's
+// own top-level keys (e.g. "Legs") would incorrectly merge genuinely
+// separate muscles (Quadriceps with Hamstrings, etc.), recreating the same
+// problem this table exists to fix, one level up. Explicit table rather
+// than stripping the "(...)" suffix generically - that trick would also
+// incorrectly merge Back's/Core's distinct muscles.
+const MUSCLE_HEAD_TO_PARENT: Record<string, string> = {
+  'Chest (Upper)': 'Chest',
+  'Chest (Mid)': 'Chest',
+  'Chest (Lower)': 'Chest',
+  'Shoulders (Front Delt)': 'Shoulders',
+  'Shoulders (Side Delt)': 'Shoulders',
+  'Shoulders (Rear Delt)': 'Shoulders',
+  'Biceps (Long Head)': 'Biceps',
+  'Biceps (Short Head)': 'Biceps',
+  'Triceps (Long Head)': 'Triceps',
+  'Triceps (Lateral Head)': 'Triceps',
+  'Triceps (Medial Head)': 'Triceps',
+}
+
+function parentMuscle(target: string): string {
+  return MUSCLE_HEAD_TO_PARENT[target] ?? target
+}
+
+// Derived once from MUSCLE_HEAD_TO_PARENT so the two views of the same
+// data can't drift apart.
+const HEADS_BY_PARENT: Record<string, string[]> = {}
+for (const [head, parent] of Object.entries(MUSCLE_HEAD_TO_PARENT)) {
+  ;(HEADS_BY_PARENT[parent] ??= []).push(head)
+}
+
+const IMBALANCE_RATIO = 3
+
+// Simple, explainable rule (same plain-threshold discipline as
+// classifyVolume): only muscles with multiple known heads are eligible;
+// an untrained muscle (no sets on any head) is already flagged by its
+// "under" status, not a separate imbalance note; otherwise flag when one
+// head is completely untouched while another has sets, or the high/low
+// ratio is at least 3x.
+function detectImbalance(parent: string, rawCounts: Map<string, number>): MuscleImbalance | undefined {
+  const heads = HEADS_BY_PARENT[parent]
+  if (!heads || heads.length < 2) return undefined
+
+  const headSets = heads.map((head) => ({ head, sets: rawCounts.get(head) ?? 0 }))
+  const high = headSets.reduce((a, b) => (b.sets > a.sets ? b : a))
+  const low = headSets.reduce((a, b) => (b.sets < a.sets ? b : a))
+
+  if (high.sets === 0) return undefined
+  if (low.sets === 0 || high.sets / low.sets >= IMBALANCE_RATIO) {
+    return { highHead: high.head, highSets: high.sets, lowHead: low.head, lowSets: low.sets }
+  }
+  return undefined
+}
+
+// Shared by computeMuscleVolume and computeScheduledMuscleVolume so the
+// rollup/imbalance rules can never drift apart between them - same
+// reasoning as sharing classifyVolume/MUSCLE_VOLUME_GUIDELINE above.
+function aggregateByParentMuscle(rawCounts: Map<string, number>): MuscleVolume[] {
+  const parentSums = new Map<string, number>()
+  for (const [target, sets] of rawCounts.entries()) {
+    const parent = parentMuscle(target)
+    parentSums.set(parent, (parentSums.get(parent) ?? 0) + sets)
+  }
+
+  return Array.from(parentSums.entries())
+    .map(([muscle, sets]) => ({
+      muscle,
+      sets,
+      status: classifyVolume(sets),
+      imbalance: detectImbalance(muscle, rawCounts),
+    }))
+    .sort((a, b) => a.sets - b.sets)
 }
 
 // Completed sets since the start of the current calendar week (Monday,
@@ -61,9 +148,7 @@ export async function computeMuscleVolume(supabase: SupabaseClient): Promise<Mus
     }
   }
 
-  return Array.from(counts.entries())
-    .map(([muscle, sets]) => ({ muscle, sets, status: classifyVolume(sets) }))
-    .sort((a, b) => a.sets - b.sets)
+  return aggregateByParentMuscle(counts)
 }
 
 // Planned (not actual) weekly volume across the whole schedule rotation -
@@ -137,7 +222,5 @@ export async function computeScheduledMuscleVolume(
     }
   }
 
-  return Array.from(counts.entries())
-    .map(([muscle, sets]) => ({ muscle, sets, status: classifyVolume(sets) }))
-    .sort((a, b) => a.sets - b.sets)
+  return aggregateByParentMuscle(counts)
 }
