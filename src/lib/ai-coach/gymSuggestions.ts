@@ -1,18 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getExerciseHistory } from './getExerciseHistory'
 import type { SuggestionCandidate } from './types'
-import { getLocalDateString } from '@/lib/date'
+import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
 
 const RECENT_EXERCISE_LIMIT = 3
 const STALL_SESSION_WINDOW = 3
 const STREAK_MIN_WEEKS = 2
-
-function startOfWeek(date: Date): Date {
-  const start = new Date(date)
-  start.setDate(start.getDate() - start.getDay())
-  start.setHours(0, 0, 0, 0)
-  return start
-}
 
 async function getStreakWeeks(
   supabase: SupabaseClient,
@@ -31,12 +24,12 @@ async function getStreakWeeks(
 
   const counts = new Map<string, number>()
   for (const row of data as { date: string }[]) {
-    const key = getLocalDateString(startOfWeek(new Date(row.date)))
+    const key = getLocalDateString(getLocalWeekStart(new Date(row.date)))
     counts.set(key, (counts.get(key) ?? 0) + 1)
   }
 
   let streak = 0
-  const cursor = startOfWeek(new Date())
+  const cursor = getLocalWeekStart(new Date())
 
   while (true) {
     const key = getLocalDateString(cursor)
@@ -152,7 +145,7 @@ export async function getGymSuggestionCandidates(
     .from('workouts')
     .select('date')
     .eq('user_id', userId)
-    .gte('date', getLocalDateString(startOfWeek(new Date())))
+    .gte('date', getLocalDateString(getLocalWeekStart(new Date())))
     .not('completed_at', 'is', null)
 
   const weeklyCount = weekWorkouts?.length ?? 0

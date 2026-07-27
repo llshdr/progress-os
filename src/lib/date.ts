@@ -10,8 +10,21 @@ export function getLocalDateString(date: Date = new Date()): string {
   return `${year}-${month}-${day}`
 }
 
-export function getLocalWeekStartString(date: Date = new Date()): string {
+// The Monday that starts the ISO-style calendar week containing `date` -
+// the single shared definition of "week start" for every calendar-week
+// boundary in the app (weekly workout counts/goals, streaks). Rolling
+// windows (7-day moving averages for weight/nutrition trends, muscle-
+// volume analysis) are unrelated - they measure "the last N days," not a
+// fixed calendar-week boundary, so there's nothing to change for those.
+export function getLocalWeekStart(date: Date = new Date()): Date {
   const start = new Date(date)
-  start.setDate(start.getDate() - start.getDay())
-  return getLocalDateString(start)
+  const day = start.getDay()
+  const diff = start.getDate() - day + (day === 0 ? -6 : 1)
+  start.setDate(diff)
+  start.setHours(0, 0, 0, 0)
+  return start
+}
+
+export function getLocalWeekStartString(date: Date = new Date()): string {
+  return getLocalDateString(getLocalWeekStart(date))
 }

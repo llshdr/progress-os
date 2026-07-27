@@ -23,7 +23,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import Link from 'next/link'
-import { getLocalDateString } from '@/lib/date'
+import { getLocalWeekStartString } from '@/lib/date'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 
 type Goal = {
@@ -74,13 +74,10 @@ export default function GoalsPage() {
   }
 
   const getWeekStart = () => {
-    // Monday-start week (ISO-style), matching this feature's existing convention.
-    const now = new Date()
-    const day = now.getDay()
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-    const weekStart = new Date(now)
-    weekStart.setDate(diff)
-    return getLocalDateString(weekStart)
+    // Monday-start week (ISO-style) - now the shared app-wide convention,
+    // not just this feature's own. Was already correct here before the
+    // rest of the app followed suit.
+    return getLocalWeekStartString()
   }
 
   const handleAddGoal = async (e: React.FormEvent) => {
