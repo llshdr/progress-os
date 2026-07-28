@@ -15,22 +15,24 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { Wand2 } from 'lucide-react'
-import { buildWizardRotationRows } from '@/lib/gym-schedule'
+import { buildWizardRotationRows, buildWizardCalendarRows } from '@/lib/gym-schedule'
 
 type TemplateOption = { id: string; name: string }
 
 interface ScheduleWizardProps {
   templateOptions: TemplateOption[]
   existingSlotCount: number
+  scheduleMode: 'rotation' | 'calendar'
   onComplete: () => void
 }
 
-// Friendlier front-end for the exact same workout_schedule_slots rotation
-// the manual "Add Slot" flow writes to - not a new data model. "Days per
-// week" just picks a cycle length; slot_order still has no calendar
-// semantics, matching computeNextSlot()'s existing rotation-not-calendar
-// design.
-export default function ScheduleWizard({ templateOptions, existingSlotCount, onComplete }: ScheduleWizardProps) {
+// Friendlier front-end for the exact same workout_schedule_slots rows the
+// manual "Add Slot" flow writes to - not a new data model. In rotation
+// mode, slot_order is just a cycle position (computeNextSlot()'s existing
+// rotation-not-calendar design, unchanged). In calendar mode, the same
+// column instead means a fixed weekday index, and the wizard spreads the
+// chosen templates across the week automatically via buildWizardCalendarRows.
+export default function ScheduleWizard({ templateOptions, existingSlotCount, scheduleMode, onComplete }: ScheduleWizardProps) {
   const [open, setOpen] = useState(false)
   const [daysPerWeek, setDaysPerWeek] = useState(3)
   const [templateIds, setTemplateIds] = useState<string[]>(['', '', ''])
@@ -109,7 +111,10 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, onC
       return
     }
 
-    const rows = buildWizardRotationRows(user.id, templateIds)
+    const rows =
+      scheduleMode === 'calendar'
+        ? buildWizardCalendarRows(user.id, templateIds)
+        : buildWizardRotationRows(user.id, templateIds)
     const { error: insertError } = await supabase.from('workout_schedule_slots').insert(rows)
 
     if (insertError) {
@@ -138,8 +143,9 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, onC
           <DialogHeader>
             <DialogTitle>Quick Setup</DialogTitle>
             <DialogDescription className="text-white/40">
-              Pick how many days a week you train, then a template for each. The rest of the week fills in as
-              Rest Days automatically.
+              {scheduleMode === 'calendar'
+                ? 'Pick how many days a week you train, then a template for each. They’ll be spread across the week automatically (e.g. Monday/Wednesday/Friday) - you can reassign them to different days afterward.'
+                : 'Pick how many days a week you train, then a template for each. The rest of the week fills in as Rest Days automatically.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -189,7 +195,7 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, onC
               disabled={saving || !canCreate || templateOptions.length === 0}
               className="w-full bg-white text-black hover:bg-white/90"
             >
-              {saving ? 'Creating...' : 'Create Rotation'}
+              {saving ? 'Creating...' : scheduleMode === 'calendar' ? 'Create Schedule' : 'Create Rotation'}
             </Button>
             {templateOptions.length === 0 && (
               <p className="text-white/30 text-xs text-center">Create a workout template first.</p>
@@ -201,10 +207,10 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, onC
       <ConfirmationModal
         open={showReplaceConfirm}
         onOpenChange={setShowReplaceConfirm}
-        title="Replace your current rotation?"
+        title={scheduleMode === 'calendar' ? 'Replace your current schedule?' : 'Replace your current rotation?'}
         description={`This deletes your existing ${existingSlotCount} slot${
           existingSlotCount === 1 ? '' : 's'
-        } and replaces them with this new rotation.`}
+        } and replaces them with this new ${scheduleMode === 'calendar' ? 'schedule' : 'rotation'}.`}
         confirmText="Replace"
         cancelText="Cancel"
         onConfirm={handleCreate}

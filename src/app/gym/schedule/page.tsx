@@ -23,18 +23,25 @@ import ScheduledVolumeCard from '@/components/gym/scheduled-volume-card'
 import {
   fetchScheduleSlots,
   computeNextSlot,
+  computeSlotForWeekday,
+  getCatchUpSlot,
   computeSlotMuscles,
   slotDisplayName,
+  WEEKDAY_NAMES,
   type ScheduleSlot,
 } from '@/lib/gym-schedule'
+import { getLocalWeekdayIndex } from '@/lib/date'
 
 type TemplateOption = { id: string; name: string }
+type ScheduleMode = 'rotation' | 'calendar'
 
 export default function SchedulePage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [slots, setSlots] = useState<ScheduleSlot[]>([])
   const [slotMuscles, setSlotMuscles] = useState<Record<string, string[]>>({})
   const [nextSlotId, setNextSlotId] = useState<string | null>(null)
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('rotation')
+  const [catchUpSlot, setCatchUpSlot] = useState<ScheduleSlot | null>(null)
   const [templateOptions, setTemplateOptions] = useState<TemplateOption[]>([])
   const [loading, setLoading] = useState(true)
   const [volumeRefreshKey, setVolumeRefreshKey] = useState(0)
@@ -63,7 +70,7 @@ export default function SchedulePage() {
 
     setUserId(user.id)
 
-    const [fetchedSlots, { data: templates }, { data: lastWorkout }] = await Promise.all([
+    const [fetchedSlots, { data: templates }, { data: lastWorkout }, { data: settings }] = await Promise.all([
       fetchScheduleSlots(supabase, user.id),
       supabase
         .from('workout_templates')
@@ -80,16 +87,27 @@ export default function SchedulePage() {
         .order('completed_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase.from('user_settings').select('schedule_mode').eq('user_id', user.id).maybeSingle(),
     ])
 
     setSlots(fetchedSlots)
     setTemplateOptions(templates ?? [])
 
-    const next = computeNextSlot(
-      fetchedSlots,
-      lastWorkout ? { templateId: lastWorkout.template_id, scheduleSlotId: lastWorkout.schedule_slot_id } : null
-    )
-    setNextSlotId(next?.id ?? null)
+    const mode: ScheduleMode = settings?.schedule_mode === 'calendar' ? 'calendar' : 'rotation'
+    setScheduleMode(mode)
+
+    if (mode === 'calendar') {
+      const today = computeSlotForWeekday(fetchedSlots, getLocalWeekdayIndex())
+      setNextSlotId(today?.id ?? null)
+      setCatchUpSlot(await getCatchUpSlot(supabase, user.id, fetchedSlots))
+    } else {
+      const next = computeNextSlot(
+        fetchedSlots,
+        lastWorkout ? { templateId: lastWorkout.template_id, scheduleSlotId: lastWorkout.schedule_slot_id } : null
+      )
+      setNextSlotId(next?.id ?? null)
+      setCatchUpSlot(null)
+    }
 
     const muscleEntries = await Promise.all(
       fetchedSlots
@@ -99,6 +117,24 @@ export default function SchedulePage() {
     setSlotMuscles(Object.fromEntries(muscleEntries))
 
     setLoading(false)
+  }
+
+  const handleModeChange = async (mode: ScheduleMode) => {
+    if (mode === scheduleMode) return
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    setScheduleMode(mode)
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({ user_id: user.id, schedule_mode: mode }, { onConflict: 'user_id' })
+
+    if (error) {
+      console.error('Error saving schedule mode:', error)
+    }
+    fetchAll()
   }
 
   const resetAddForm = () => {
@@ -119,7 +155,22 @@ export default function SchedulePage() {
 
     setSaving(true)
 
-    const nextOrder = slots.length > 0 ? Math.max(...slots.map((s) => s.slotOrder)) + 1 : 0
+    // Calendar mode: slot_order is a weekday index (0-6), so "add" fills the
+    // earliest weekday with no slot yet, rather than appending past Sunday.
+    // Rotation mode: append after the current highest position, unchanged.
+    let nextOrder: number
+    if (scheduleMode === 'calendar') {
+      const used = new Set(slots.map((s) => s.slotOrder))
+      nextOrder = 6
+      for (let day = 0; day < 7; day++) {
+        if (!used.has(day)) {
+          nextOrder = day
+          break
+        }
+      }
+    } else {
+      nextOrder = slots.length > 0 ? Math.max(...slots.map((s) => s.slotOrder)) + 1 : 0
+    }
 
     const { error } = await supabase.from('workout_schedule_slots').insert({
       user_id: user.id,
@@ -205,7 +256,9 @@ export default function SchedulePage() {
             <div>
               <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">Schedule</h1>
               <p className="text-white/50 text-sm">
-                An optional rotation — repeats as you go, not locked to calendar days
+                {scheduleMode === 'calendar'
+                  ? 'Locked to the calendar — each weekday has its own workout'
+                  : 'An optional rotation — repeats as you go, not locked to calendar days'}
               </p>
             </div>
           </div>
@@ -214,6 +267,7 @@ export default function SchedulePage() {
             <ScheduleWizard
               templateOptions={templateOptions}
               existingSlotCount={slots.length}
+              scheduleMode={scheduleMode}
               onComplete={() => {
                 setVolumeRefreshKey((k) => k + 1)
                 fetchAll()
@@ -236,7 +290,9 @@ export default function SchedulePage() {
               <DialogHeader>
                 <DialogTitle>Add Schedule Slot</DialogTitle>
                 <DialogDescription className="text-white/40">
-                  Add a template to the rotation, or a custom slot like "Rest Day" with no template.
+                  {scheduleMode === 'calendar'
+                    ? 'Add a template or a custom slot like "Rest Day" - it fills the earliest weekday that has none yet.'
+                    : 'Add a template to the rotation, or a custom slot like "Rest Day" with no template.'}
                 </DialogDescription>
               </DialogHeader>
 
@@ -310,7 +366,7 @@ export default function SchedulePage() {
                   disabled={saving || !canAddSlot}
                   className="w-full bg-white text-black hover:bg-white/90"
                 >
-                  {saving ? 'Adding...' : 'Add to Rotation'}
+                  {saving ? 'Adding...' : scheduleMode === 'calendar' ? 'Add to Schedule' : 'Add to Rotation'}
                 </Button>
               </div>
             </DialogContent>
@@ -318,16 +374,60 @@ export default function SchedulePage() {
           </div>
         </div>
 
+        <div className="flex gap-2 mb-6">
+          <button
+            type="button"
+            onClick={() => handleModeChange('rotation')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              scheduleMode === 'rotation' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+            }`}
+          >
+            Rotation
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('calendar')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              scheduleMode === 'calendar' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+            }`}
+          >
+            Calendar
+          </button>
+        </div>
+
+        {scheduleMode === 'calendar' && catchUpSlot && (
+          <div className="border border-white/20 rounded-2xl bg-white/[0.04] p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+            <p className="text-white text-sm">
+              You didn&apos;t log <span className="font-medium">{slotDisplayName(catchUpSlot)}</span> on{' '}
+              {WEEKDAY_NAMES[catchUpSlot.slotOrder]}.
+            </p>
+            <Link
+              href={`/gym/workouts/new?slot=${catchUpSlot.id}`}
+              className="px-4 py-2 rounded-lg bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors shrink-0"
+            >
+              Start catch-up workout
+            </Link>
+          </div>
+        )}
+
         <div className="mb-10">
           {slots.length === 0 ? (
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-              <p className="text-white/40 mb-4">No rotation set up yet — entirely optional.</p>
+              <p className="text-white/40 mb-4">
+                {scheduleMode === 'calendar' ? 'No schedule set up yet' : 'No rotation set up yet'} — entirely optional.
+              </p>
               <p className="text-white/30 text-sm">
                 Add a slot to start one, or ignore this page completely — nothing else in the app depends on it.
               </p>
             </div>
           ) : (
             <div className="grid gap-3">
+              {scheduleMode === 'calendar' && slots.length < 7 && (
+                <p className="text-white/30 text-xs mb-1">
+                  {7 - slots.length} weekday{7 - slots.length === 1 ? '' : 's'} still have no slot assigned — use
+                  Quick Setup or Add Slot to fill them in.
+                </p>
+              )}
               {slots.map((slot, index) => (
                 <div
                   key={slot.id}
@@ -337,11 +437,16 @@ export default function SchedulePage() {
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
+                      {scheduleMode === 'calendar' && (
+                        <p className="text-white/40 text-xs uppercase tracking-wide mb-1">
+                          {WEEKDAY_NAMES[slot.slotOrder]}
+                        </p>
+                      )}
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-lg font-medium text-white">{slotDisplayName(slot)}</h3>
                         {slot.id === nextSlotId && (
                           <span className="px-2 py-0.5 rounded-full text-xs bg-white text-black font-medium">
-                            Next
+                            {scheduleMode === 'calendar' ? 'Today' : 'Next'}
                           </span>
                         )}
                       </div>
@@ -372,7 +477,7 @@ export default function SchedulePage() {
                         onClick={() => swapSlots(index, index - 1)}
                         disabled={index === 0}
                         className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors disabled:opacity-20 disabled:hover:bg-transparent"
-                        title="Move up"
+                        title={scheduleMode === 'calendar' ? 'Move to previous day' : 'Move up'}
                       >
                         <ArrowUp className="w-4 h-4" />
                       </button>
@@ -380,7 +485,7 @@ export default function SchedulePage() {
                         onClick={() => swapSlots(index, index + 1)}
                         disabled={index === slots.length - 1}
                         className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors disabled:opacity-20 disabled:hover:bg-transparent"
-                        title="Move down"
+                        title={scheduleMode === 'calendar' ? 'Move to next day' : 'Move down'}
                       >
                         <ArrowDown className="w-4 h-4" />
                       </button>

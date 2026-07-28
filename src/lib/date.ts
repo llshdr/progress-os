@@ -28,3 +28,9 @@ export function getLocalWeekStart(date: Date = new Date()): Date {
 export function getLocalWeekStartString(date: Date = new Date()): string {
   return getLocalDateString(getLocalWeekStart(date))
 }
+
+// Monday-indexed weekday (0=Monday...6=Sunday) - matches getLocalWeekStart()'s
+// own Monday-start convention, single source of truth for both.
+export function getLocalWeekdayIndex(date: Date = new Date()): number {
+  return (date.getDay() + 6) % 7
+}
