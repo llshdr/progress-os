@@ -17,7 +17,7 @@ async function buildDailySuggestionsFingerprint(supabase: SupabaseClient, userId
     { data: latestNutritionEntry },
     { count: nutritionEntryCount },
     { data: latestGoal },
-    { data: latestProject },
+    { data: latestMilestone },
     { data: settings },
     { data: scheduleSlots },
   ] = await Promise.all([
@@ -45,7 +45,7 @@ async function buildDailySuggestionsFingerprint(supabase: SupabaseClient, userId
       .limit(1)
       .maybeSingle(),
     supabase
-      .from('projects')
+      .from('milestones')
       .select('updated_at')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
@@ -75,7 +75,7 @@ async function buildDailySuggestionsFingerprint(supabase: SupabaseClient, userId
     latestNutritionEntry?.id,
     nutritionEntryCount,
     latestGoal?.updated_at,
-    latestProject?.updated_at,
+    latestMilestone?.updated_at,
     settings?.maintenance_calories,
     settings?.training_phase,
     settings?.training_intensity,

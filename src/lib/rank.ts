@@ -1,4 +1,4 @@
-import type { GoalScope } from '@/lib/projects'
+import type { GoalScope } from '@/lib/goals'
 
 // Single source of truth for tier display - deliberately plain numbering
 // (Tier I-V), not fantasy/game-style names or icons, matching the

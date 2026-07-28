@@ -1,13 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SuggestionCandidate } from './types'
-import { fetchActiveActionItems, daysBetween } from '@/lib/projects'
+import { fetchActiveActionItems, daysBetween } from '@/lib/goals'
 import { getLocalDateString } from '@/lib/date'
 
 const STALE_DAYS = 7
 
-// Deterministic, real (non-hallucinated) candidate for the projects module.
+// Deterministic, real (non-hallucinated) candidate for the goals module.
 // Surfaces at most one candidate - the single most-overdue-or-stalled active
-// goal/project (same sort as the actionmaxxing dashboard) - and only if it
+// goal/milestone (same sort as the actionmaxxing dashboard) - and only if it
 // actually has a next action set and is overdue or stalled. Nothing to
 // suggest otherwise.
 export async function getProjectsSuggestionCandidates(
@@ -26,7 +26,7 @@ export async function getProjectsSuggestionCandidates(
   const isStalled = daysSinceTouched >= STALE_DAYS
   if (!isOverdue && !isStalled) return []
 
-  const label = top.kind === 'goal' ? 'goal' : 'project'
+  const label = top.kind === 'goal' ? 'goal' : 'milestone'
   const text = isOverdue
     ? `Your ${label} "${top.title}" was due ${daysOverdue} day${daysOverdue === 1 ? '' : 's'} ago — next action: ${top.nextAction}.`
     : `Your ${label} "${top.title}" hasn't been touched in ${daysSinceTouched} days — next action: ${top.nextAction}.`
@@ -36,7 +36,7 @@ export async function getProjectsSuggestionCandidates(
       module: 'projects',
       text,
       action: { label: 'View', href: top.editHref },
-      sourceTable: top.kind === 'goal' ? 'goals' : 'projects',
+      sourceTable: top.kind === 'goal' ? 'goals' : 'milestones',
       sourceId: top.id,
     },
   ]

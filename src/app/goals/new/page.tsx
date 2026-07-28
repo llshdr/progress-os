@@ -6,13 +6,15 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import GoalFormFields from '@/components/projects/goal-form-fields'
-import type { ActionItemStatus, GoalScope } from '@/lib/projects'
+import GoalFormFields from '@/components/goals/goal-form-fields'
+import type { ActionItemStatus, GoalScope } from '@/lib/goals'
+import { getLocalDateString } from '@/lib/date'
 
 export default function NewGoalPage() {
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [startDate, setStartDate] = useState(getLocalDateString())
   const [targetDate, setTargetDate] = useState('')
   const [nextAction, setNextAction] = useState('')
   const [status, setStatus] = useState<ActionItemStatus>('active')
@@ -36,6 +38,7 @@ export default function NewGoalPage() {
       user_id: user.id,
       title: title.trim(),
       description: description.trim() || null,
+      start_date: startDate || null,
       target_date: targetDate || null,
       next_action: nextAction.trim() || null,
       status,
@@ -46,14 +49,14 @@ export default function NewGoalPage() {
       console.error('Error creating goal:', error)
       setLoading(false)
     } else {
-      router.push('/projects/goals')
+      router.push('/goals')
     }
   }
 
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/projects/goals" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/goals" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
           ← Back
         </Link>
 
@@ -66,6 +69,8 @@ export default function NewGoalPage() {
             onTitleChange={setTitle}
             description={description}
             onDescriptionChange={setDescription}
+            startDate={startDate}
+            onStartDateChange={setStartDate}
             targetDate={targetDate}
             onTargetDateChange={setTargetDate}
             nextAction={nextAction}

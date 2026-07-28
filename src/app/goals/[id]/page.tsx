@@ -6,32 +6,36 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
-import GoalFormFields from '@/components/projects/goal-form-fields'
-import type { ActionItemStatus, GoalScope } from '@/lib/projects'
+import { Sparkles, Trash2 } from 'lucide-react'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import GoalFormFields from '@/components/goals/goal-form-fields'
+import type { ActionItemStatus, GoalScope } from '@/lib/goals'
 
-type LinkedProject = {
+type LinkedMilestone = {
   id: string
   title: string
   description: string | null
   next_action: string | null
+  due_date: string | null
   status: ActionItemStatus
 }
 
-export default function EditGoalPage() {
+export default function GoalDetailPage() {
   const params = useParams()
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [startDate, setStartDate] = useState('')
   const [targetDate, setTargetDate] = useState('')
   const [nextAction, setNextAction] = useState('')
   const [status, setStatus] = useState<ActionItemStatus>('active')
   const [scope, setScope] = useState<GoalScope | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [linkedProjects, setLinkedProjects] = useState<LinkedProject[]>([])
+  const [linkedMilestones, setLinkedMilestones] = useState<LinkedMilestone[]>([])
   const [generatingPlan, setGeneratingPlan] = useState(false)
   const [planError, setPlanError] = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -49,21 +53,23 @@ export default function EditGoalPage() {
 
     setTitle(data.title)
     setDescription(data.description || '')
+    setStartDate(data.start_date || '')
     setTargetDate(data.target_date || '')
     setNextAction(data.next_action || '')
     setStatus(data.status)
     setScope(data.scope ?? null)
 
-    const { data: projects, error: projectsError } = await supabase
-      .from('projects')
-      .select('id, title, description, next_action, status')
+    const { data: milestones, error: milestonesError } = await supabase
+      .from('milestones')
+      .select('id, title, description, next_action, due_date, status')
       .eq('goal_id', params.id)
+      .order('due_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true })
 
-    if (projectsError) {
-      console.error('Error fetching linked projects:', projectsError)
+    if (milestonesError) {
+      console.error('Error fetching linked milestones:', milestonesError)
     } else {
-      setLinkedProjects(projects || [])
+      setLinkedMilestones(milestones || [])
     }
 
     setLoading(false)
@@ -82,8 +88,6 @@ export default function EditGoalPage() {
       const data = await res.json()
 
       if (data.status === 'ok') {
-        await fetchGoal()
-      } else if (data.status === 'already_has_plan') {
         await fetchGoal()
       } else {
         setPlanError('Could not generate a plan right now — try again later.')
@@ -108,6 +112,7 @@ export default function EditGoalPage() {
       .update({
         title: title.trim(),
         description: description.trim() || null,
+        start_date: startDate || null,
         target_date: targetDate || null,
         next_action: nextAction.trim() || null,
         status,
@@ -119,8 +124,18 @@ export default function EditGoalPage() {
       console.error('Error updating goal:', error)
       setSaving(false)
     } else {
-      router.push('/projects/goals')
+      router.push('/goals')
     }
+  }
+
+  const handleDeleteGoal = async () => {
+    const { error } = await supabase.from('goals').delete().eq('id', params.id)
+
+    if (error) {
+      console.error('Error deleting goal:', error)
+      return
+    }
+    router.push('/goals')
   }
 
   if (loading) {
@@ -136,9 +151,18 @@ export default function EditGoalPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/projects/goals" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
+          <Link href="/goals" className="text-white/40 hover:text-white/60 transition-colors">
+            ← Back
+          </Link>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+            title="Delete goal"
+          >
+            <Trash2 className="w-5 h-5 text-white/40" />
+          </button>
+        </div>
 
         <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Edit Goal</h1>
         <p className="text-white/50 text-sm mb-8">
@@ -151,6 +175,8 @@ export default function EditGoalPage() {
             onTitleChange={setTitle}
             description={description}
             onDescriptionChange={setDescription}
+            startDate={startDate}
+            onStartDateChange={setStartDate}
             targetDate={targetDate}
             onTargetDateChange={setTargetDate}
             nextAction={nextAction}
@@ -162,49 +188,52 @@ export default function EditGoalPage() {
           />
 
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-4 h-4 text-white/40" />
-              <h2 className="text-lg font-medium text-white">Plan</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-white/40" />
+                <h2 className="text-lg font-medium text-white">Milestones</h2>
+              </div>
+              <Link
+                href={`/goals/milestones/new?goalId=${params.id}`}
+                className="text-white/40 hover:text-white/60 text-xs"
+              >
+                + Add manually
+              </Link>
             </div>
 
-            {linkedProjects.length === 0 ? (
-              <div className="space-y-3">
-                <p className="text-white/40 text-sm">
-                  Break this goal down into a few concrete milestones to work toward it.
-                </p>
-                <Button
-                  type="button"
-                  onClick={handleGeneratePlan}
-                  disabled={generatingPlan}
-                  variant="outline"
-                  className="border-white/10 text-white hover:bg-white/5"
-                >
-                  {generatingPlan ? 'Generating...' : 'Generate a plan'}
-                </Button>
-                {planError && <p className="text-sm text-red-400">{planError}</p>}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {linkedProjects.map((project) => (
-                  <div key={project.id} className="border border-white/10 rounded-xl bg-white/[0.02] p-4">
+            {linkedMilestones.length === 0 && (
+              <p className="text-white/40 text-sm mb-3">
+                Break this goal down into a few concrete milestones to work toward it.
+              </p>
+            )}
+
+            {linkedMilestones.length > 0 && (
+              <div className="space-y-3 mb-4">
+                {linkedMilestones.map((milestone) => (
+                  <div key={milestone.id} className="border border-white/10 rounded-xl bg-white/[0.02] p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-white font-medium text-sm">{project.title}</h3>
+                          <h3 className="text-white font-medium text-sm">{milestone.title}</h3>
                           <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
-                            {project.status}
+                            {milestone.status}
                           </span>
+                          {milestone.due_date && (
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                              Due {new Date(milestone.due_date).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
-                        {project.description && (
-                          <p className="text-white/40 text-xs mb-1">{project.description}</p>
+                        {milestone.description && (
+                          <p className="text-white/40 text-xs mb-1">{milestone.description}</p>
                         )}
                         <p className="text-white/70 text-xs">
                           <span className="text-white/40">Next: </span>
-                          {project.next_action || <span className="text-white/30 italic">not set</span>}
+                          {milestone.next_action || <span className="text-white/30 italic">not set</span>}
                         </p>
                       </div>
                       <Link
-                        href={`/projects/all/${project.id}/edit`}
+                        href={`/goals/milestones/${milestone.id}/edit`}
                         className="text-white/40 hover:text-white/60 text-xs shrink-0"
                       >
                         Edit
@@ -214,6 +243,21 @@ export default function EditGoalPage() {
                 ))}
               </div>
             )}
+
+            <Button
+              type="button"
+              onClick={handleGeneratePlan}
+              disabled={generatingPlan}
+              variant="outline"
+              className="border-white/10 text-white hover:bg-white/5"
+            >
+              {generatingPlan
+                ? 'Generating...'
+                : linkedMilestones.length === 0
+                  ? 'Generate a plan'
+                  : 'Add more milestones'}
+            </Button>
+            {planError && <p className="text-sm text-red-400 mt-2">{planError}</p>}
           </div>
 
           <Button
@@ -225,6 +269,23 @@ export default function EditGoalPage() {
           </Button>
         </div>
       </div>
+
+      <ConfirmationModal
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        title="Delete Goal"
+        description={
+          linkedMilestones.length > 0
+            ? `This permanently deletes this goal and its ${linkedMilestones.length} linked milestone${
+                linkedMilestones.length === 1 ? '' : 's'
+              }. This cannot be undone.`
+            : 'Are you sure you want to delete this goal? This cannot be undone.'
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteGoal}
+        destructive
+      />
     </AppLayout>
   )
 }

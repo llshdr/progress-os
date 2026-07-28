@@ -11,10 +11,10 @@ export interface SuggestionCandidate {
   module: string
   text: string
   action?: SuggestionAction | null
-  // Projects-only: identifies the real goal/project row behind this
-  // candidate, so a genuine "done" action can write straight back to it
-  // instead of parsing an href. Left unset by every other module.
-  sourceTable?: 'goals' | 'projects'
+  // Goals/milestones-only: identifies the real goal/milestone row behind
+  // this candidate, so a genuine "done" action can write straight back to
+  // it instead of parsing an href. Left unset by every other module.
+  sourceTable?: 'goals' | 'milestones'
   sourceId?: string
 }
 

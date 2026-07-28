@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { ActionItemStatus, GoalScope } from '@/lib/projects'
+import type { ActionItemStatus, GoalScope } from '@/lib/goals'
 import { SCOPE_LABELS } from '@/lib/rank'
 
 interface GoalFormFieldsProps {
@@ -12,6 +12,8 @@ interface GoalFormFieldsProps {
   onTitleChange: (value: string) => void
   description: string
   onDescriptionChange: (value: string) => void
+  startDate: string
+  onStartDateChange: (value: string) => void
   targetDate: string
   onTargetDateChange: (value: string) => void
   nextAction: string
@@ -22,13 +24,15 @@ interface GoalFormFieldsProps {
   onScopeChange: (value: GoalScope | null) => void
 }
 
-// Shared by projects/goals/new and projects/goals/[id]/edit - same fields,
-// same shape, so the two forms can't quietly drift from each other.
+// Shared by goals/new and the goal detail page - same fields, same shape,
+// so the two forms can't quietly drift from each other.
 export default function GoalFormFields({
   title,
   onTitleChange,
   description,
   onDescriptionChange,
+  startDate,
+  onStartDateChange,
   targetDate,
   onTargetDateChange,
   nextAction,
@@ -69,6 +73,19 @@ export default function GoalFormFields({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="goal-start-date" className="text-white/80">
+          Start date (optional)
+        </Label>
+        <Input
+          id="goal-start-date"
+          type="date"
+          value={startDate}
+          onChange={(e) => onStartDateChange(e.target.value)}
+          className="bg-white/5 border-white/10 text-white"
+        />
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="goal-target-date" className="text-white/80">
           Target date (optional)
         </Label>
@@ -79,6 +96,9 @@ export default function GoalFormFields({
           onChange={(e) => onTargetDateChange(e.target.value)}
           className="bg-white/5 border-white/10 text-white"
         />
+        <p className="text-white/40 text-xs">
+          Used to space out a generated plan&apos;s milestone due dates.
+        </p>
       </div>
 
       <div className="space-y-2">

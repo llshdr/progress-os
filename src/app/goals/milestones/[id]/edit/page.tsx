@@ -6,36 +6,40 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import ProjectFormFields from '@/components/projects/project-form-fields'
-import type { ActionItemStatus } from '@/lib/projects'
+import { Trash2 } from 'lucide-react'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import MilestoneFormFields from '@/components/goals/milestone-form-fields'
+import type { ActionItemStatus } from '@/lib/goals'
 
-export default function EditProjectPage() {
+export default function EditMilestonePage() {
   const params = useParams()
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [nextAction, setNextAction] = useState('')
+  const [dueDate, setDueDate] = useState('')
   const [status, setStatus] = useState<ActionItemStatus>('active')
   const [goalId, setGoalId] = useState<string | null>(null)
   const [goalOptions, setGoalOptions] = useState<{ id: string; title: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
-    fetchProject()
+    fetchMilestone()
   }, [params.id])
 
-  const fetchProject = async () => {
+  const fetchMilestone = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data, error } = await supabase.from('projects').select('*').eq('id', params.id).single()
+    const { data, error } = await supabase.from('milestones').select('*').eq('id', params.id).single()
 
     if (error) {
-      console.error('Error fetching project:', error)
+      console.error('Error fetching milestone:', error)
       setLoading(false)
       return
     }
@@ -43,6 +47,7 @@ export default function EditProjectPage() {
     setTitle(data.title)
     setDescription(data.description || '')
     setNextAction(data.next_action || '')
+    setDueDate(data.due_date || '')
     setStatus(data.status)
     setGoalId(data.goal_id)
 
@@ -65,23 +70,36 @@ export default function EditProjectPage() {
     setSaving(true)
 
     const { error } = await supabase
-      .from('projects')
+      .from('milestones')
       .update({
         title: title.trim(),
         description: description.trim() || null,
         next_action: nextAction.trim() || null,
+        due_date: dueDate || null,
         status,
         goal_id: goalId,
       })
       .eq('id', params.id)
 
     if (error) {
-      console.error('Error updating project:', error)
+      console.error('Error updating milestone:', error)
       setSaving(false)
     } else {
-      router.push('/projects/all')
+      router.push(goalId ? `/goals/${goalId}` : '/goals')
     }
   }
+
+  const handleDelete = async () => {
+    const { error } = await supabase.from('milestones').delete().eq('id', params.id)
+
+    if (error) {
+      console.error('Error deleting milestone:', error)
+      return
+    }
+    router.push(goalId ? `/goals/${goalId}` : '/goals')
+  }
+
+  const backHref = goalId ? `/goals/${goalId}` : '/goals'
 
   if (loading) {
     return (
@@ -96,23 +114,34 @@ export default function EditProjectPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/projects/all" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
+          <Link href={backHref} className="text-white/40 hover:text-white/60 transition-colors">
+            ← Back
+          </Link>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+            title="Delete"
+          >
+            <Trash2 className="w-5 h-5 text-white/40" />
+          </button>
+        </div>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Edit Project</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Edit Milestone</h1>
         <p className="text-white/50 text-sm mb-8">
-          Updating the next action bumps this project's "last touched" time.
+          Updating the next action bumps this milestone's "last touched" time.
         </p>
 
         <div className="max-w-2xl space-y-6">
-          <ProjectFormFields
+          <MilestoneFormFields
             title={title}
             onTitleChange={setTitle}
             description={description}
             onDescriptionChange={setDescription}
             nextAction={nextAction}
             onNextActionChange={setNextAction}
+            dueDate={dueDate}
+            onDueDateChange={setDueDate}
             status={status}
             onStatusChange={setStatus}
             goalId={goalId}
@@ -125,10 +154,21 @@ export default function EditProjectPage() {
             disabled={saving || !isValid}
             className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
           >
-            {saving ? 'Saving...' : 'Update Project'}
+            {saving ? 'Saving...' : 'Update Milestone'}
           </Button>
         </div>
       </div>
+
+      <ConfirmationModal
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        title="Delete Milestone"
+        description="Are you sure you want to delete this milestone? This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDelete}
+        destructive
+      />
     </AppLayout>
   )
 }
