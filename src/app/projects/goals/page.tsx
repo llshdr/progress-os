@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Pencil, CheckCircle2, Archive, RotateCcw } from 'lucide-react'
+import { Plus, Pencil, CheckCircle2, Archive, RotateCcw, Trash2 } from 'lucide-react'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import type { ActionItemStatus } from '@/lib/projects'
 
 type Goal = {
@@ -20,6 +21,9 @@ export default function GoalsListPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [showAll, setShowAll] = useState(false)
+  const [goalToDelete, setGoalToDelete] = useState<string | null>(null)
+  const [linkedProjectCount, setLinkedProjectCount] = useState(0)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -54,6 +58,30 @@ export default function GoalsListPage() {
     } else {
       fetchGoals()
     }
+  }
+
+  const openDeleteModal = async (id: string) => {
+    const { count } = await supabase
+      .from('projects')
+      .select('id', { count: 'exact', head: true })
+      .eq('goal_id', id)
+
+    setGoalToDelete(id)
+    setLinkedProjectCount(count ?? 0)
+    setShowDeleteModal(true)
+  }
+
+  const handleDeleteGoal = async () => {
+    if (!goalToDelete) return
+
+    const { error } = await supabase.from('goals').delete().eq('id', goalToDelete)
+
+    if (error) {
+      console.error('Error deleting goal:', error)
+    } else {
+      fetchGoals()
+    }
+    setGoalToDelete(null)
   }
 
   const visibleGoals = goals.filter((g) => showAll || g.status === 'active')
@@ -161,6 +189,13 @@ export default function GoalsListPage() {
                         <RotateCcw className="w-5 h-5 text-white/40" />
                       </button>
                     )}
+                    <button
+                      onClick={() => openDeleteModal(goal.id)}
+                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-5 h-5 text-white/40" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -168,6 +203,26 @@ export default function GoalsListPage() {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        open={showDeleteModal}
+        onOpenChange={(open) => {
+          setShowDeleteModal(open)
+          if (!open) setGoalToDelete(null)
+        }}
+        title="Delete Goal"
+        description={
+          linkedProjectCount > 0
+            ? `This permanently deletes this goal and its ${linkedProjectCount} linked project${
+                linkedProjectCount === 1 ? '' : 's'
+              }/milestone${linkedProjectCount === 1 ? '' : 's'}. This cannot be undone.`
+            : 'Are you sure you want to delete this goal? This cannot be undone.'
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteGoal}
+        destructive
+      />
     </AppLayout>
   )
 }

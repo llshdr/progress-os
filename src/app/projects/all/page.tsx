@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Pencil, CheckCircle2, Archive, RotateCcw } from 'lucide-react'
+import { Plus, Pencil, CheckCircle2, Archive, RotateCcw, Trash2 } from 'lucide-react'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import type { ActionItemStatus } from '@/lib/projects'
 
 type Project = {
@@ -21,6 +22,7 @@ export default function ProjectsListPage() {
   const [goalTitles, setGoalTitles] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [showAll, setShowAll] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -61,6 +63,19 @@ export default function ProjectsListPage() {
     } else {
       fetchProjects()
     }
+  }
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return
+
+    const { error } = await supabase.from('projects').delete().eq('id', projectToDelete)
+
+    if (error) {
+      console.error('Error deleting project:', error)
+    } else {
+      fetchProjects()
+    }
+    setProjectToDelete(null)
   }
 
   const visibleProjects = projects.filter((p) => showAll || p.status === 'active')
@@ -168,6 +183,13 @@ export default function ProjectsListPage() {
                         <RotateCcw className="w-5 h-5 text-white/40" />
                       </button>
                     )}
+                    <button
+                      onClick={() => setProjectToDelete(project.id)}
+                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-5 h-5 text-white/40" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -175,6 +197,17 @@ export default function ProjectsListPage() {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        open={projectToDelete !== null}
+        onOpenChange={(open) => !open && setProjectToDelete(null)}
+        title="Delete Project"
+        description="Are you sure you want to delete this project? This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteProject}
+        destructive
+      />
     </AppLayout>
   )
 }
