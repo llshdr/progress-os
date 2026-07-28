@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { signInAction, signUpAction } from './actions'
 
 export default function AuthPage() {
   const [email, setEmail] = useState('')
@@ -35,21 +36,15 @@ export default function AuthPage() {
           return
         }
 
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { invite_code: inviteCode } },
-        })
+        const { error: signUpError } = await signUpAction(email, password, inviteCode)
         if (signUpError) {
+          console.error('Auth error:', signUpError)
           setError('Signup failed — check your invite code')
           return
         }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (signInError) throw signInError
+        const { error: signInError } = await signInAction(email, password)
+        if (signInError) throw new Error(signInError)
       }
       router.push('/')
       router.refresh()
