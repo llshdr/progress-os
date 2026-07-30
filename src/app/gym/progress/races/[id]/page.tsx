@@ -12,7 +12,12 @@ import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
 import { daysBetween } from '@/lib/goals'
 import { fetchCardioActivity } from '@/lib/cardio-stats'
 import { analyzeCurrentFitness, type FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
-import type { RaceApproach, TrainingPhase } from '@/lib/race-plan/periodization'
+import { RACE_APPROACH_LABELS, type RaceApproach, type TrainingPhase } from '@/lib/race-plan/periodization'
+import { EMPTY_SELF_ASSESSMENT, raceCategoryFor, type SelfAssessment } from '@/lib/race-plan/self-assessment'
+import { computeTensionFlags } from '@/lib/race-plan/tension'
+import { estimateProjectedFinishSeconds } from '@/lib/race-plan/finish-time'
+import SelfAssessmentForm from '@/components/races/self-assessment-form'
+import ApproachSpectrum from '@/components/races/approach-spectrum'
 
 type Race = {
   id: string
@@ -38,6 +43,16 @@ type Plan = {
 
 type CurrentWeekActual = { cardioKm: number; strengthSessions: number }
 
+type Step = 'confirm' | 'assessment' | 'snapshot' | 'spectrum' | 'review'
+
+const STEP_LABELS: Record<Step, string> = {
+  confirm: 'Confirm',
+  assessment: 'Assessment',
+  snapshot: 'Snapshot',
+  spectrum: 'Approach',
+  review: 'Review',
+}
+
 const PHASE_LABELS: Record<TrainingPhase, string> = {
   base: 'Base',
   build: 'Build',
@@ -60,9 +75,11 @@ export default function RaceDetailPage() {
   const [currentWeekActual, setCurrentWeekActual] = useState<CurrentWeekActual | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [step, setStep] = useState<Step>('confirm')
 
+  const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(EMPTY_SELF_ASSESSMENT)
   const [approach, setApproach] = useState<RaceApproach>('balanced')
-  const [manualRegenerate, setManualRegenerate] = useState(false)
+  const [targetFinishSeconds, setTargetFinishSeconds] = useState<number | null>(null)
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
 
@@ -85,7 +102,12 @@ export default function RaceDetailPage() {
     }
 
     const [{ data: raceRow }, { data: planRow }] = await Promise.all([
-      supabase.from('races').select('id, race_type, course_id, location, race_date').eq('id', raceId).eq('user_id', user.id).maybeSingle(),
+      supabase
+        .from('races')
+        .select('id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds')
+        .eq('id', raceId)
+        .eq('user_id', user.id)
+        .maybeSingle(),
       supabase.from('race_training_plans').select('approach, overview, weeks').eq('race_id', raceId).maybeSingle(),
     ])
 
@@ -101,13 +123,16 @@ export default function RaceDetailPage() {
       courseName = course?.name ?? null
     }
     setRace({ id: raceRow.id, race_type: raceRow.race_type, courseOrLocation: courseName ?? raceRow.location, race_date: raceRow.race_date })
+    setSelfAssessment({ ...EMPTY_SELF_ASSESSMENT, ...(raceRow.self_assessment ?? {}) })
+    setTargetFinishSeconds(raceRow.target_finish_seconds ?? null)
 
     if (planRow) {
       setPlan(planRow as Plan)
       setApproach(planRow.approach)
+      setStep('review')
     }
 
-    const facts = await analyzeCurrentFitness(supabase, user.id)
+    const facts = await analyzeCurrentFitness(supabase, user.id, raceId)
     setSnapshot(facts)
     setLoading(false)
   }
@@ -142,6 +167,8 @@ export default function RaceDetailPage() {
     setGenerateError(null)
 
     try {
+      await supabase.from('races').update({ self_assessment: selfAssessment, target_finish_seconds: targetFinishSeconds }).eq('id', raceId)
+
       const res = await fetch('/api/ai-coach/race-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,7 +178,7 @@ export default function RaceDetailPage() {
 
       if (data.status === 'ok') {
         setPlan(data.plan)
-        setManualRegenerate(false)
+        setStep('review')
       } else {
         setGenerateError('Could not generate a plan right now — try again later.')
       }
@@ -190,7 +217,9 @@ export default function RaceDetailPage() {
   const today = getLocalDateString()
   const daysUntil = daysBetween(race.race_date, today)
   const currentWeekStartDate = getLocalDateString(getLocalWeekStart())
-  const showGenerator = !plan || manualRegenerate
+  const category = raceCategoryFor(race.race_type)
+  const tensionFlags = snapshot ? computeTensionFlags(selfAssessment, snapshot) : []
+  const projectedFinishSeconds = snapshot ? estimateProjectedFinishSeconds(race.race_type, snapshot) : null
 
   const weeksByPhase: { phase: TrainingPhase; weeks: PlanWeek[] }[] = []
   if (plan) {
@@ -230,19 +259,185 @@ export default function RaceDetailPage() {
           </div>
         </div>
 
-        {plan && !showGenerator && (
-          <div className="space-y-8 mb-10">
+        {step !== 'review' && (
+          <div className="flex flex-wrap items-center gap-1 mb-8 text-xs">
+            {(['confirm', 'assessment', 'snapshot', 'spectrum'] as const).map((s, i) => (
+              <span key={s} className={step === s ? 'text-white font-medium' : 'text-white/30'}>
+                {i + 1}. {STEP_LABELS[s]}
+                {i < 3 ? <span className="text-white/20 mx-1">·</span> : null}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {step === 'confirm' && (
+          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+            <p className="text-white/60 text-sm mb-4">
+              Next, a few optional questions about your current condition, then a look at your real training data, then
+              you choose how this race should shape your training.
+            </p>
+            <Button onClick={() => setStep('assessment')} className="bg-white text-black hover:bg-white/90">
+              Continue
+            </Button>
+          </div>
+        )}
+
+        {step === 'assessment' && (
+          <div className="space-y-6">
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <h2 className="text-lg font-medium text-white mb-1">How are you feeling right now?</h2>
+              <p className="text-white/40 text-sm mb-6">
+                Every question is optional — this only fills gaps in your logged data, it never replaces it.
+              </p>
+              <SelfAssessmentForm category={category} value={selfAssessment} onChange={setSelfAssessment} />
+            </div>
+            <Button onClick={() => setStep('snapshot')} className="bg-white text-black hover:bg-white/90">
+              Continue
+            </Button>
+          </div>
+        )}
+
+        {step === 'snapshot' && (
+          <div className="space-y-6">
+            {tensionFlags.length > 0 && (
+              <div className="border border-yellow-500/20 rounded-2xl bg-yellow-500/[0.04] p-4">
+                <p className="text-yellow-200/80 text-sm font-medium mb-1">Worth double-checking</p>
+                {tensionFlags.map((flag, i) => (
+                  <p key={i} className="text-yellow-200/60 text-xs mt-1">
+                    {flag}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {snapshot && (
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+                <h2 className="text-lg font-medium text-white mb-4">Current Fitness Snapshot</h2>
+
+                <div className="mb-6">
+                  <p className="text-white/60 text-sm mb-3">Weekly cardio distance (last 8 weeks)</p>
+                  <div className="space-y-2">
+                    {snapshot.cardio.weeklyDistanceKm.map((km, i) => {
+                      const max = Math.max(...snapshot.cardio.weeklyDistanceKm, 1)
+                      return (
+                        <div key={i} className="w-full bg-white/10 rounded-full h-1.5">
+                          <div className="h-1.5 rounded-full bg-white transition-all duration-300" style={{ width: `${(km / max) * 100}%` }} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="text-white/40 text-xs mt-2">
+                    Averaging {snapshot.cardio.recentAvgWeeklyKm.toFixed(1)}km/week across {snapshot.cardio.recentAvgSessionsPerWeek.toFixed(1)} sessions/week recently, active {snapshot.cardio.weeksActive}/8 weeks. Longest recent session: {snapshot.cardio.longestSessionKm}km.
+                  </p>
+                </div>
+
+                {snapshot.strength.muscleGroupTrends.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-white/60 text-sm mb-3">Strength trend (best est. 1RM, last 6 weeks vs. prior 6)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {snapshot.strength.muscleGroupTrends.map((t) => (
+                        <span key={t.muscleGroup} className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10">
+                          {t.muscleGroup}: {t.currentBestEst1RM}kg ({t.trend})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {snapshot.weightTrend && (
+                  <div className="mb-6">
+                    <p className="text-white/60 text-sm mb-3">Body weight</p>
+                    <p className="text-white/70 text-sm">
+                      {snapshot.weightTrend.currentWeightKg}kg currently
+                      {snapshot.weightTrend.changeKgLast90Days != null &&
+                        ` (${snapshot.weightTrend.changeKgLast90Days >= 0 ? '+' : ''}${snapshot.weightTrend.changeKgLast90Days.toFixed(1)}kg over 90 days)`}
+                    </p>
+                  </div>
+                )}
+
+                {snapshot.pastRaceResults.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-white/60 text-sm mb-3">Past race results</p>
+                    <div className="space-y-1">
+                      {snapshot.pastRaceResults.slice(0, 3).map((r, i) => (
+                        <p key={i} className="text-white/70 text-sm">
+                          {raceTypeLabel(r.raceType)}
+                          {r.courseOrLocation ? ` (${r.courseOrLocation})` : ''} — {r.raceDate}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-white/40 text-xs">
+                  Consistency (last 90 days): {snapshot.gymConsistencyWeeks} weeks with gym activity, {snapshot.nutritionConsistencyWeeks} weeks with nutrition logged.
+                  {snapshot.trainingPhase && ` Current training phase: ${snapshot.trainingPhase} (${snapshot.trainingIntensity}).`}
+                  {snapshot.competingGoalsCount > 0 && ` ${snapshot.competingGoalsCount} other active goal(s).`}
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={() => setStep('assessment')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                Back
+              </button>
+              <Button onClick={() => setStep('spectrum')} className="bg-white text-black hover:bg-white/90">
+                Continue
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'spectrum' && snapshot && (
+          <div className="space-y-6">
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <h2 className="text-lg font-medium text-white mb-1">Approach</h2>
+              <p className="text-white/40 text-sm mb-6">Choose how much this race should take over your training.</p>
+              <ApproachSpectrum
+                value={approach}
+                onChange={setApproach}
+                currentWeeklyCardioKm={snapshot.cardio.recentAvgWeeklyKm}
+                currentStrengthSessionsPerWeek={snapshot.strength.recentSessionsPerWeek}
+                showFinishTime={category === 'run'}
+                projectedFinishSeconds={projectedFinishSeconds}
+                targetFinishSeconds={targetFinishSeconds}
+                onTargetFinishSecondsChange={setTargetFinishSeconds}
+              />
+
+              <Button onClick={handleGenerate} disabled={generating} className="w-full bg-white text-black hover:bg-white/90 mt-6">
+                {generating ? 'Generating...' : plan ? 'Regenerate Plan' : 'Generate Plan'}
+              </Button>
+              {generateError && <p className="text-sm text-red-400 mt-2">{generateError}</p>}
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setStep('snapshot')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                Back
+              </button>
+              {plan && (
+                <button onClick={() => setStep('review')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {step === 'review' && plan && (
+          <div className="space-y-8">
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
               <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
                 <h2 className="text-lg font-medium text-white">
-                  Training Plan <span className="text-white/40 text-sm font-normal">({plan.approach === 'full_send' ? 'Full send' : 'Balanced'})</span>
+                  Training Plan <span className="text-white/40 text-sm font-normal">({RACE_APPROACH_LABELS[plan.approach]})</span>
                 </h2>
-                <button
-                  onClick={() => setManualRegenerate(true)}
-                  className="text-sm text-white/40 hover:text-white/60 transition-colors"
-                >
-                  Regenerate Plan
-                </button>
+                <div className="flex gap-4">
+                  <button onClick={() => setStep('assessment')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                    Edit my assessment
+                  </button>
+                  <button onClick={() => setStep('spectrum')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                    Regenerate Plan
+                  </button>
+                </div>
               </div>
               <p className="text-white/70 text-sm leading-relaxed">{plan.overview}</p>
             </div>
@@ -290,86 +485,8 @@ export default function RaceDetailPage() {
             ))}
           </div>
         )}
-
-        {showGenerator && (
-          <div className="space-y-8">
-            {snapshot && (
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-4">Current Fitness Snapshot</h2>
-
-                <div className="mb-6">
-                  <p className="text-white/60 text-sm mb-3">Weekly cardio distance (last 8 weeks)</p>
-                  <div className="space-y-2">
-                    {snapshot.cardio.weeklyDistanceKm.map((km, i) => {
-                      const max = Math.max(...snapshot.cardio.weeklyDistanceKm, 1)
-                      return (
-                        <div key={i} className="w-full bg-white/10 rounded-full h-1.5">
-                          <div className="h-1.5 rounded-full bg-white transition-all duration-300" style={{ width: `${(km / max) * 100}%` }} />
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <p className="text-white/40 text-xs mt-2">
-                    Averaging {snapshot.cardio.recentAvgWeeklyKm.toFixed(1)}km/week across {snapshot.cardio.recentAvgSessionsPerWeek.toFixed(1)} sessions/week recently, active {snapshot.cardio.weeksActive}/8 weeks. Longest recent session: {snapshot.cardio.longestSessionKm}km.
-                  </p>
-                </div>
-
-                {snapshot.strength.muscleGroupTrends.length > 0 && (
-                  <div className="mb-6">
-                    <p className="text-white/60 text-sm mb-3">Strength trend (best est. 1RM, last 6 weeks vs. prior 6)</p>
-                    <div className="flex flex-wrap gap-2">
-                      {snapshot.strength.muscleGroupTrends.map((t) => (
-                        <span key={t.muscleGroup} className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10">
-                          {t.muscleGroup}: {t.currentBestEst1RM}kg ({t.trend})
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <p className="text-white/40 text-xs">
-                  Consistency (last 90 days): {snapshot.gymConsistencyWeeks} weeks with gym activity, {snapshot.nutritionConsistencyWeeks} weeks with nutrition logged.
-                  {snapshot.trainingPhase && ` Current training phase: ${snapshot.trainingPhase} (${snapshot.trainingIntensity}).`}
-                  {snapshot.competingGoalsCount > 0 && ` ${snapshot.competingGoalsCount} other active goal(s).`}
-                </p>
-              </div>
-            )}
-
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h2 className="text-lg font-medium text-white mb-1">Approach</h2>
-              <p className="text-white/40 text-sm mb-4">Choose how much this race should take over your training.</p>
-              <div className="flex gap-2 mb-6">
-                <button
-                  onClick={() => setApproach('full_send')}
-                  className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    approach === 'full_send' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
-                  }`}
-                >
-                  Full Send
-                </button>
-                <button
-                  onClick={() => setApproach('balanced')}
-                  className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    approach === 'balanced' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
-                  }`}
-                >
-                  Balanced
-                </button>
-              </div>
-
-              <Button onClick={handleGenerate} disabled={generating} className="w-full bg-white text-black hover:bg-white/90">
-                {generating ? 'Generating...' : plan ? 'Regenerate Plan' : 'Generate Plan'}
-              </Button>
-              {generateError && <p className="text-sm text-red-400 mt-2">{generateError}</p>}
-              {plan && (
-                <button onClick={() => setManualRegenerate(false)} className="text-sm text-white/40 hover:text-white/60 transition-colors mt-3">
-                  Cancel
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </AppLayout>
   )
 }
+

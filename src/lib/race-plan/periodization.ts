@@ -1,6 +1,18 @@
 import { getLocalWeekStart, getLocalDateString } from '@/lib/date'
 
-export type RaceApproach = 'full_send' | 'balanced'
+// Ordered race-focused -> muscle-focused, so a slider can index directly
+// into this array (0..4) rather than needing a separate mapping table.
+export const RACE_APPROACHES = ['race_focused', 'race_leaning', 'balanced', 'muscle_leaning', 'muscle_focused'] as const
+export type RaceApproach = (typeof RACE_APPROACHES)[number]
+
+export const RACE_APPROACH_LABELS: Record<RaceApproach, string> = {
+  race_focused: 'Race-Focused',
+  race_leaning: 'Race-Leaning',
+  balanced: 'Balanced',
+  muscle_leaning: 'Muscle-Leaning',
+  muscle_focused: 'Muscle-Focused',
+}
+
 export type TrainingPhase = 'base' | 'build' | 'peak' | 'taper'
 
 export interface TrainingWeekSkeleton {
@@ -58,22 +70,72 @@ function taperFraction(taperWeeks: number, indexWithinTaper: number): number {
   return 0.7 - t * 0.4
 }
 
+// One preset per spectrum stop, replacing what used to be a two-branch
+// if/else. race_focused/balanced match the old full_send/balanced numbers
+// exactly - this is a superset, not a behavior change for those two.
+// peakMultiplier drives the cardio ramp target (see computeTrainingWeeks);
+// the two strength functions take the user's current weekly baseline and
+// return a target for "steady" (base/build) vs. "winding down" (peak/
+// taper) weeks.
+interface ApproachPreset {
+  peakMultiplier: number
+  strengthSteadySessions: (baseline: number) => number
+  strengthWindingDownSessions: (baseline: number) => number
+}
+
+const APPROACH_PRESETS: Record<RaceApproach, ApproachPreset> = {
+  race_focused: {
+    peakMultiplier: 1.9,
+    strengthSteadySessions: (b) => Math.min(2, b),
+    strengthWindingDownSessions: () => 1,
+  },
+  race_leaning: {
+    peakMultiplier: 1.55,
+    strengthSteadySessions: (b) => Math.min(3, b),
+    strengthWindingDownSessions: () => 1,
+  },
+  balanced: {
+    peakMultiplier: 1.25,
+    strengthSteadySessions: (b) => b,
+    strengthWindingDownSessions: (b) => Math.max(1, b - 1),
+  },
+  muscle_leaning: {
+    peakMultiplier: 1.1,
+    strengthSteadySessions: (b) => b,
+    strengthWindingDownSessions: (b) => Math.max(1, b - 1),
+  },
+  muscle_focused: {
+    peakMultiplier: 1.0,
+    strengthSteadySessions: (b) => b,
+    strengthWindingDownSessions: (b) => b,
+  },
+}
+
 function strengthSessionsForWeek(phase: TrainingPhase, approach: RaceApproach, currentStrengthSessionsPerWeek: number): number {
   // Never invent a strength habit the user doesn't already have.
   if (currentStrengthSessionsPerWeek <= 0) return 0
 
   const baseline = Math.max(1, Math.round(currentStrengthSessionsPerWeek))
   const windingDown = phase === 'peak' || phase === 'taper'
+  const preset = APPROACH_PRESETS[approach]
 
-  if (approach === 'full_send') {
-    // Deliberately deprioritized: maintenance-only, capped low, cut further
-    // right before the race so cardio recovery isn't compromised.
-    return windingDown ? 1 : Math.min(2, baseline)
+  return windingDown ? preset.strengthWindingDownSessions(baseline) : preset.strengthSteadySessions(baseline)
+}
+
+// Cheap, pure preview for the client's live spectrum slider - no race date
+// needed, just today's baseline numbers. Mirrors the "steady" (base/build)
+// shape of computeTrainingWeeks below without needing a full skeleton.
+export function previewApproachEffect(
+  approach: RaceApproach,
+  currentWeeklyCardioKm: number,
+  currentStrengthSessionsPerWeek: number
+): { previewPeakCardioKm: number; previewSteadyStrengthSessions: number } {
+  const cardioBaseline = Math.max(currentWeeklyCardioKm, 5)
+  const preset = APPROACH_PRESETS[approach]
+  return {
+    previewPeakCardioKm: Math.round(cardioBaseline * preset.peakMultiplier * 10) / 10,
+    previewSteadyStrengthSessions: strengthSessionsForWeek('build', approach, currentStrengthSessionsPerWeek),
   }
-
-  // Balanced: hold close to the user's current baseline throughout, only a
-  // small step down late to protect race-week freshness.
-  return windingDown ? Math.max(1, baseline - 1) : baseline
 }
 
 // All date/phase/number arithmetic lives here, never in the AI prompt -
@@ -102,7 +164,7 @@ export function computeTrainingWeeks(
   // Floors avoid multiplying a zero baseline into a permanently-zero ramp
   // for someone with little/no logged cardio history yet.
   const cardioBaseline = Math.max(currentWeeklyCardioKm, 5)
-  const peakMultiplier = approach === 'full_send' ? 1.8 : 1.25
+  const peakMultiplier = APPROACH_PRESETS[approach].peakMultiplier
   const peakTargetKm = cardioBaseline * peakMultiplier
   const rampWeeks = allocation.base + allocation.build
   const sessionsBaseline = Math.max(currentCardioSessionsPerWeek, 2)

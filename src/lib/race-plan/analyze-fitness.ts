@@ -4,11 +4,26 @@ import { computeMuscleVolume, type MuscleVolume } from '@/lib/volume-analysis'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { getLocalWeekStart, getLocalDateString } from '@/lib/date'
 import { fetchActiveActionItems } from '@/lib/goals'
+import type { RaceType } from '@/lib/race-constants'
 
 export interface MuscleGroupTrend {
   muscleGroup: string
   currentBestEst1RM: number
   trend: 'up' | 'flat' | 'down'
+}
+
+export interface PastRaceResult {
+  raceType: RaceType
+  courseOrLocation: string | null
+  raceDate: string
+  resultSeconds: number
+}
+
+export interface WeightTrend {
+  currentWeightKg: number
+  changeKgLast90Days: number | null
+  currentBodyFatPct: number | null
+  changeBodyFatPctLast90Days: number | null
 }
 
 export interface FitnessSnapshot {
@@ -31,6 +46,8 @@ export interface FitnessSnapshot {
   trainingPhase: string | null
   trainingIntensity: string | null
   competingGoalsCount: number
+  pastRaceResults: PastRaceResult[] // the user's other completed races with a logged result, most recent first
+  weightTrend: WeightTrend | null // null if no weight_entries logged at all
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -118,11 +135,72 @@ async function computeStrengthFacts(
   return { muscleGroupTrends, recentSessionsPerWeek: recentDays.size / 4 }
 }
 
+async function fetchPastRaceResults(supabase: SupabaseClient, userId: string, excludeRaceId?: string): Promise<PastRaceResult[]> {
+  let query = supabase
+    .from('races')
+    .select('race_type, course_id, location, race_date, result_duration_seconds')
+    .eq('user_id', userId)
+    .not('result_duration_seconds', 'is', null)
+    .order('race_date', { ascending: false })
+
+  if (excludeRaceId) query = query.neq('id', excludeRaceId)
+
+  const { data, error } = await query
+  if (error) {
+    console.error('Error fetching past race results:', error)
+    return []
+  }
+
+  const rows = (data ?? []) as any[]
+  const courseIds = rows.map((r) => r.course_id).filter((id): id is string => Boolean(id))
+  let courseNameById = new Map<string, string>()
+  if (courseIds.length > 0) {
+    const { data: courses } = await supabase.from('race_courses').select('id, name').in('id', courseIds)
+    courseNameById = new Map((courses ?? []).map((c: any) => [c.id as string, c.name as string]))
+  }
+
+  return rows.map((r) => ({
+    raceType: r.race_type as RaceType,
+    courseOrLocation: (r.course_id ? courseNameById.get(r.course_id) : null) ?? r.location ?? null,
+    raceDate: r.race_date as string,
+    resultSeconds: r.result_duration_seconds as number,
+  }))
+}
+
+async function computeWeightTrend(supabase: SupabaseClient, userId: string): Promise<WeightTrend | null> {
+  const { data, error } = await supabase
+    .from('weight_entries')
+    .select('weight, body_fat_percentage, recorded_at')
+    .eq('user_id', userId)
+    .order('recorded_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching weight entries for trend:', error)
+    return null
+  }
+  if (!data || data.length === 0) return null
+
+  const ninetyDaysAgo = new Date(Date.now() - 90 * DAY_MS)
+  const withinWindow = data.filter((e: any) => new Date(e.recorded_at) >= ninetyDaysAgo)
+  const earliest = withinWindow[0] ?? null
+  const latest = data[data.length - 1] as any
+
+  return {
+    currentWeightKg: latest.weight,
+    changeKgLast90Days: earliest ? latest.weight - earliest.weight : null,
+    currentBodyFatPct: latest.body_fat_percentage ?? null,
+    changeBodyFatPctLast90Days:
+      earliest && earliest.body_fat_percentage != null && latest.body_fat_percentage != null
+        ? latest.body_fat_percentage - earliest.body_fat_percentage
+        : null,
+  }
+}
+
 // Pure facts, zero model calls - cheap enough to recompute on every page
 // load (same "no cache table, cheap client-side recompute" precedent as
 // ScheduledVolumeCard). Callable directly from a client component, same as
 // fetchCardioActivity/computeMuscleVolume already are.
-export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: string): Promise<FitnessSnapshot> {
+export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: string, excludeRaceId?: string): Promise<FitnessSnapshot> {
   const activities = await fetchCardioActivity(supabase)
   const weeklyBuckets = bucketWeeklyCardioDistance(activities, 8)
   const weeklyDistanceKm = weeklyBuckets.map((w) => Math.round(w.totalKm * 10) / 10)
@@ -138,14 +216,17 @@ export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: st
   const recentAvgSessionsPerWeek = recentActivities.length / 4
   const longestSessionKm = windowActivities.reduce((max, a) => Math.max(max, a.distanceKm), 0)
 
-  const [strengthFacts, muscleVolume, gymConsistencyWeeks, nutritionConsistencyWeeks, settingsResult, actionItems] = await Promise.all([
-    computeStrengthFacts(supabase),
-    computeMuscleVolume(supabase),
-    computeConsistencyWeeks(supabase, 'workouts', 'completed_at', userId),
-    computeConsistencyWeeks(supabase, 'nutrition_entries', 'date', userId),
-    supabase.from('user_settings').select('training_phase, training_intensity').eq('user_id', userId).maybeSingle(),
-    fetchActiveActionItems(supabase, userId),
-  ])
+  const [strengthFacts, muscleVolume, gymConsistencyWeeks, nutritionConsistencyWeeks, settingsResult, actionItems, pastRaceResults, weightTrend] =
+    await Promise.all([
+      computeStrengthFacts(supabase),
+      computeMuscleVolume(supabase),
+      computeConsistencyWeeks(supabase, 'workouts', 'completed_at', userId),
+      computeConsistencyWeeks(supabase, 'nutrition_entries', 'date', userId),
+      supabase.from('user_settings').select('training_phase, training_intensity').eq('user_id', userId).maybeSingle(),
+      fetchActiveActionItems(supabase, userId),
+      fetchPastRaceResults(supabase, userId, excludeRaceId),
+      computeWeightTrend(supabase, userId),
+    ])
 
   return {
     cardio: {
@@ -164,5 +245,7 @@ export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: st
     trainingPhase: settingsResult.data?.training_phase ?? null,
     trainingIntensity: settingsResult.data?.training_intensity ?? null,
     competingGoalsCount: actionItems.filter((item) => item.kind === 'goal').length,
+    pastRaceResults,
+    weightTrend,
   }
 }

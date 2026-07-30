@@ -29,6 +29,17 @@ export const RACE_TYPE_DISTANCE: Partial<Record<RaceType, string>> = {
   '5k': '5km',
 }
 
+// Numeric single-discipline distance, for finish-time projection math
+// (src/lib/race-plan/finish-time.ts). Deliberately excludes ironman/xtri
+// (multi-discipline, no credible single-number projection) and ultra_run
+// (too variable a distance to treat as one standard number).
+export const RACE_TYPE_DISTANCE_KM: Partial<Record<RaceType, number>> = {
+  marathon: 42.2,
+  half_marathon: 21.1,
+  '10k': 10,
+  '5k': 5,
+}
+
 export function raceTypeLabel(raceType: string): string {
   return RACE_TYPES.find((t) => t.value === raceType)?.label ?? raceType
 }
