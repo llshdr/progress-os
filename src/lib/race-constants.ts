@@ -1,7 +1,6 @@
 export type RaceType =
   | 'ironman'
-  | 'norseman'
-  | 'swedeman'
+  | 'xtri'
   | 'marathon'
   | 'half_marathon'
   | '10k'
@@ -11,8 +10,7 @@ export type RaceType =
 
 export const RACE_TYPES: { value: RaceType; label: string }[] = [
   { value: 'ironman', label: 'Ironman' },
-  { value: 'norseman', label: 'Norseman' },
-  { value: 'swedeman', label: 'Swedeman' },
+  { value: 'xtri', label: 'Xtri' },
   { value: 'marathon', label: 'Marathon' },
   { value: 'half_marathon', label: 'Half Marathon' },
   { value: '10k', label: '10K' },
@@ -24,8 +22,7 @@ export const RACE_TYPES: { value: RaceType; label: string }[] = [
 // Display-only, derived from race_type - never stored per-row.
 export const RACE_TYPE_DISTANCE: Partial<Record<RaceType, string>> = {
   ironman: '3.8km swim · 180.2km bike · 42.2km run',
-  norseman: '3.8km swim · 180.2km bike · 42.2km run',
-  swedeman: '3.8km swim · 180.2km bike · 42.2km run',
+  xtri: '3.8km swim · 180.2km bike · 42.2km run',
   marathon: '42.2km',
   half_marathon: '21.1km',
   '10k': '10km',
