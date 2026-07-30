@@ -189,7 +189,7 @@ export default function RacesPage() {
   const renderRaceCard = (race: Race) => (
     <div key={race.id} className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
+        <Link href={`/gym/progress/races/${race.id}`} className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-lg font-medium text-white">{raceTypeLabel(race.race_type)}</h3>
             {(race.courseName || race.location) && (
@@ -203,7 +203,7 @@ export default function RacesPage() {
             <p className="text-white/30 text-xs mt-1">{RACE_TYPE_DISTANCE[race.race_type]}</p>
           )}
           {race.notes && <p className="text-white/30 text-xs mt-1">{race.notes}</p>}
-        </div>
+        </Link>
         <div className="flex items-center gap-4 shrink-0">
           {race.result_duration_seconds != null && (
             <div className="text-right">

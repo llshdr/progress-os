@@ -5,6 +5,8 @@ import { getExerciseHistory } from '@/lib/ai-coach/getExerciseHistory'
 import { getEffectiveTarget, type TrainingPhase, type TrainingIntensity } from '@/lib/nutrition'
 import { computeMuscleVolume } from '@/lib/volume-analysis'
 import { getLocalDateString } from '@/lib/date'
+import { raceTypeLabel } from '@/lib/race-constants'
+import { daysBetween } from '@/lib/goals'
 
 const MIN_SESSIONS_FOR_RECOMMENDATION = 2
 const MAX_SETS_IN_PROMPT = 20
@@ -48,7 +50,55 @@ export async function POST(request: NextRequest) {
   // history is sorted most-recent-first (see getExerciseHistory), so this is
   // the single most recent completed set for this exercise(+variant lookup).
   const latestSetId = history[0]?.id ?? null
-  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}::nutrition=${includeNutrition}`
+
+  // Race-aware context: the soonest upcoming race with a generated training
+  // plan, if any - fetched before the cache key so a newly (re)generated
+  // plan or a new week starting produces a distinct cache key instead of
+  // silently serving a stale recommendation (this cache otherwise only
+  // invalidates on a new logged set, same as before this addition).
+  const today = getLocalDateString()
+  const { data: activeRace } = await supabase
+    .from('races')
+    .select('id, race_type, race_date')
+    .eq('user_id', user.id)
+    .gte('race_date', today)
+    .order('race_date', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  let activePlan: { approach: string; weeks: { weekStartDate: string; phase: string }[] } | null = null
+  if (activeRace) {
+    const { data: planRow } = await supabase
+      .from('race_training_plans')
+      .select('approach, weeks')
+      .eq('race_id', activeRace.id)
+      .maybeSingle()
+    activePlan = planRow ?? null
+  }
+
+  // weeks is stored chronologically, so the last entry starting on/before
+  // today is the current week.
+  let currentWeek: { weekStartDate: string; phase: string } | null = null
+  if (activePlan) {
+    for (const week of activePlan.weeks) {
+      if (week.weekStartDate <= today) currentWeek = week
+      else break
+    }
+  }
+
+  let raceContext = ''
+  let cacheRaceSuffix = 'race=none'
+  if (activeRace && activePlan && currentWeek) {
+    const daysUntilRace = daysBetween(activeRace.race_date, today)
+    const approachInstruction =
+      activePlan.approach === 'full_send'
+        ? "Favor recovery and freshness for cardio over chasing a new strength PR right now - small, safe progression is fine, don't push to failure."
+        : "Continue normal strength progression, but ease off slightly if this week's logged cardio volume has been unusually high."
+    raceContext = `\n\nThis lifter is ${daysUntilRace} days out from a ${raceTypeLabel(activeRace.race_type)}, currently in the "${currentWeek.phase}" phase of a "${activePlan.approach}" training plan. ${approachInstruction}`
+    cacheRaceSuffix = `race=${activeRace.id}:${currentWeek.weekStartDate}`
+  }
+
+  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}::nutrition=${includeNutrition}::${cacheRaceSuffix}`
 
   const { data: cachedRow } = await supabase
     .from('ai_coach_recommendations')
@@ -138,7 +188,7 @@ export async function POST(request: NextRequest) {
       .from('nutrition_entries')
       .select('calories, activity_adjustment_kcal')
       .eq('user_id', user.id)
-      .eq('date', getLocalDateString())
+      .eq('date', today)
       .maybeSingle()
 
     if (todayEntry) {
@@ -187,7 +237,7 @@ export async function POST(request: NextRequest) {
 
 Below is their recent set history for one exercise, most recent session first (weight in kg):
 
-${historyText}${variantContext}${muscleGroupContext}${phaseContext}${nutritionContext}${volumeContext}${sleepContext}
+${historyText}${variantContext}${muscleGroupContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${sleepContext}
 
 Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale — if multiple factors above are relevant, mention at most the one or two most decision-relevant ones rather than trying to reference everything.`
 

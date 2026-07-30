@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { getLocalWeekStart } from '@/lib/date'
 
 export interface CardioActivity {
   date: string
@@ -6,6 +7,11 @@ export interface CardioActivity {
   exerciseName: string
   distanceKm: number
   durationSeconds: number
+}
+
+export interface WeeklyCardioBucket {
+  start: Date
+  totalKm: number
 }
 
 // Generalizes gym/exercises/[id]/page.tsx's fetchCardioData to every cardio
@@ -68,4 +74,24 @@ export async function fetchCardioActivity(supabase: SupabaseClient): Promise<Car
     })
     .filter((e): e is CardioActivity => e !== null)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+}
+
+// Shared by /gym/records (Weekly Distance section) and the race training
+// plan's fitness snapshot - one Monday-start bucketing so both stay in sync.
+export function bucketWeeklyCardioDistance(activities: CardioActivity[], weeksShown = 8): WeeklyCardioBucket[] {
+  const currentWeekStart = getLocalWeekStart()
+  const weeks: WeeklyCardioBucket[] = []
+  for (let i = weeksShown - 1; i >= 0; i--) {
+    const start = new Date(currentWeekStart)
+    start.setDate(start.getDate() - i * 7)
+    weeks.push({ start, totalKm: 0 })
+  }
+
+  for (const activity of activities) {
+    const activityWeekStart = getLocalWeekStart(new Date(activity.date))
+    const bucket = weeks.find((w) => w.start.getTime() === activityWeekStart.getTime())
+    if (bucket) bucket.totalKm += activity.distanceKm
+  }
+
+  return weeks
 }

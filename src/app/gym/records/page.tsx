@@ -19,8 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { MUSCLE_GROUPS, EXERCISE_TYPES, type ExerciseType } from '@/lib/exercise-constants'
-import { fetchCardioActivity, type CardioActivity } from '@/lib/cardio-stats'
-import { getLocalWeekStart } from '@/lib/date'
+import { fetchCardioActivity, bucketWeeklyCardioDistance, type CardioActivity } from '@/lib/cardio-stats'
 
 type ComputedStrength = { bestWeight: number; bestReps: number; estimated1RM: number; timesPerformed: number }
 type ManualStrength = { weight: number; reps: number; estimated1RM: number; date: string | null; note: string | null }
@@ -46,9 +45,6 @@ type CardioRecord = {
 
 type LibraryExercise = { id: string; name: string; exercise_type: string }
 
-type WeekBucket = { start: Date; totalKm: number }
-
-const WEEKS_SHOWN = 8
 const RECENT_LIMIT = 20
 
 function formatPace(secondsPerKm: number): string {
@@ -65,24 +61,6 @@ function formatDuration(totalSeconds: number): string {
 
 function formatActivityDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function buildWeekBuckets(activities: CardioActivity[]): WeekBucket[] {
-  const currentWeekStart = getLocalWeekStart()
-  const weeks: WeekBucket[] = []
-  for (let i = WEEKS_SHOWN - 1; i >= 0; i--) {
-    const start = new Date(currentWeekStart)
-    start.setDate(start.getDate() - i * 7)
-    weeks.push({ start, totalKm: 0 })
-  }
-
-  for (const activity of activities) {
-    const activityWeekStart = getLocalWeekStart(new Date(activity.date))
-    const bucket = weeks.find((w) => w.start.getTime() === activityWeekStart.getTime())
-    if (bucket) bucket.totalKm += activity.distanceKm
-  }
-
-  return weeks
 }
 
 export default function RecordsPage() {
@@ -378,7 +356,7 @@ export default function RecordsPage() {
   const filteredCardioActivity = cardioActivity.filter(
     (a) => !muscleFilter || cardioMuscleGroupById.get(a.exerciseLibraryId) === muscleFilter
   )
-  const cardioWeeks = buildWeekBuckets(filteredCardioActivity)
+  const cardioWeeks = bucketWeeklyCardioDistance(filteredCardioActivity)
   const maxWeekKm = Math.max(...cardioWeeks.map((w) => w.totalKm), 1)
   const recentCardioActivity = filteredCardioActivity.slice(0, RECENT_LIMIT)
 
