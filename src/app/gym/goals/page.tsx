@@ -171,7 +171,7 @@ export default function GoalsPage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center gap-3 mb-8">
-          <Link href="/gym" className="text-white/40 hover:text-white/60 transition-colors">
+          <Link href="/gym/progress" className="text-white/40 hover:text-white/60 transition-colors">
             ← Back
           </Link>
           <div className="flex-1" />

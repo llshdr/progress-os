@@ -1,49 +1,53 @@
 import AppLayout from '@/components/app-layout'
-import { Dumbbell } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 
-export default function GymPage() {
+export default function GymProgressPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Link href="/gym" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+          ← Back
+        </Link>
+
         <div className="flex items-center gap-4 mb-8">
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-            <Dumbbell className="w-8 h-8 text-white/80" />
+            <TrendingUp className="w-8 h-8 text-white/80" />
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">
-              Gym
+              Progress
             </h1>
             <p className="text-white/50 text-sm">
-              Track your fitness journey
+              How you&apos;re trending over time
             </p>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Link href="/gym/train" className="group">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Link href="/gym/records" className="group">
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-white mb-2">Train</h2>
+              <h2 className="text-lg font-medium text-white mb-2">Personal Records</h2>
               <p className="text-white/40 text-sm">
-                Log a workout and see what&apos;s next
+                Your best lifts and runs, all in one place
               </p>
             </div>
           </Link>
 
-          <Link href="/gym/library" className="group">
+          <Link href="/gym/weight" className="group">
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-white mb-2">Library</h2>
+              <h2 className="text-lg font-medium text-white mb-2">Weight Tracking</h2>
               <p className="text-white/40 text-sm">
-                Exercises and templates
+                Monitor your body composition progress
               </p>
             </div>
           </Link>
 
-          <Link href="/gym/progress" className="group">
+          <Link href="/gym/goals" className="group">
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] hover:border-white/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-white mb-2">Progress</h2>
+              <h2 className="text-lg font-medium text-white mb-2">Weekly Goals</h2>
               <p className="text-white/40 text-sm">
-                Records, weight, and weekly goals
+                Set and track your weekly fitness objectives
               </p>
             </div>
           </Link>

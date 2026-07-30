@@ -343,11 +343,11 @@ export default function RecordsPage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link
-          href="/gym"
+          href="/gym/progress"
           className="text-white/40 hover:text-white/60 transition-colors mb-6 inline-flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Gym
+          Back to Progress
         </Link>
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8 mt-6">
