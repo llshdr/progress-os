@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Award, ArrowLeft, Plus } from 'lucide-react'
+import { Award, ArrowLeft, Plus, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +19,8 @@ import {
 } from '@/components/ui/dialog'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { MUSCLE_GROUPS, EXERCISE_TYPES, type ExerciseType } from '@/lib/exercise-constants'
+import { fetchCardioActivity, type CardioActivity } from '@/lib/cardio-stats'
+import { getLocalWeekStart } from '@/lib/date'
 
 type ComputedStrength = { bestWeight: number; bestReps: number; estimated1RM: number; timesPerformed: number }
 type ManualStrength = { weight: number; reps: number; estimated1RM: number; date: string | null; note: string | null }
@@ -44,6 +46,11 @@ type CardioRecord = {
 
 type LibraryExercise = { id: string; name: string; exercise_type: string }
 
+type WeekBucket = { start: Date; totalKm: number }
+
+const WEEKS_SHOWN = 8
+const RECENT_LIMIT = 20
+
 function formatPace(secondsPerKm: number): string {
   const minutes = Math.floor(secondsPerKm / 60)
   const seconds = Math.round(secondsPerKm % 60)
@@ -56,10 +63,34 @@ function formatDuration(totalSeconds: number): string {
   return seconds === 0 ? `${minutes} min` : `${minutes}m ${seconds}s`
 }
 
+function formatActivityDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function buildWeekBuckets(activities: CardioActivity[]): WeekBucket[] {
+  const currentWeekStart = getLocalWeekStart()
+  const weeks: WeekBucket[] = []
+  for (let i = WEEKS_SHOWN - 1; i >= 0; i--) {
+    const start = new Date(currentWeekStart)
+    start.setDate(start.getDate() - i * 7)
+    weeks.push({ start, totalKm: 0 })
+  }
+
+  for (const activity of activities) {
+    const activityWeekStart = getLocalWeekStart(new Date(activity.date))
+    const bucket = weeks.find((w) => w.start.getTime() === activityWeekStart.getTime())
+    if (bucket) bucket.totalKm += activity.distanceKm
+  }
+
+  return weeks
+}
+
 export default function RecordsPage() {
   const [strengthRecords, setStrengthRecords] = useState<StrengthRecord[]>([])
   const [cardioRecords, setCardioRecords] = useState<CardioRecord[]>([])
   const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([])
+  const [cardioActivity, setCardioActivity] = useState<CardioActivity[]>([])
+  const [cardioMuscleGroupById, setCardioMuscleGroupById] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [muscleFilter, setMuscleFilter] = useState<string | null>(null)
 
@@ -105,6 +136,10 @@ export default function RecordsPage() {
 
     setLibraryExercises((library ?? []).map((l) => ({ id: l.id, name: l.name, exercise_type: l.exercise_type })))
 
+    setCardioMuscleGroupById(
+      new Map((library ?? []).filter((l) => l.exercise_type === 'cardio').map((l) => [l.id as string, l.primary_muscle_group as string]))
+    )
+
     // One flat pair of queries reduced client-side, instead of the exercise
     // detail page's per-workout fetch repeated once per library exercise -
     // that N+1 doesn't scale to "every exercise in the library".
@@ -128,6 +163,7 @@ export default function RecordsPage() {
       { data: sets, error: setsError },
       { data: cardioLogs, error: cardioError },
       { data: manualPrs, error: manualError },
+      cardioActivityData,
     ] = await Promise.all([
       supabase.from('sets').select('exercise_id, weight, reps'),
       supabase.from('cardio_logs').select('exercise_id, distance_km, duration_seconds'),
@@ -135,11 +171,14 @@ export default function RecordsPage() {
         .from('manual_prs')
         .select('exercise_library_id, exercise_name, exercise_type, weight, reps, distance_km, duration_seconds, recorded_date, note')
         .eq('user_id', user.id),
+      fetchCardioActivity(supabase),
     ])
 
     if (setsError) console.error('Error fetching sets:', setsError)
     if (cardioError) console.error('Error fetching cardio logs:', cardioError)
     if (manualError) console.error('Error fetching manual PRs:', manualError)
+
+    setCardioActivity(cardioActivityData)
 
     type StrengthAgg = { bestWeight: number; bestReps: number; instanceIds: Set<string> }
     const strengthAgg = new Map<string, StrengthAgg>()
@@ -335,6 +374,13 @@ export default function RecordsPage() {
 
   const filteredStrength = strengthRecords.filter((r) => !muscleFilter || r.muscleGroup === muscleFilter)
   const filteredCardio = cardioRecords.filter((r) => !muscleFilter || r.muscleGroup === muscleFilter)
+
+  const filteredCardioActivity = cardioActivity.filter(
+    (a) => !muscleFilter || cardioMuscleGroupById.get(a.exerciseLibraryId) === muscleFilter
+  )
+  const cardioWeeks = buildWeekBuckets(filteredCardioActivity)
+  const maxWeekKm = Math.max(...cardioWeeks.map((w) => w.totalKm), 1)
+  const recentCardioActivity = filteredCardioActivity.slice(0, RECENT_LIMIT)
 
   const musclesInUse = new Set([...strengthRecords, ...cardioRecords].map((r) => r.muscleGroup))
   const availableMuscleGroups = MUSCLE_GROUPS.filter((m) => musclesInUse.has(m))
@@ -670,6 +716,31 @@ export default function RecordsPage() {
 
             <div>
               <h2 className="text-lg font-medium text-white mb-4">Cardio Records</h2>
+
+              {filteredCardioActivity.length > 0 && (
+                <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 mb-6">
+                  <h3 className="text-sm font-medium text-white/60 mb-4">Weekly Distance</h3>
+                  <div className="space-y-3">
+                    {cardioWeeks.map((week, i) => (
+                      <div key={i}>
+                        <div className="flex items-center justify-between text-sm mb-1">
+                          <span className="text-white/80">
+                            {week.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                          <span className="text-white/40 text-xs">{week.totalKm.toFixed(1)} km</span>
+                        </div>
+                        <div className="w-full bg-white/10 rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full bg-white transition-all duration-300"
+                            style={{ width: `${(week.totalKm / maxWeekKm) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {filteredCardio.length === 0 ? (
                 <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
                   <p className="text-white/40">No cardio logged yet — record a run to see it here.</p>
@@ -733,6 +804,35 @@ export default function RecordsPage() {
                       </Link>
                     )
                   })}
+                </div>
+              )}
+
+              {recentCardioActivity.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="text-sm font-medium text-white/60 mb-4">Recent Activity</h3>
+                  <div className="space-y-3">
+                    {recentCardioActivity.map((activity, index) => (
+                      <div
+                        key={index}
+                        className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 flex items-center justify-between flex-wrap gap-2"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Calendar className="w-4 h-4 text-white/40" />
+                          <div>
+                            <span className="text-white font-medium">{activity.exerciseName}</span>
+                            <span className="text-white/40 text-sm ml-2">{formatActivityDate(activity.date)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-white/70 text-sm">
+                          <span>{activity.distanceKm} km</span>
+                          <span>{formatDuration(activity.durationSeconds)}</span>
+                          <span className="text-white/40">
+                            {activity.distanceKm > 0 ? formatPace(activity.durationSeconds / activity.distanceKm) : 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
