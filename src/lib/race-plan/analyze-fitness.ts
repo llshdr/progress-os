@@ -14,6 +14,7 @@ export interface MuscleGroupTrend {
 
 export interface PastRaceResult {
   raceType: RaceType
+  courseId: string | null
   courseOrLocation: string | null
   raceDate: string
   resultSeconds: number
@@ -161,6 +162,7 @@ async function fetchPastRaceResults(supabase: SupabaseClient, userId: string, ex
 
   return rows.map((r) => ({
     raceType: r.race_type as RaceType,
+    courseId: r.course_id ?? null,
     courseOrLocation: (r.course_id ? courseNameById.get(r.course_id) : null) ?? r.location ?? null,
     raceDate: r.race_date as string,
     resultSeconds: r.result_duration_seconds as number,

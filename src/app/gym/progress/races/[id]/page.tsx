@@ -31,15 +31,31 @@ import {
   type Discipline,
 } from '@/lib/race-plan/self-assessment'
 import { computeTensionFlags } from '@/lib/race-plan/tension'
-import { estimateProjectedFinishSeconds, assessGoalRealism } from '@/lib/race-plan/finish-time'
+import {
+  estimateProjectedFinishSeconds,
+  assessGoalRealism,
+  estimateCourseFinishRange,
+  assessCutoffRisk,
+  assessGoalRealismForRange,
+} from '@/lib/race-plan/finish-time'
 import { computeDisciplineActivityFacts, assessMultisportReadiness, type DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
+import {
+  fetchCourseProfile,
+  fetchCourseTimeBand,
+  fetchCourseCutoffs,
+  type RaceCourseProfile,
+  type RaceCourseTimeBand,
+  type RaceCourseCutoff,
+} from '@/lib/race-plan/course-data'
 import SelfAssessmentForm from '@/components/races/self-assessment-form'
 import MultisportSelfAssessmentForm from '@/components/races/multisport-self-assessment-form'
 import ApproachSpectrum from '@/components/races/approach-spectrum'
+import type { ExperienceLevel } from '@/lib/race-plan/self-assessment'
 
 type Race = {
   id: string
   race_type: RaceType
+  courseId: string | null
   courseOrLocation: string | null
   race_date: string
 }
@@ -106,6 +122,9 @@ export default function RaceDetailPage() {
   const [plan, setPlan] = useState<Plan | null>(null)
   const [snapshot, setSnapshot] = useState<FitnessSnapshot | null>(null)
   const [disciplineActivityFacts, setDisciplineActivityFacts] = useState<Record<Discipline, DisciplineActivityFacts> | null>(null)
+  const [courseProfile, setCourseProfile] = useState<RaceCourseProfile | null>(null)
+  const [courseTimeBands, setCourseTimeBands] = useState<Partial<Record<ExperienceLevel, RaceCourseTimeBand | null>>>({})
+  const [courseCutoffs, setCourseCutoffs] = useState<RaceCourseCutoff[]>([])
   const [currentWeekActual, setCurrentWeekActual] = useState<CurrentWeekActual | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -161,7 +180,7 @@ export default function RaceDetailPage() {
       courseName = course?.name ?? null
     }
     const raceType = raceRow.race_type as RaceType
-    setRace({ id: raceRow.id, race_type: raceType, courseOrLocation: courseName ?? raceRow.location, race_date: raceRow.race_date })
+    setRace({ id: raceRow.id, race_type: raceType, courseId: raceRow.course_id ?? null, courseOrLocation: courseName ?? raceRow.location, race_date: raceRow.race_date })
 
     const category = raceCategoryFor(raceType)
     setSelfAssessment(normalizeSelfAssessment(raceRow.self_assessment, category))
@@ -170,6 +189,20 @@ export default function RaceDetailPage() {
 
     if (category === 'multisport') {
       setDisciplineActivityFacts(await computeDisciplineActivityFacts(supabase))
+
+      if (raceRow.course_id) {
+        const courseId = raceRow.course_id as string
+        const [profile, beginnerBand, intermediateBand, advancedBand, cutoffs] = await Promise.all([
+          fetchCourseProfile(supabase, courseId),
+          fetchCourseTimeBand(supabase, courseId, 'beginner'),
+          fetchCourseTimeBand(supabase, courseId, 'intermediate'),
+          fetchCourseTimeBand(supabase, courseId, 'advanced'),
+          fetchCourseCutoffs(supabase, courseId),
+        ])
+        setCourseProfile(profile)
+        setCourseTimeBands({ beginner: beginnerBand, intermediate: intermediateBand, advanced: advancedBand })
+        setCourseCutoffs(cutoffs)
+      }
     }
 
     if (planRow) {
@@ -302,22 +335,26 @@ export default function RaceDetailPage() {
   const daysUntil = daysBetween(race.race_date, today)
   const currentWeekStartDate = getLocalDateString(getLocalWeekStart())
   const category = raceCategoryFor(race.race_type)
+  const level: ExperienceLevel = category === 'multisport' && selfAssessment.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
   const tensionFlags = snapshot ? computeTensionFlags(selfAssessment, snapshot) : []
   const projectedFinishSeconds = snapshot ? estimateProjectedFinishSeconds(race.race_type, snapshot) : null
+  const courseRange =
+    category === 'multisport' && snapshot
+      ? estimateCourseFinishRange(race.race_type, level, snapshot.pastRaceResults, race.courseId, courseTimeBands[level] ?? null)
+      : null
+  const cutoffFlags = courseRange ? assessCutoffRisk(courseRange, courseCutoffs).map((f) => f.message) : []
   const readinessFlags = category === 'multisport' && disciplineActivityFacts ? assessMultisportReadiness(disciplineActivityFacts, daysUntil) : []
   const realismFlag =
     category === 'run' && targetFinishSeconds != null && projectedFinishSeconds != null
       ? assessGoalRealism(targetFinishSeconds, projectedFinishSeconds)
-      : null
-  const allFlags = [...tensionFlags, ...readinessFlags, ...(realismFlag ? [realismFlag] : [])]
+      : category === 'multisport' && targetFinishSeconds != null && courseRange != null
+        ? assessGoalRealismForRange(targetFinishSeconds, courseRange)
+        : null
+  const allFlags = [...tensionFlags, ...readinessFlags, ...cutoffFlags, ...(realismFlag ? [realismFlag] : [])]
 
   const disciplineInputs =
-    category === 'multisport' && disciplineWeakness && disciplineActivityFacts && selfAssessment.kind === 'multisport'
-      ? {
-          activityFacts: disciplineActivityFacts,
-          order: disciplineWeakness.order,
-          level: experienceLevelFor(selfAssessment.pastMultisportExperience),
-        }
+    category === 'multisport' && disciplineWeakness && disciplineActivityFacts
+      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order, level }
       : undefined
 
   const stepSequence: Step[] = category === 'multisport' ? ['confirm', 'assessment', 'weakness', 'snapshot', 'spectrum'] : ['confirm', 'assessment', 'snapshot', 'spectrum']
@@ -520,6 +557,17 @@ export default function RaceDetailPage() {
               </div>
             )}
 
+            {courseProfile && (
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+                <h2 className="text-lg font-medium text-white mb-3">About This Course</h2>
+                <div className="space-y-1">
+                  {courseProfile.swimNotes && <p className="text-white/70 text-sm">Swim: {courseProfile.swimNotes}</p>}
+                  {courseProfile.bikeNotes && <p className="text-white/70 text-sm">Bike: {courseProfile.bikeNotes}</p>}
+                  {courseProfile.runNotes && <p className="text-white/70 text-sm">Run: {courseProfile.runNotes}</p>}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(category === 'multisport' ? 'weakness' : 'assessment')}
@@ -544,8 +592,9 @@ export default function RaceDetailPage() {
                 onChange={setApproach}
                 currentWeeklyCardioKm={snapshot.cardio.recentAvgWeeklyKm}
                 currentStrengthSessionsPerWeek={snapshot.strength.recentSessionsPerWeek}
-                showFinishTime={category === 'run'}
+                showFinishTime={category === 'run' || courseRange != null}
                 projectedFinishSeconds={projectedFinishSeconds}
+                projectedFinishRange={courseRange ? { low: courseRange.totalSecondsLow, high: courseRange.totalSecondsHigh } : null}
                 targetFinishSeconds={targetFinishSeconds}
                 onTargetFinishSecondsChange={setTargetFinishSeconds}
                 disciplineInputs={disciplineInputs}
@@ -598,6 +647,16 @@ export default function RaceDetailPage() {
                   <div>
                     <p className="text-xs text-white/40 mb-1">{targetFinishSeconds != null ? 'Target Finish Time' : 'Projected Finish Time'}</p>
                     <p className="text-white text-sm">{formatDuration(targetFinishSeconds ?? projectedFinishSeconds!)}</p>
+                  </div>
+                )}
+                {category === 'multisport' && (targetFinishSeconds != null || courseRange != null) && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-1">{targetFinishSeconds != null ? 'Target Finish Time' : 'Projected Finish Range'}</p>
+                    <p className="text-white text-sm">
+                      {targetFinishSeconds != null
+                        ? formatDuration(targetFinishSeconds)
+                        : `${formatDuration(courseRange!.totalSecondsLow)}–${formatDuration(courseRange!.totalSecondsHigh)}`}
+                    </p>
                   </div>
                 )}
               </div>

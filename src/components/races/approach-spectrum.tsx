@@ -21,6 +21,7 @@ interface ApproachSpectrumProps {
   currentStrengthSessionsPerWeek: number
   showFinishTime: boolean
   projectedFinishSeconds: number | null
+  projectedFinishRange?: { low: number; high: number } | null
   targetFinishSeconds: number | null
   onTargetFinishSecondsChange: (seconds: number | null) => void
   disciplineInputs?: DisciplineRampInputs
@@ -57,6 +58,7 @@ export default function ApproachSpectrum({
   currentStrengthSessionsPerWeek,
   showFinishTime,
   projectedFinishSeconds,
+  projectedFinishRange,
   targetFinishSeconds,
   onTargetFinishSecondsChange,
   disciplineInputs,
@@ -123,10 +125,16 @@ export default function ApproachSpectrum({
       {showFinishTime && (
         <div className="space-y-2">
           <Label className="text-white/80">Target finish time (optional)</Label>
-          {projectedFinishSeconds != null && (
+          {projectedFinishRange ? (
             <p className="text-white/40 text-xs">
-              Estimated from your data: {formatDuration(projectedFinishSeconds)}. Override below if you have your own goal.
+              Estimated range: {formatDuration(projectedFinishRange.low)}–{formatDuration(projectedFinishRange.high)}. Override below if you have your own goal.
             </p>
+          ) : (
+            projectedFinishSeconds != null && (
+              <p className="text-white/40 text-xs">
+                Estimated from your data: {formatDuration(projectedFinishSeconds)}. Override below if you have your own goal.
+              </p>
+            )
           )}
           <div className="flex items-center gap-2">
             <Input

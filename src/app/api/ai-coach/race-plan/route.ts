@@ -7,9 +7,16 @@ import { raceTypeLabel, type RaceType } from '@/lib/race-constants'
 import { getLocalDateString } from '@/lib/date'
 import { daysBetween } from '@/lib/goals'
 import { computeTensionFlags } from '@/lib/race-plan/tension'
-import { estimateProjectedFinishSeconds, assessGoalRealism } from '@/lib/race-plan/finish-time'
+import {
+  estimateProjectedFinishSeconds,
+  assessGoalRealism,
+  estimateCourseFinishRange,
+  assessCutoffRisk,
+  assessGoalRealismForRange,
+} from '@/lib/race-plan/finish-time'
 import { raceCategoryFor, experienceLevelFor, type SelfAssessment, type Discipline } from '@/lib/race-plan/self-assessment'
 import { computeDisciplineActivityFacts, assessMultisportReadiness } from '@/lib/race-plan/discipline-weakness'
+import { fetchCourseProfile, fetchCourseTimeBand, fetchCourseCutoffs } from '@/lib/race-plan/course-data'
 
 const MODEL = 'gemini-2.5-flash'
 
@@ -128,15 +135,26 @@ export async function POST(request: NextRequest) {
   // from the STORED weakness analysis, never recomputed here, so the
   // split the athlete already saw and the split the plan actually uses
   // can't drift.
+  const level = category === 'multisport' && selfAssessment?.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
   const disciplineActivityFacts = category === 'multisport' ? await computeDisciplineActivityFacts(supabase) : null
   const disciplineInputs =
-    category === 'multisport' && disciplineWeakness && disciplineActivityFacts && selfAssessment?.kind === 'multisport'
-      ? {
-          activityFacts: disciplineActivityFacts,
-          order: disciplineWeakness.order,
-          level: experienceLevelFor(selfAssessment.pastMultisportExperience),
-        }
+    category === 'multisport' && disciplineWeakness && disciplineActivityFacts
+      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order, level }
       : undefined
+
+  // Course data (Phase 2) - fetched once, reused for the finish-time range,
+  // cutoff risk, and qualitative prompt context below. Gracefully absent
+  // (all null/empty) for races with no course_id or an un-seeded course.
+  let courseProfile = null as Awaited<ReturnType<typeof fetchCourseProfile>>
+  let courseTimeBand = null as Awaited<ReturnType<typeof fetchCourseTimeBand>>
+  let courseCutoffs: Awaited<ReturnType<typeof fetchCourseCutoffs>> = []
+  if (category === 'multisport' && race.course_id) {
+    ;[courseProfile, courseTimeBand, courseCutoffs] = await Promise.all([
+      fetchCourseProfile(supabase, race.course_id),
+      fetchCourseTimeBand(supabase, race.course_id, level),
+      fetchCourseCutoffs(supabase, race.course_id),
+    ])
+  }
 
   // Unlike the per-exercise recommend route, this deliberately has no
   // "not enough history" gate - the periodization math below has explicit
@@ -219,13 +237,32 @@ export async function POST(request: NextRequest) {
     : ''
 
   const projectedFinishSeconds = estimateProjectedFinishSeconds(race.race_type as RaceType, facts)
-  const realismFlag = race.target_finish_seconds != null && projectedFinishSeconds != null ? assessGoalRealism(race.target_finish_seconds, projectedFinishSeconds) : null
+  const courseRange =
+    category === 'multisport'
+      ? estimateCourseFinishRange(race.race_type as RaceType, level, facts.pastRaceResults, race.course_id, courseTimeBand)
+      : null
+  const cutoffFlags = courseRange ? assessCutoffRisk(courseRange, courseCutoffs) : []
+
+  const realismFlag =
+    race.target_finish_seconds != null && projectedFinishSeconds != null
+      ? assessGoalRealism(race.target_finish_seconds, projectedFinishSeconds)
+      : race.target_finish_seconds != null && courseRange != null
+        ? assessGoalRealismForRange(race.target_finish_seconds, courseRange)
+        : null
   const finishTimeSummary =
     race.target_finish_seconds != null
       ? `\n\nThe athlete has set a target finish time of ${formatDuration(race.target_finish_seconds)} - treat this as the goal to build the plan's intensity around.${realismFlag ? ` ${realismFlag}` : ''}`
       : projectedFinishSeconds != null
         ? `\n\nData-estimated finish time (not a guarantee, just a data-based reference point): ${formatDuration(projectedFinishSeconds)}.`
-        : ''
+        : courseRange != null
+          ? `\n\nData-estimated finish time range (${courseRange.sourceNote}): ${formatDuration(courseRange.totalSecondsLow)}-${formatDuration(courseRange.totalSecondsHigh)}.`
+          : ''
+
+  const courseContextSummary = courseProfile
+    ? `\n\nCourse context (informational, not factored into the numeric plan): ${[courseProfile.swimNotes, courseProfile.bikeNotes, courseProfile.runNotes].filter(Boolean).join(' ')}`
+    : ''
+
+  const cutoffSummary = cutoffFlags.length > 0 ? `\n\nCutoff check: ${cutoffFlags.map((f) => f.message).join(' ')}` : ''
 
   const weaknessSummary =
     category === 'multisport' && disciplineWeakness
@@ -256,7 +293,7 @@ ${strengthSummary}
 ${volumeSummary}
 ${consistencySummary}
 ${phaseSummary}
-${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${weightTrendSummary}${finishTimeSummary}${weaknessSummary}${readinessSummary}
+${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${weightTrendSummary}${finishTimeSummary}${courseContextSummary}${cutoffSummary}${weaknessSummary}${readinessSummary}
 
 Here is the week-by-week schedule already computed for this athlete (the numbers are fixed - do not change or restate them numerically, just write about them):
 ${weeksTable}
