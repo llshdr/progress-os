@@ -322,10 +322,13 @@ export interface MuscleImpactLine {
   description: string
 }
 
-// Extends describeStrengthEmphasis's exact reasoning (steady-state session
-// count vs. current baseline) to one line per muscle group already tracked
-// by computeMuscleVolume - no percentage, no new fabricated number, same
-// honest qualitative framing already chosen for Strength Emphasis.
+// Compares the CHOSEN approach against muscle_focused (the spectrum's
+// strength-frequency ceiling), not against the user's own current
+// real-world baseline - the useful question when picking a spectrum
+// position is "what am I giving up by not going further toward muscle-
+// focused," not "does this differ from what I already do today." Reuses
+// the exact same strengthSessionsForWeek computation describeStrengthEmphasis
+// already relies on - no new numbers, just a different comparison point.
 export function describeMuscleImpact(
   approach: RaceApproach,
   currentStrengthSessionsPerWeek: number,
@@ -333,32 +336,32 @@ export function describeMuscleImpact(
 ): MuscleImpactLine[] {
   if (currentStrengthSessionsPerWeek <= 0 || muscleVolume.length === 0) return []
 
-  const { previewSteadyStrengthSessions } = previewApproachEffect(approach, 0, currentStrengthSessionsPerWeek)
-  const baseline = Math.round(currentStrengthSessionsPerWeek)
-  const reduced = previewSteadyStrengthSessions < baseline
+  const sessionsAtApproach = strengthSessionsForWeek('build', approach, currentStrengthSessionsPerWeek)
+  const sessionsAtMuscleFocused = strengthSessionsForWeek('build', 'muscle_focused', currentStrengthSessionsPerWeek)
+  const sessionGap = sessionsAtMuscleFocused - sessionsAtApproach
 
   return muscleVolume.map((mv) => {
-    if (reduced) {
+    const guidelineNote =
+      mv.status === 'under'
+        ? `still under the ~10-20 sets/week guideline (${mv.sets} sets/week) — room to keep growing`
+        : mv.status === 'over'
+          ? `already above the ~10-20 sets/week guideline (${mv.sets} sets/week)`
+          : `within the ~10-20 sets/week guideline (${mv.sets} sets/week)`
+
+    if (sessionGap > 0) {
       return {
         muscle: mv.muscle,
         currentSetsPerWeek: mv.sets,
         projectedTag: 'reduced' as const,
-        description: `Strength sessions dropping from ${baseline}/week to ${previewSteadyStrengthSessions}/week — some reduction likely here (currently ${mv.sets} sets/week).`,
+        description: `${sessionsAtApproach} strength session(s)/week — ${sessionGap} fewer than a muscle-focused approach would give you (${sessionsAtMuscleFocused}/week); ${guidelineNote}.`,
       }
     }
-    if (mv.status === 'under') {
-      return {
-        muscle: mv.muscle,
-        currentSetsPerWeek: mv.sets,
-        projectedTag: 'growth_room' as const,
-        description: `Still under the ~10-20 sets/week guideline (${mv.sets} sets/week) — room to keep growing here.`,
-      }
-    }
+
     return {
       muscle: mv.muscle,
       currentSetsPerWeek: mv.sets,
-      projectedTag: 'maintain' as const,
-      description: `Sessions held steady — likely to maintain (currently ${mv.sets} sets/week).`,
+      projectedTag: mv.status === 'under' ? ('growth_room' as const) : ('maintain' as const),
+      description: `${sessionsAtApproach} strength session(s)/week — already matches what a muscle-focused approach would give you here; ${guidelineNote}.`,
     }
   })
 }
