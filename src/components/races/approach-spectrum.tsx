@@ -9,6 +9,7 @@ import {
   describeStrengthEmphasis,
   describeMuscleImpact,
   type RaceApproach,
+  type DisciplineRampInputs,
 } from '@/lib/race-plan/periodization'
 import type { Discipline } from '@/lib/race-plan/self-assessment'
 import type { MuscleVolume } from '@/lib/volume-analysis'
@@ -22,7 +23,7 @@ interface ApproachSpectrumProps {
   projectedFinishSeconds: number | null
   targetFinishSeconds: number | null
   onTargetFinishSecondsChange: (seconds: number | null) => void
-  disciplineWeights?: Record<Discipline, number>
+  disciplineInputs?: DisciplineRampInputs
   muscleVolume: MuscleVolume[]
 }
 
@@ -58,11 +59,11 @@ export default function ApproachSpectrum({
   projectedFinishSeconds,
   targetFinishSeconds,
   onTargetFinishSecondsChange,
-  disciplineWeights,
+  disciplineInputs,
   muscleVolume,
 }: ApproachSpectrumProps) {
   const index = RACE_APPROACHES.indexOf(value)
-  const preview = previewApproachEffect(value, currentWeeklyCardioKm, currentStrengthSessionsPerWeek, disciplineWeights)
+  const preview = previewApproachEffect(value, currentWeeklyCardioKm, currentStrengthSessionsPerWeek, disciplineInputs)
   const strengthEmphasisText = describeStrengthEmphasis(value, currentStrengthSessionsPerWeek)
   const muscleImpact = describeMuscleImpact(value, currentStrengthSessionsPerWeek, muscleVolume)
 

@@ -31,12 +31,7 @@ import {
 } from '@/lib/race-plan/self-assessment'
 import { computeTensionFlags } from '@/lib/race-plan/tension'
 import { estimateProjectedFinishSeconds, assessGoalRealism } from '@/lib/race-plan/finish-time'
-import {
-  computeDisciplineActivityFacts,
-  assessMultisportReadiness,
-  disciplineWeightsFromRanking,
-  type DisciplineActivityFacts,
-} from '@/lib/race-plan/discipline-weakness'
+import { computeDisciplineActivityFacts, assessMultisportReadiness, type DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
 import SelfAssessmentForm from '@/components/races/self-assessment-form'
 import MultisportSelfAssessmentForm from '@/components/races/multisport-self-assessment-form'
 import ApproachSpectrum from '@/components/races/approach-spectrum'
@@ -314,7 +309,10 @@ export default function RaceDetailPage() {
       : null
   const allFlags = [...tensionFlags, ...readinessFlags, ...(realismFlag ? [realismFlag] : [])]
 
-  const disciplineWeights = category === 'multisport' && disciplineWeakness ? disciplineWeightsFromRanking(disciplineWeakness) : undefined
+  const disciplineInputs =
+    category === 'multisport' && disciplineWeakness && disciplineActivityFacts
+      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order }
+      : undefined
 
   const stepSequence: Step[] = category === 'multisport' ? ['confirm', 'assessment', 'weakness', 'snapshot', 'spectrum'] : ['confirm', 'assessment', 'snapshot', 'spectrum']
 
@@ -544,7 +542,7 @@ export default function RaceDetailPage() {
                 projectedFinishSeconds={projectedFinishSeconds}
                 targetFinishSeconds={targetFinishSeconds}
                 onTargetFinishSecondsChange={setTargetFinishSeconds}
-                disciplineWeights={disciplineWeights}
+                disciplineInputs={disciplineInputs}
                 muscleVolume={snapshot.muscleVolume}
               />
 

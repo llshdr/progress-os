@@ -9,7 +9,7 @@ import { daysBetween } from '@/lib/goals'
 import { computeTensionFlags } from '@/lib/race-plan/tension'
 import { estimateProjectedFinishSeconds, assessGoalRealism } from '@/lib/race-plan/finish-time'
 import { raceCategoryFor, type SelfAssessment, type Discipline } from '@/lib/race-plan/self-assessment'
-import { computeDisciplineActivityFacts, assessMultisportReadiness, disciplineWeightsFromRanking, type DisciplineRanking } from '@/lib/race-plan/discipline-weakness'
+import { computeDisciplineActivityFacts, assessMultisportReadiness } from '@/lib/race-plan/discipline-weakness'
 
 const MODEL = 'gemini-2.5-flash'
 
@@ -121,11 +121,18 @@ export async function POST(request: NextRequest) {
 
   const facts = await analyzeCurrentFitness(supabase, user.id, raceId)
 
-  // Discipline weights come from the STORED ranking (from the earlier
-  // weakness-analysis step), never recomputed here - so the split the
-  // athlete already saw and the split the plan actually uses can't drift.
-  const disciplineWeights =
-    category === 'multisport' && disciplineWeakness ? disciplineWeightsFromRanking({ order: disciplineWeakness.order } as DisciplineRanking) : undefined
+  // Computed once, reused for both the periodization ramp and the
+  // readiness check below - real per-discipline activity, not the
+  // aggregate cross-discipline number (that conflation was the root
+  // cause of the bike/swim target bugs). The ranking order itself comes
+  // from the STORED weakness analysis, never recomputed here, so the
+  // split the athlete already saw and the split the plan actually uses
+  // can't drift.
+  const disciplineActivityFacts = category === 'multisport' ? await computeDisciplineActivityFacts(supabase) : null
+  const disciplineInputs =
+    category === 'multisport' && disciplineWeakness && disciplineActivityFacts
+      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order }
+      : undefined
 
   // Unlike the per-exercise recommend route, this deliberately has no
   // "not enough history" gate - the periodization math below has explicit
@@ -137,13 +144,12 @@ export async function POST(request: NextRequest) {
     facts.cardio.recentAvgWeeklyKm,
     facts.cardio.recentAvgSessionsPerWeek,
     facts.strength.recentSessionsPerWeek,
-    disciplineWeights
+    disciplineInputs
   )
 
   const daysUntilRace = daysBetween(race.race_date, getLocalDateString())
 
-  const readinessFlags =
-    category === 'multisport' ? assessMultisportReadiness(await computeDisciplineActivityFacts(supabase), daysUntilRace) : []
+  const readinessFlags = disciplineActivityFacts ? assessMultisportReadiness(disciplineActivityFacts, daysUntilRace) : []
   const readinessSummary = readinessFlags.length > 0 ? `\n\nReadiness check: ${readinessFlags.join(' ')}` : ''
 
   const cardioSummary = `Cardio: averaging ${facts.cardio.recentAvgWeeklyKm.toFixed(1)}km/week across ${facts.cardio.recentAvgSessionsPerWeek.toFixed(1)} sessions/week over the last 4 weeks, active in ${facts.cardio.weeksActive} of the last 8 weeks. Longest recent session: ${facts.cardio.longestSessionKm}km.${

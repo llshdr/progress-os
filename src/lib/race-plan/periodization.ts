@@ -1,5 +1,6 @@
 import { getLocalWeekStart, getLocalDateString } from '@/lib/date'
 import type { Discipline } from '@/lib/race-plan/self-assessment'
+import type { DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
 import type { MuscleVolume } from '@/lib/volume-analysis'
 
 // Ordered race-focused -> muscle-focused, so a slider can index directly
@@ -25,8 +26,8 @@ export interface DisciplineTarget {
 export interface TrainingWeekSkeleton {
   weekStartDate: string
   phase: TrainingPhase
-  // Populated only for multisport races with a discipline weighting;
-  // null for single-discipline races - zero behavior change for those.
+  // Populated only for multisport races; null for single-discipline races
+  // - zero behavior change for those.
   disciplines: { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget } | null
   targetCardioKm: number
   targetCardioSessions: number
@@ -35,36 +36,59 @@ export interface TrainingWeekSkeleton {
 
 const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
 
-function distributeKm(totalKm: number, weights: Record<Discipline, number>): Record<Discipline, number> {
-  const out = {} as Record<Discipline, number>
-  for (const d of DISCIPLINES) {
-    out[d] = Math.round(totalKm * weights[d] * 10) / 10
-  }
-  return out
+// Real per-discipline weekly ramp inputs: each discipline's own recent
+// activity (from computeDisciplineActivityFacts) plus the weakness
+// ranking (weakest first). Deliberately NOT a shared "cardio pool" split
+// into percentage shares - swim/bike/run sit on wildly different natural
+// km scales (a single bike ride covers far more distance than a swim or
+// run session), so treating them as fractions of one number produced
+// nonsensical targets (a bike target of ~2km/week). Each discipline ramps
+// from its own realistic floor instead.
+export interface DisciplineRampInputs {
+  activityFacts: Record<Discipline, DisciplineActivityFacts>
+  order: Discipline[]
 }
 
-// Largest-remainder apportionment: floor each discipline's share, then
-// hand the leftover session(s) to whichever discipline had the largest
-// fractional remainder - guarantees the three integers always sum
-// exactly to totalSessions, unlike naive per-discipline rounding.
-function distributeSessions(totalSessions: number, weights: Record<Discipline, number>): Record<Discipline, number> {
-  const raw = DISCIPLINES.map((d) => totalSessions * weights[d])
-  const floors = raw.map(Math.floor)
-  const remainder = totalSessions - floors.reduce((a, b) => a + b, 0)
-  const order = raw
-    .map((r, i) => ({ i, frac: r - floors[i] }))
-    .sort((a, b) => b.frac - a.frac)
+// Realistic per-discipline weekly floors (km), used when a user has
+// ~zero logged history for that discipline - starting points for full-
+// distance triathlon training (a single ride already covers this much
+// bike distance; swim/run floors are correspondingly smaller since those
+// disciplines sit on a different natural scale). These ramp upward as
+// real logged activity comes in on future regenerations, same as the
+// existing aggregate cardio floor already does for single-discipline
+// races.
+const DISCIPLINE_BASELINE_FLOOR_KM: Record<Discipline, number> = {
+  swim: 2,
+  bike: 30,
+  run: 10,
+}
 
-  const result = [...floors]
-  for (let k = 0; k < remainder; k++) {
-    result[order[k].i] += 1
-  }
+// Roughly how far a typical single session covers per discipline - used
+// to derive a session COUNT directly from a discipline's km target so
+// the two numbers can never disagree (a non-zero km target always
+// implies at least one session, and vice versa), instead of rounding km
+// and session counts independently.
+const TYPICAL_SESSION_KM: Record<Discipline, number> = {
+  swim: 2,
+  bike: 25,
+  run: 6,
+}
 
-  const out = {} as Record<Discipline, number>
-  DISCIPLINES.forEach((d, i) => {
-    out[d] = result[i]
-  })
-  return out
+const DISCIPLINE_MAX_SESSIONS: Record<Discipline, number> = {
+  swim: 4,
+  bike: 4,
+  run: 5,
+}
+
+// Applied to each discipline's OWN peak ramp (not a percentage of a
+// shared pool) - the weakest discipline ramps further above its own
+// baseline, the strongest slightly less, but every discipline still
+// ramps from its own realistic starting point.
+const RANK_ADJUSTMENT = [1.3, 1.0, 0.85] // weakest, middle, strongest
+
+function disciplineRankAdjustment(discipline: Discipline, order: Discipline[]): number {
+  const rank = order.indexOf(discipline)
+  return rank >= 0 ? RANK_ADJUSTMENT[rank] : 1.0
 }
 
 interface PhaseAllocation {
@@ -114,45 +138,62 @@ function taperFraction(taperWeeks: number, indexWithinTaper: number): number {
   return 0.7 - t * 0.4
 }
 
-// One preset per spectrum stop, replacing what used to be a two-branch
-// if/else. race_focused/balanced match the old full_send/balanced numbers
-// exactly - this is a superset, not a behavior change for those two.
-// peakMultiplier drives the cardio ramp target (see computeTrainingWeeks);
-// the two strength functions take the user's current weekly baseline and
-// return a target for "steady" (base/build) vs. "winding down" (peak/
-// taper) weeks.
-interface ApproachPreset {
-  peakMultiplier: number
-  strengthSteadySessions: (baseline: number) => number
-  strengthWindingDownSessions: (baseline: number) => number
+// One shared ramp shape (base/build ramp linearly to peak, hold at peak,
+// cut back for taper) reused for both the aggregate cardio number
+// (single-discipline races) and each discipline's own number (multisport
+// races) - same curve, different baseline/peak per call.
+function rampValue(
+  baseline: number,
+  peak: number,
+  phase: TrainingPhase,
+  weekIndex: number,
+  rampWeeks: number,
+  allocation: PhaseAllocation,
+  taperIndex: number
+): number {
+  if (phase === 'base' || phase === 'build') {
+    return baseline + (peak - baseline) * ((weekIndex + 1) / Math.max(rampWeeks, 1))
+  }
+  if (phase === 'peak') return peak
+  return peak * taperFraction(allocation.taper, taperIndex)
 }
 
-const APPROACH_PRESETS: Record<RaceApproach, ApproachPreset> = {
-  race_focused: {
-    peakMultiplier: 1.9,
-    strengthSteadySessions: (b) => Math.min(2, b),
-    strengthWindingDownSessions: () => 1,
-  },
-  race_leaning: {
-    peakMultiplier: 1.55,
-    strengthSteadySessions: (b) => Math.min(3, b),
-    strengthWindingDownSessions: () => 1,
-  },
-  balanced: {
-    peakMultiplier: 1.25,
-    strengthSteadySessions: (b) => b,
-    strengthWindingDownSessions: (b) => Math.max(1, b - 1),
-  },
-  muscle_leaning: {
-    peakMultiplier: 1.1,
-    strengthSteadySessions: (b) => b,
-    strengthWindingDownSessions: (b) => Math.max(1, b - 1),
-  },
-  muscle_focused: {
-    peakMultiplier: 1.0,
-    strengthSteadySessions: (b) => b,
-    strengthWindingDownSessions: (b) => b,
-  },
+// Cardio peak multiplier per approach - race_focused ramps hardest,
+// muscle_focused still ramps (just modestly): "maximize muscle while
+// still finishing the race safely" means real endurance preparation, not
+// none. A flat 1.0x (no increase over current baseline at all) would mean
+// zero race-specific endurance build-up regardless of how far out the
+// race is - not a genuine floor, just no training. 1.08x keeps
+// muscle_focused's ramp clearly the smallest of the five while still
+// being real.
+const PEAK_MULTIPLIER: Record<RaceApproach, number> = {
+  race_focused: 1.9,
+  race_leaning: 1.55,
+  balanced: 1.25,
+  muscle_leaning: 1.15,
+  muscle_focused: 1.08,
+}
+
+// Strength-session frequency ceilings per approach x phase (never a
+// floor - always capped by the user's own logged baseline, so this never
+// invents a habit they don't already have). Grounded in concurrent-
+// training/interference-effect guidance: high-frequency strength work
+// (up to 4-5x/week) is only sustainable while concurrent endurance volume
+// is still low, i.e. early Base; as endurance volume ramps toward
+// Peak/Taper, recovery capacity increasingly has to go to the endurance
+// side, so strength frequency must come down for every approach - what
+// actually distinguishes the five approaches is HOW FAST it comes down,
+// not whether it does. race_focused drops hardest and earliest;
+// muscle_focused preserves the most for the longest, but still tapers
+// into Peak/Taper rather than staying flat, since "can still finish the
+// race safely" requires some recovery capacity to shift toward the
+// endurance side as race day approaches.
+const STRENGTH_SESSION_CAPS: Record<RaceApproach, Record<TrainingPhase, number>> = {
+  race_focused: { base: 2, build: 2, peak: 1, taper: 1 },
+  race_leaning: { base: 3, build: 2, peak: 1, taper: 1 },
+  balanced: { base: 4, build: 3, peak: 2, taper: 1 },
+  muscle_leaning: { base: 4, build: 4, peak: 2, taper: 2 },
+  muscle_focused: { base: 5, build: 4, peak: 3, taper: 2 },
 }
 
 function strengthSessionsForWeek(phase: TrainingPhase, approach: RaceApproach, currentStrengthSessionsPerWeek: number): number {
@@ -160,30 +201,39 @@ function strengthSessionsForWeek(phase: TrainingPhase, approach: RaceApproach, c
   if (currentStrengthSessionsPerWeek <= 0) return 0
 
   const baseline = Math.max(1, Math.round(currentStrengthSessionsPerWeek))
-  const windingDown = phase === 'peak' || phase === 'taper'
-  const preset = APPROACH_PRESETS[approach]
-
-  return windingDown ? preset.strengthWindingDownSessions(baseline) : preset.strengthSteadySessions(baseline)
+  const cap = STRENGTH_SESSION_CAPS[approach][phase]
+  return Math.min(cap, baseline)
 }
 
 // Cheap, pure preview for the client's live spectrum slider - no race date
-// needed, just today's baseline numbers. Mirrors the "steady" (base/build)
-// shape of computeTrainingWeeks below without needing a full skeleton.
+// needed, just today's baseline numbers. Mirrors the "build phase" shape
+// of computeTrainingWeeks below without needing a full skeleton.
 export function previewApproachEffect(
   approach: RaceApproach,
   currentWeeklyCardioKm: number,
   currentStrengthSessionsPerWeek: number,
-  disciplineWeights?: Record<Discipline, number>
+  disciplineInputs?: DisciplineRampInputs
 ): { previewPeakCardioKm: number; previewSteadyStrengthSessions: number; previewDisciplineKm?: Record<Discipline, number> } {
   const cardioBaseline = Math.max(currentWeeklyCardioKm, 5)
-  const preset = APPROACH_PRESETS[approach]
-  const previewPeakCardioKm = Math.round(cardioBaseline * preset.peakMultiplier * 10) / 10
+  const peakMultiplier = PEAK_MULTIPLIER[approach]
+  const previewPeakCardioKm = Math.round(cardioBaseline * peakMultiplier * 10) / 10
 
-  return {
+  const result: ReturnType<typeof previewApproachEffect> = {
     previewPeakCardioKm,
     previewSteadyStrengthSessions: strengthSessionsForWeek('build', approach, currentStrengthSessionsPerWeek),
-    ...(disciplineWeights ? { previewDisciplineKm: distributeKm(previewPeakCardioKm, disciplineWeights) } : {}),
   }
+
+  if (disciplineInputs) {
+    const previewDisciplineKm = {} as Record<Discipline, number>
+    for (const d of DISCIPLINES) {
+      const baseline = Math.max(disciplineInputs.activityFacts[d].recentAvgWeeklyKm, DISCIPLINE_BASELINE_FLOOR_KM[d])
+      const peak = baseline * peakMultiplier * disciplineRankAdjustment(d, disciplineInputs.order)
+      previewDisciplineKm[d] = Math.round(peak * 10) / 10
+    }
+    result.previewDisciplineKm = previewDisciplineKm
+  }
+
+  return result
 }
 
 // Shared by the live spectrum slider (approach-spectrum.tsx) and the review
@@ -264,7 +314,7 @@ export function computeTrainingWeeks(
   currentWeeklyCardioKm: number,
   currentCardioSessionsPerWeek: number,
   currentStrengthSessionsPerWeek: number,
-  disciplineWeights?: Record<Discipline, number>
+  disciplineInputs?: DisciplineRampInputs
 ): TrainingWeekSkeleton[] {
   const startMonday = getLocalWeekStart()
   const raceMonday = getLocalWeekStart(new Date(raceDate + 'T00:00:00'))
@@ -282,10 +332,26 @@ export function computeTrainingWeeks(
   // Floors avoid multiplying a zero baseline into a permanently-zero ramp
   // for someone with little/no logged cardio history yet.
   const cardioBaseline = Math.max(currentWeeklyCardioKm, 5)
-  const peakMultiplier = APPROACH_PRESETS[approach].peakMultiplier
+  const peakMultiplier = PEAK_MULTIPLIER[approach]
   const peakTargetKm = cardioBaseline * peakMultiplier
   const rampWeeks = allocation.base + allocation.build
   const sessionsBaseline = Math.max(currentCardioSessionsPerWeek, 2)
+
+  // Per-discipline baselines/peaks, computed once - each ramps from its
+  // own realistic starting point (see DisciplineRampInputs above), with
+  // the weakness ranking adjusting how far above that baseline each
+  // discipline's own peak sits.
+  let disciplineBaselines: Record<Discipline, number> | null = null
+  let disciplinePeaks: Record<Discipline, number> | null = null
+  if (disciplineInputs) {
+    disciplineBaselines = {} as Record<Discipline, number>
+    disciplinePeaks = {} as Record<Discipline, number>
+    for (const d of DISCIPLINES) {
+      const baseline = Math.max(disciplineInputs.activityFacts[d].recentAvgWeeklyKm, DISCIPLINE_BASELINE_FLOOR_KM[d])
+      disciplineBaselines[d] = baseline
+      disciplinePeaks[d] = baseline * peakMultiplier * disciplineRankAdjustment(d, disciplineInputs.order)
+    }
+  }
 
   let taperIndex = 0
 
@@ -294,33 +360,25 @@ export function computeTrainingWeeks(
     weekStart.setDate(weekStart.getDate() + i * 7)
     const weekStartDate = getLocalDateString(weekStart)
 
-    let targetCardioKm: number
-    if (phase === 'base' || phase === 'build') {
-      // i is 0-based across ALL phases, but base+build always occupy the
-      // first rampWeeks slots, so (i+1)/rampWeeks is exactly this week's
-      // position within the ramp.
-      targetCardioKm = cardioBaseline + (peakTargetKm - cardioBaseline) * ((i + 1) / Math.max(rampWeeks, 1))
-    } else if (phase === 'peak') {
-      targetCardioKm = peakTargetKm
-    } else {
-      targetCardioKm = peakTargetKm * taperFraction(allocation.taper, taperIndex)
-      taperIndex += 1
-    }
-    targetCardioKm = Math.round(targetCardioKm * 10) / 10
-
+    const targetCardioKm = Math.round(rampValue(cardioBaseline, peakTargetKm, phase, i, rampWeeks, allocation, taperIndex) * 10) / 10
     const targetCardioSessions = Math.min(7, Math.max(2, Math.round(sessionsBaseline * (targetCardioKm / cardioBaseline))))
     const targetStrengthSessions = strengthSessionsForWeek(phase, approach, currentStrengthSessionsPerWeek)
 
     let disciplines: TrainingWeekSkeleton['disciplines'] = null
-    if (disciplineWeights) {
-      const kmSplit = distributeKm(targetCardioKm, disciplineWeights)
-      const sessionSplit = distributeSessions(targetCardioSessions, disciplineWeights)
-      disciplines = {
-        swim: { km: kmSplit.swim, sessions: sessionSplit.swim },
-        bike: { km: kmSplit.bike, sessions: sessionSplit.bike },
-        run: { km: kmSplit.run, sessions: sessionSplit.run },
+    if (disciplineBaselines && disciplinePeaks) {
+      const built = {} as { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget }
+      for (const d of DISCIPLINES) {
+        const km = Math.round(rampValue(disciplineBaselines[d], disciplinePeaks[d], phase, i, rampWeeks, allocation, taperIndex) * 10) / 10
+        // Sessions derived FROM km (not rounded independently) - a
+        // non-zero km target always implies at least one session, and
+        // vice versa, so the two numbers can never disagree.
+        const sessions = km > 0 ? Math.max(1, Math.min(DISCIPLINE_MAX_SESSIONS[d], Math.round(km / TYPICAL_SESSION_KM[d]))) : 0
+        built[d] = { km, sessions }
       }
+      disciplines = built
     }
+
+    if (phase === 'taper') taperIndex += 1
 
     return { weekStartDate, phase, disciplines, targetCardioKm, targetCardioSessions, targetStrengthSessions }
   })

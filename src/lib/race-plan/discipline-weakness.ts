@@ -82,19 +82,6 @@ export function rankDisciplines(
   return { order }
 }
 
-// Fixed weighting by rank position, not a continuous function of score -
-// simple and predictable, same "simple, explainable" ethos as
-// periodization.ts's phase-allocation proportions.
-const RANK_WEIGHTS = [0.45, 0.35, 0.2]
-
-export function disciplineWeightsFromRanking(ranking: DisciplineRanking): Record<Discipline, number> {
-  const weights = {} as Record<Discipline, number>
-  ranking.order.forEach((discipline, i) => {
-    weights[discipline] = RANK_WEIGHTS[i]
-  })
-  return weights
-}
-
 // Basic, data-only readiness flag - no course data yet (that's Phase 2),
 // so this is purely "is there any recent activity at all for a
 // discipline with limited time left," not a time-based projection.
