@@ -3,12 +3,12 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { questionsForCategory, type RaceCategory, type SelfAssessment, type AssessmentQuestion } from '@/lib/race-plan/self-assessment'
+import { questionsForCategory, type RaceCategory, type SimpleSelfAssessment, type AssessmentQuestion } from '@/lib/race-plan/self-assessment'
 
 interface SelfAssessmentFormProps {
   category: RaceCategory
-  value: SelfAssessment
-  onChange: (value: SelfAssessment) => void
+  value: SimpleSelfAssessment
+  onChange: (value: SimpleSelfAssessment) => void
 }
 
 // Every question is optional and skippable - self-report only fills gaps
@@ -17,7 +17,7 @@ interface SelfAssessmentFormProps {
 // assess themselves still has an easy, concrete answer to pick.
 export default function SelfAssessmentForm({ category, value, onChange }: SelfAssessmentFormProps) {
   const questions = questionsForCategory(category)
-  const patch = (fields: Partial<SelfAssessment>) => onChange({ ...value, ...fields })
+  const patch = (fields: Partial<SimpleSelfAssessment>) => onChange({ ...value, ...fields })
 
   const renderQuestion = (q: AssessmentQuestion) => {
     if (q.type === 'scale') {
@@ -28,7 +28,7 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
             <button
               key={opt.value}
               type="button"
-              onClick={() => patch({ [q.id]: current === Number(opt.value) ? null : Number(opt.value) } as Partial<SelfAssessment>)}
+              onClick={() => patch({ [q.id]: current === Number(opt.value) ? null : Number(opt.value) } as Partial<SimpleSelfAssessment>)}
               className={`px-3 py-2 rounded-lg text-sm transition-colors ${
                 current === Number(opt.value) ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
               }`}
@@ -76,7 +76,7 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
             <button
               key={opt.value}
               type="button"
-              onClick={() => patch({ [q.id]: current === opt.value ? null : opt.value } as Partial<SelfAssessment>)}
+              onClick={() => patch({ [q.id]: current === opt.value ? null : opt.value } as Partial<SimpleSelfAssessment>)}
               className={`px-3 py-2 rounded-lg text-sm transition-colors ${
                 current === opt.value ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
               }`}
@@ -96,7 +96,7 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
             type="number"
             step="0.1"
             value={current ?? ''}
-            onChange={(e) => patch({ [q.id]: e.target.value ? parseFloat(e.target.value) : null } as Partial<SelfAssessment>)}
+            onChange={(e) => patch({ [q.id]: e.target.value ? parseFloat(e.target.value) : null } as Partial<SimpleSelfAssessment>)}
             placeholder="e.g. 5"
             className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
           />
@@ -164,7 +164,7 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
     return (
       <Textarea
         value={(value[q.id] as string | null) ?? ''}
-        onChange={(e) => patch({ [q.id]: e.target.value || null } as Partial<SelfAssessment>)}
+        onChange={(e) => patch({ [q.id]: e.target.value || null } as Partial<SimpleSelfAssessment>)}
         placeholder="Optional..."
         rows={2}
         className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"

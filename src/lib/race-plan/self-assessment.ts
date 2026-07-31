@@ -1,32 +1,5 @@
 import type { RaceType } from '@/lib/race-constants'
 
-// One flat shape, fields simply unused/null outside their race category -
-// matches this app's existing preference for flat data shapes (e.g.
-// CardioActivity, ManualCardio) over discriminated unions.
-export interface SelfAssessment {
-  perceivedFitness: 1 | 2 | 3 | 4 | 5 | null
-  longestRecentDistanceKm: number | null
-  recentTimeTrial: { distanceKm: number; timeSeconds: number } | null
-  limiters: string[]
-  swimComfort: 1 | 2 | 3 | 4 | 5 | null
-  longestRecentBikeKm: number | null
-  perceivedStrength: 1 | 2 | 3 | 4 | 5 | null
-  pastMultisportExperience: 'none' | 'sprint' | 'olympic' | 'half_iron' | 'full_iron' | 'other' | null
-  notes: string | null
-}
-
-export const EMPTY_SELF_ASSESSMENT: SelfAssessment = {
-  perceivedFitness: null,
-  longestRecentDistanceKm: null,
-  recentTimeTrial: null,
-  limiters: [],
-  swimComfort: null,
-  longestRecentBikeKm: null,
-  perceivedStrength: null,
-  pastMultisportExperience: null,
-  notes: null,
-}
-
 export type RaceCategory = 'run' | 'multisport' | 'other'
 
 const MULTISPORT_TYPES: RaceType[] = ['ironman', 'xtri']
@@ -38,8 +11,95 @@ export function raceCategoryFor(raceType: RaceType): RaceCategory {
   return 'other'
 }
 
+export type Discipline = 'swim' | 'bike' | 'run'
+
+export interface DisciplineAssessment {
+  comfortLevel: 1 | 2 | 3 | 4 | 5 | null
+  longestRecentSessionKm: number | null
+  recentTimeTrial: { distanceKm: number; timeSeconds: number } | null
+  limiters: string[]
+}
+
+export const EMPTY_DISCIPLINE_ASSESSMENT: DisciplineAssessment = {
+  comfortLevel: null,
+  longestRecentSessionKm: null,
+  recentTimeTrial: null,
+  limiters: [],
+}
+
+// Mandatory, discipline-grouped - Ironman/Xtri only. comfortLevel is the
+// one required field per discipline (always answerable, even "1, not
+// confident"); everything else stays optional.
+export interface MultisportSelfAssessment {
+  kind: 'multisport'
+  swim: DisciplineAssessment
+  bike: DisciplineAssessment
+  run: DisciplineAssessment
+  perceivedStrength: 1 | 2 | 3 | 4 | 5 | null
+  pastMultisportExperience: 'none' | 'sprint' | 'olympic' | 'half_iron' | 'full_iron' | 'other' | null
+  notes: string | null
+}
+
+// Light, fully-optional single-discipline form - unchanged shape/behavior
+// from before this phase, still drives self-assessment-form.tsx for
+// 'run'/'other' races.
+export interface SimpleSelfAssessment {
+  kind: 'simple'
+  perceivedFitness: 1 | 2 | 3 | 4 | 5 | null
+  longestRecentDistanceKm: number | null
+  recentTimeTrial: { distanceKm: number; timeSeconds: number } | null
+  limiters: string[]
+  notes: string | null
+}
+
+export type SelfAssessment = SimpleSelfAssessment | MultisportSelfAssessment
+
+export const EMPTY_SIMPLE_SELF_ASSESSMENT: SimpleSelfAssessment = {
+  kind: 'simple',
+  perceivedFitness: null,
+  longestRecentDistanceKm: null,
+  recentTimeTrial: null,
+  limiters: [],
+  notes: null,
+}
+
+export const EMPTY_MULTISPORT_SELF_ASSESSMENT: MultisportSelfAssessment = {
+  kind: 'multisport',
+  swim: { ...EMPTY_DISCIPLINE_ASSESSMENT },
+  bike: { ...EMPTY_DISCIPLINE_ASSESSMENT },
+  run: { ...EMPTY_DISCIPLINE_ASSESSMENT },
+  perceivedStrength: null,
+  pastMultisportExperience: null,
+  notes: null,
+}
+
+export function emptySelfAssessmentFor(category: RaceCategory): SelfAssessment {
+  return category === 'multisport' ? { ...EMPTY_MULTISPORT_SELF_ASSESSMENT } : { ...EMPTY_SIMPLE_SELF_ASSESSMENT }
+}
+
+// Defensive normalization for old-shape (pre-phase-1) or malformed stored
+// JSON - falls back to an empty assessment of the right shape rather than
+// crashing on an unrecognized `kind`. Personal-app scale: no data
+// migration, just a safe read.
+export function normalizeSelfAssessment(value: unknown, category: RaceCategory): SelfAssessment {
+  if (value && typeof value === 'object' && (value as any).kind === 'simple' && category !== 'multisport') {
+    return { ...EMPTY_SIMPLE_SELF_ASSESSMENT, ...(value as object) }
+  }
+  if (value && typeof value === 'object' && (value as any).kind === 'multisport' && category === 'multisport') {
+    const v = value as any
+    return {
+      ...EMPTY_MULTISPORT_SELF_ASSESSMENT,
+      ...v,
+      swim: { ...EMPTY_DISCIPLINE_ASSESSMENT, ...(v.swim ?? {}) },
+      bike: { ...EMPTY_DISCIPLINE_ASSESSMENT, ...(v.bike ?? {}) },
+      run: { ...EMPTY_DISCIPLINE_ASSESSMENT, ...(v.run ?? {}) },
+    }
+  }
+  return emptySelfAssessmentFor(category)
+}
+
 export interface AssessmentQuestion {
-  id: keyof SelfAssessment
+  id: keyof SimpleSelfAssessment
   label: string
   type: 'scale' | 'chips' | 'distance' | 'time' | 'text'
   helpText: string
@@ -91,50 +151,6 @@ const RUN_QUESTIONS: AssessmentQuestion[] = [
   },
 ]
 
-const MULTISPORT_QUESTIONS: AssessmentQuestion[] = [
-  ...RUN_QUESTIONS,
-  {
-    id: 'swimComfort',
-    label: 'How comfortable are you in open water?',
-    type: 'scale',
-    helpText: 'Not sure? "Not confident" is a totally normal answer — it just shapes how the swim leg gets treated.',
-    options: [
-      { value: '1', label: 'Not confident in open water' },
-      { value: '2', label: 'Can manage short distances' },
-      { value: '3', label: 'Comfortable at moderate distance' },
-      { value: '4', label: 'Confident, trained regularly' },
-      { value: '5', label: 'Could do the full swim distance today' },
-    ],
-  },
-  {
-    id: 'longestRecentBikeKm',
-    label: 'Longest bike ride in the last month (km)',
-    type: 'distance',
-    helpText: 'A rough guess is fine — even "around 40km" helps.',
-  },
-  {
-    id: 'perceivedStrength',
-    label: 'How would you rate your current strength training?',
-    type: 'scale',
-    helpText: 'We already track your logged lifts, so this is mostly a sanity check — answer however feels right.',
-    options: FITNESS_SCALE_OPTIONS,
-  },
-  {
-    id: 'pastMultisportExperience',
-    label: 'Past multi-sport race experience',
-    type: 'chips',
-    helpText: 'Pick the closest match.',
-    options: [
-      { value: 'none', label: 'None yet' },
-      { value: 'sprint', label: 'Sprint triathlon' },
-      { value: 'olympic', label: 'Olympic triathlon' },
-      { value: 'half_iron', label: 'Half-iron distance' },
-      { value: 'full_iron', label: 'Full-iron distance' },
-      { value: 'other', label: 'Other' },
-    ],
-  },
-]
-
 const OTHER_QUESTIONS: AssessmentQuestion[] = [
   {
     id: 'perceivedFitness',
@@ -151,8 +167,72 @@ const OTHER_QUESTIONS: AssessmentQuestion[] = [
   },
 ]
 
+// Only meaningful for 'run'/'other' now - multisport races use
+// questionsForDiscipline below instead, via multisport-self-assessment-form.tsx.
 export function questionsForCategory(category: RaceCategory): AssessmentQuestion[] {
-  if (category === 'multisport') return MULTISPORT_QUESTIONS
   if (category === 'run') return RUN_QUESTIONS
   return OTHER_QUESTIONS
+}
+
+export interface DisciplineQuestion {
+  id: keyof DisciplineAssessment
+  label: string
+  type: 'scale' | 'chips' | 'distance' | 'time'
+  helpText: string
+  required?: boolean
+  options?: { value: string; label: string }[]
+}
+
+const DISCIPLINE_LABEL: Record<Discipline, string> = { swim: 'swim', bike: 'bike', run: 'run' }
+
+const DISCIPLINE_LIMITER_OPTIONS: Record<Discipline, { value: string; label: string }[]> = {
+  swim: [
+    { value: 'open_water_confidence', label: 'Not confident in open water' },
+    { value: 'breathing_technique', label: 'Breathing/technique' },
+    { value: 'long_session_endurance', label: 'Long-session endurance' },
+    { value: 'none', label: 'None that I know of' },
+  ],
+  bike: [
+    { value: 'traffic_hills_comfort', label: 'Comfort with traffic/hills' },
+    { value: 'saddle_comfort', label: 'Saddle/position comfort' },
+    { value: 'long_session_endurance', label: 'Long-session endurance' },
+    { value: 'none', label: 'None that I know of' },
+  ],
+  run: LIMITER_OPTIONS,
+}
+
+// Same four question types (comfort/longest-session/time-trial/limiters)
+// for every discipline, just relabeled - one generator instead of three
+// near-identical hardcoded lists.
+export function questionsForDiscipline(discipline: Discipline): DisciplineQuestion[] {
+  const label = DISCIPLINE_LABEL[discipline]
+  return [
+    {
+      id: 'comfortLevel',
+      label: `How comfortable are you with the ${label}?`,
+      type: 'scale',
+      required: true,
+      helpText: 'Not sure? An honest low rating is a normal, useful answer — it just shapes how this discipline gets treated.',
+      options: FITNESS_SCALE_OPTIONS,
+    },
+    {
+      id: 'longestRecentSessionKm',
+      label: `Longest recent ${label} session (km)`,
+      type: 'distance',
+      helpText: 'A rough guess is fine — even an approximate distance helps.',
+    },
+    {
+      id: 'recentTimeTrial',
+      label: `A recent ${label} time trial, if you have one`,
+      type: 'time',
+      helpText: 'Optional — a distance and time from any session you pushed the pace on recently.',
+    },
+    {
+      id: 'limiters',
+      label: `Anything holding back your ${label}?`,
+      type: 'chips',
+      helpText: 'Pick any that apply — this just helps the plan avoid pushing into a known weak spot.',
+      options: DISCIPLINE_LIMITER_OPTIONS[discipline],
+    },
+  ]
 }

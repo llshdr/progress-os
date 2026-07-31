@@ -4,7 +4,12 @@ import type { FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
 // Simple threshold checks, not AI - deterministic so the client (Snapshot
 // step warning) and the race-plan route (prompt context) can't drift.
 // Not exhaustive, just the clearest self-report-vs-logged-data mismatches.
+// Multisport assessments are handled by the discipline-weakness system
+// instead (per-discipline, not aggregate) - this only applies to the
+// simple, single-discipline shape.
 export function computeTensionFlags(assessment: SelfAssessment, facts: FitnessSnapshot): string[] {
+  if (assessment.kind !== 'simple') return []
+
   const flags: string[] = []
 
   if (assessment.perceivedFitness != null && assessment.perceivedFitness >= 4 && facts.cardio.weeksActive <= 2) {
@@ -16,12 +21,6 @@ export function computeTensionFlags(assessment: SelfAssessment, facts: FitnessSn
   if (assessment.perceivedFitness != null && assessment.perceivedFitness <= 2 && facts.cardio.weeksActive >= 6) {
     flags.push(
       `You rated your fitness low, but you've been active ${facts.cardio.weeksActive} of the last 8 weeks — your logged numbers may already be ahead of how you feel.`
-    )
-  }
-
-  if (assessment.perceivedStrength != null && assessment.perceivedStrength <= 2 && facts.strength.recentSessionsPerWeek >= 3) {
-    flags.push(
-      `You rated strength as a weak point, but you've been training ${facts.strength.recentSessionsPerWeek.toFixed(1)} strength session(s)/week recently — your logged numbers may already be ahead of how you feel.`
     )
   }
 

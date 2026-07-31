@@ -1,4 +1,6 @@
 import { getLocalWeekStart, getLocalDateString } from '@/lib/date'
+import type { Discipline } from '@/lib/race-plan/self-assessment'
+import type { MuscleVolume } from '@/lib/volume-analysis'
 
 // Ordered race-focused -> muscle-focused, so a slider can index directly
 // into this array (0..4) rather than needing a separate mapping table.
@@ -15,12 +17,54 @@ export const RACE_APPROACH_LABELS: Record<RaceApproach, string> = {
 
 export type TrainingPhase = 'base' | 'build' | 'peak' | 'taper'
 
+export interface DisciplineTarget {
+  km: number
+  sessions: number
+}
+
 export interface TrainingWeekSkeleton {
   weekStartDate: string
   phase: TrainingPhase
+  // Populated only for multisport races with a discipline weighting;
+  // null for single-discipline races - zero behavior change for those.
+  disciplines: { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget } | null
   targetCardioKm: number
   targetCardioSessions: number
   targetStrengthSessions: number
+}
+
+const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
+
+function distributeKm(totalKm: number, weights: Record<Discipline, number>): Record<Discipline, number> {
+  const out = {} as Record<Discipline, number>
+  for (const d of DISCIPLINES) {
+    out[d] = Math.round(totalKm * weights[d] * 10) / 10
+  }
+  return out
+}
+
+// Largest-remainder apportionment: floor each discipline's share, then
+// hand the leftover session(s) to whichever discipline had the largest
+// fractional remainder - guarantees the three integers always sum
+// exactly to totalSessions, unlike naive per-discipline rounding.
+function distributeSessions(totalSessions: number, weights: Record<Discipline, number>): Record<Discipline, number> {
+  const raw = DISCIPLINES.map((d) => totalSessions * weights[d])
+  const floors = raw.map(Math.floor)
+  const remainder = totalSessions - floors.reduce((a, b) => a + b, 0)
+  const order = raw
+    .map((r, i) => ({ i, frac: r - floors[i] }))
+    .sort((a, b) => b.frac - a.frac)
+
+  const result = [...floors]
+  for (let k = 0; k < remainder; k++) {
+    result[order[k].i] += 1
+  }
+
+  const out = {} as Record<Discipline, number>
+  DISCIPLINES.forEach((d, i) => {
+    out[d] = result[i]
+  })
+  return out
 }
 
 interface PhaseAllocation {
@@ -128,13 +172,17 @@ function strengthSessionsForWeek(phase: TrainingPhase, approach: RaceApproach, c
 export function previewApproachEffect(
   approach: RaceApproach,
   currentWeeklyCardioKm: number,
-  currentStrengthSessionsPerWeek: number
-): { previewPeakCardioKm: number; previewSteadyStrengthSessions: number } {
+  currentStrengthSessionsPerWeek: number,
+  disciplineWeights?: Record<Discipline, number>
+): { previewPeakCardioKm: number; previewSteadyStrengthSessions: number; previewDisciplineKm?: Record<Discipline, number> } {
   const cardioBaseline = Math.max(currentWeeklyCardioKm, 5)
   const preset = APPROACH_PRESETS[approach]
+  const previewPeakCardioKm = Math.round(cardioBaseline * preset.peakMultiplier * 10) / 10
+
   return {
-    previewPeakCardioKm: Math.round(cardioBaseline * preset.peakMultiplier * 10) / 10,
+    previewPeakCardioKm,
     previewSteadyStrengthSessions: strengthSessionsForWeek('build', approach, currentStrengthSessionsPerWeek),
+    ...(disciplineWeights ? { previewDisciplineKm: distributeKm(previewPeakCardioKm, disciplineWeights) } : {}),
   }
 }
 
@@ -159,6 +207,54 @@ export function describeStrengthEmphasis(approach: RaceApproach, currentStrength
   return `${previewSteadyStrengthSessions} strength session(s)/week — holding above your current ${baseline}/week.`
 }
 
+export interface MuscleImpactLine {
+  muscle: string
+  currentSetsPerWeek: number
+  projectedTag: 'maintain' | 'reduced' | 'growth_room'
+  description: string
+}
+
+// Extends describeStrengthEmphasis's exact reasoning (steady-state session
+// count vs. current baseline) to one line per muscle group already tracked
+// by computeMuscleVolume - no percentage, no new fabricated number, same
+// honest qualitative framing already chosen for Strength Emphasis.
+export function describeMuscleImpact(
+  approach: RaceApproach,
+  currentStrengthSessionsPerWeek: number,
+  muscleVolume: MuscleVolume[]
+): MuscleImpactLine[] {
+  if (currentStrengthSessionsPerWeek <= 0 || muscleVolume.length === 0) return []
+
+  const { previewSteadyStrengthSessions } = previewApproachEffect(approach, 0, currentStrengthSessionsPerWeek)
+  const baseline = Math.round(currentStrengthSessionsPerWeek)
+  const reduced = previewSteadyStrengthSessions < baseline
+
+  return muscleVolume.map((mv) => {
+    if (reduced) {
+      return {
+        muscle: mv.muscle,
+        currentSetsPerWeek: mv.sets,
+        projectedTag: 'reduced' as const,
+        description: `Strength sessions dropping from ${baseline}/week to ${previewSteadyStrengthSessions}/week — some reduction likely here (currently ${mv.sets} sets/week).`,
+      }
+    }
+    if (mv.status === 'under') {
+      return {
+        muscle: mv.muscle,
+        currentSetsPerWeek: mv.sets,
+        projectedTag: 'growth_room' as const,
+        description: `Still under the ~10-20 sets/week guideline (${mv.sets} sets/week) — room to keep growing here.`,
+      }
+    }
+    return {
+      muscle: mv.muscle,
+      currentSetsPerWeek: mv.sets,
+      projectedTag: 'maintain' as const,
+      description: `Sessions held steady — likely to maintain (currently ${mv.sets} sets/week).`,
+    }
+  })
+}
+
 // All date/phase/number arithmetic lives here, never in the AI prompt -
 // the model only ever writes the per-week focus_note and overview text on
 // top of these already-decided numbers (see race-plan/route.ts).
@@ -167,7 +263,8 @@ export function computeTrainingWeeks(
   approach: RaceApproach,
   currentWeeklyCardioKm: number,
   currentCardioSessionsPerWeek: number,
-  currentStrengthSessionsPerWeek: number
+  currentStrengthSessionsPerWeek: number,
+  disciplineWeights?: Record<Discipline, number>
 ): TrainingWeekSkeleton[] {
   const startMonday = getLocalWeekStart()
   const raceMonday = getLocalWeekStart(new Date(raceDate + 'T00:00:00'))
@@ -214,6 +311,17 @@ export function computeTrainingWeeks(
     const targetCardioSessions = Math.min(7, Math.max(2, Math.round(sessionsBaseline * (targetCardioKm / cardioBaseline))))
     const targetStrengthSessions = strengthSessionsForWeek(phase, approach, currentStrengthSessionsPerWeek)
 
-    return { weekStartDate, phase, targetCardioKm, targetCardioSessions, targetStrengthSessions }
+    let disciplines: TrainingWeekSkeleton['disciplines'] = null
+    if (disciplineWeights) {
+      const kmSplit = distributeKm(targetCardioKm, disciplineWeights)
+      const sessionSplit = distributeSessions(targetCardioSessions, disciplineWeights)
+      disciplines = {
+        swim: { km: kmSplit.swim, sessions: sessionSplit.swim },
+        bike: { km: kmSplit.bike, sessions: sessionSplit.bike },
+        run: { km: kmSplit.run, sessions: sessionSplit.run },
+      }
+    }
+
+    return { weekStartDate, phase, disciplines, targetCardioKm, targetCardioSessions, targetStrengthSessions }
   })
 }

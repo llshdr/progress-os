@@ -12,11 +12,33 @@ import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
 import { daysBetween } from '@/lib/goals'
 import { fetchCardioActivity } from '@/lib/cardio-stats'
 import { analyzeCurrentFitness, type FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
-import { RACE_APPROACH_LABELS, describeStrengthEmphasis, type RaceApproach, type TrainingPhase } from '@/lib/race-plan/periodization'
-import { EMPTY_SELF_ASSESSMENT, raceCategoryFor, type SelfAssessment } from '@/lib/race-plan/self-assessment'
+import {
+  RACE_APPROACH_LABELS,
+  describeStrengthEmphasis,
+  describeMuscleImpact,
+  type RaceApproach,
+  type TrainingPhase,
+  type DisciplineTarget,
+} from '@/lib/race-plan/periodization'
+import {
+  emptySelfAssessmentFor,
+  normalizeSelfAssessment,
+  raceCategoryFor,
+  type SelfAssessment,
+  type SimpleSelfAssessment,
+  type MultisportSelfAssessment,
+  type Discipline,
+} from '@/lib/race-plan/self-assessment'
 import { computeTensionFlags } from '@/lib/race-plan/tension'
-import { estimateProjectedFinishSeconds } from '@/lib/race-plan/finish-time'
+import { estimateProjectedFinishSeconds, assessGoalRealism } from '@/lib/race-plan/finish-time'
+import {
+  computeDisciplineActivityFacts,
+  assessMultisportReadiness,
+  disciplineWeightsFromRanking,
+  type DisciplineActivityFacts,
+} from '@/lib/race-plan/discipline-weakness'
 import SelfAssessmentForm from '@/components/races/self-assessment-form'
+import MultisportSelfAssessmentForm from '@/components/races/multisport-self-assessment-form'
 import ApproachSpectrum from '@/components/races/approach-spectrum'
 
 type Race = {
@@ -29,6 +51,7 @@ type Race = {
 type PlanWeek = {
   weekStartDate: string
   phase: TrainingPhase
+  disciplines: { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget } | null
   targetCardioKm: number
   targetCardioSessions: number
   targetStrengthSessions: number
@@ -43,11 +66,14 @@ type Plan = {
 
 type CurrentWeekActual = { cardioKm: number; strengthSessions: number }
 
-type Step = 'confirm' | 'assessment' | 'snapshot' | 'spectrum' | 'review'
+type DisciplineWeakness = { order: Discipline[]; notes: Record<Discipline, string> }
+
+type Step = 'confirm' | 'assessment' | 'weakness' | 'snapshot' | 'spectrum' | 'review'
 
 const STEP_LABELS: Record<Step, string> = {
   confirm: 'Confirm',
   assessment: 'Assessment',
+  weakness: 'Analysis',
   snapshot: 'Snapshot',
   spectrum: 'Approach',
   review: 'Review',
@@ -59,6 +85,8 @@ const PHASE_LABELS: Record<TrainingPhase, string> = {
   peak: 'Peak',
   taper: 'Taper',
 }
+
+const DISCIPLINE_LABELS: Record<Discipline, string> = { swim: 'Swim', bike: 'Bike', run: 'Run' }
 
 function formatWeekDate(dateString: string): string {
   return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -80,12 +108,17 @@ export default function RaceDetailPage() {
   const [race, setRace] = useState<Race | null>(null)
   const [plan, setPlan] = useState<Plan | null>(null)
   const [snapshot, setSnapshot] = useState<FitnessSnapshot | null>(null)
+  const [disciplineActivityFacts, setDisciplineActivityFacts] = useState<Record<Discipline, DisciplineActivityFacts> | null>(null)
   const [currentWeekActual, setCurrentWeekActual] = useState<CurrentWeekActual | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [step, setStep] = useState<Step>('confirm')
 
-  const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(EMPTY_SELF_ASSESSMENT)
+  const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(emptySelfAssessmentFor('other'))
+  const [disciplineWeakness, setDisciplineWeakness] = useState<DisciplineWeakness | null>(null)
+  const [assessmentError, setAssessmentError] = useState<string | null>(null)
+  const [weaknessLoading, setWeaknessLoading] = useState(false)
+
   const [approach, setApproach] = useState<RaceApproach>('balanced')
   const [targetFinishSeconds, setTargetFinishSeconds] = useState<number | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -112,7 +145,7 @@ export default function RaceDetailPage() {
     const [{ data: raceRow }, { data: planRow }] = await Promise.all([
       supabase
         .from('races')
-        .select('id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds')
+        .select('id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds, discipline_weakness')
         .eq('id', raceId)
         .eq('user_id', user.id)
         .maybeSingle(),
@@ -130,9 +163,17 @@ export default function RaceDetailPage() {
       const { data: course } = await supabase.from('race_courses').select('name').eq('id', raceRow.course_id).maybeSingle()
       courseName = course?.name ?? null
     }
-    setRace({ id: raceRow.id, race_type: raceRow.race_type, courseOrLocation: courseName ?? raceRow.location, race_date: raceRow.race_date })
-    setSelfAssessment({ ...EMPTY_SELF_ASSESSMENT, ...(raceRow.self_assessment ?? {}) })
+    const raceType = raceRow.race_type as RaceType
+    setRace({ id: raceRow.id, race_type: raceType, courseOrLocation: courseName ?? raceRow.location, race_date: raceRow.race_date })
+
+    const category = raceCategoryFor(raceType)
+    setSelfAssessment(normalizeSelfAssessment(raceRow.self_assessment, category))
     setTargetFinishSeconds(raceRow.target_finish_seconds ?? null)
+    setDisciplineWeakness(raceRow.discipline_weakness ?? null)
+
+    if (category === 'multisport') {
+      setDisciplineActivityFacts(await computeDisciplineActivityFacts(supabase))
+    }
 
     if (planRow) {
       setPlan(planRow as Plan)
@@ -168,6 +209,44 @@ export default function RaceDetailPage() {
     const strengthDays = new Set((sets ?? []).map((s: any) => getLocalDateString(new Date(s.created_at)))).size
 
     setCurrentWeekActual({ cardioKm, strengthSessions: strengthDays })
+  }
+
+  const handleAssessmentContinue = async () => {
+    if (category !== 'multisport') {
+      setStep('snapshot')
+      return
+    }
+
+    const ms = selfAssessment as MultisportSelfAssessment
+    if (ms.swim.comfortLevel == null || ms.bike.comfortLevel == null || ms.run.comfortLevel == null) {
+      setAssessmentError('Please rate your comfort level for all three disciplines to continue.')
+      return
+    }
+    setAssessmentError(null)
+
+    await supabase.from('races').update({ self_assessment: selfAssessment }).eq('id', raceId)
+
+    setWeaknessLoading(true)
+    try {
+      const res = await fetch('/api/ai-coach/race-weakness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raceId }),
+      })
+      const data = await res.json()
+      if (data.status === 'ok') {
+        setDisciplineWeakness(data.disciplineWeakness)
+        setStep('weakness')
+      } else {
+        // Resilience: don't hard-block the flow if analysis fails.
+        setStep('snapshot')
+      }
+    } catch (err) {
+      console.error('Error analyzing discipline weakness:', err)
+      setStep('snapshot')
+    } finally {
+      setWeaknessLoading(false)
+    }
   }
 
   const handleGenerate = async () => {
@@ -228,6 +307,16 @@ export default function RaceDetailPage() {
   const category = raceCategoryFor(race.race_type)
   const tensionFlags = snapshot ? computeTensionFlags(selfAssessment, snapshot) : []
   const projectedFinishSeconds = snapshot ? estimateProjectedFinishSeconds(race.race_type, snapshot) : null
+  const readinessFlags = category === 'multisport' && disciplineActivityFacts ? assessMultisportReadiness(disciplineActivityFacts, daysUntil) : []
+  const realismFlag =
+    category === 'run' && targetFinishSeconds != null && projectedFinishSeconds != null
+      ? assessGoalRealism(targetFinishSeconds, projectedFinishSeconds)
+      : null
+  const allFlags = [...tensionFlags, ...readinessFlags, ...(realismFlag ? [realismFlag] : [])]
+
+  const disciplineWeights = category === 'multisport' && disciplineWeakness ? disciplineWeightsFromRanking(disciplineWeakness) : undefined
+
+  const stepSequence: Step[] = category === 'multisport' ? ['confirm', 'assessment', 'weakness', 'snapshot', 'spectrum'] : ['confirm', 'assessment', 'snapshot', 'spectrum']
 
   const weeksByPhase: { phase: TrainingPhase; weeks: PlanWeek[] }[] = []
   if (plan) {
@@ -240,6 +329,8 @@ export default function RaceDetailPage() {
       }
     }
   }
+
+  const muscleImpact = snapshot && plan ? describeMuscleImpact(plan.approach, snapshot.strength.recentSessionsPerWeek, snapshot.muscleVolume) : []
 
   return (
     <AppLayout>
@@ -269,10 +360,10 @@ export default function RaceDetailPage() {
 
         {step !== 'review' && (
           <div className="flex flex-wrap items-center gap-1 mb-8 text-xs">
-            {(['confirm', 'assessment', 'snapshot', 'spectrum'] as const).map((s, i) => (
+            {stepSequence.map((s, i) => (
               <span key={s} className={step === s ? 'text-white font-medium' : 'text-white/30'}>
                 {i + 1}. {STEP_LABELS[s]}
-                {i < 3 ? <span className="text-white/20 mx-1">·</span> : null}
+                {i < stepSequence.length - 1 ? <span className="text-white/20 mx-1">·</span> : null}
               </span>
             ))}
           </div>
@@ -281,8 +372,8 @@ export default function RaceDetailPage() {
         {step === 'confirm' && (
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
             <p className="text-white/60 text-sm mb-4">
-              Next, a few optional questions about your current condition, then a look at your real training data, then
-              you choose how this race should shape your training.
+              Next, a few questions about your current condition, then a look at your real training data, then you
+              choose how this race should shape your training.
             </p>
             <Button onClick={() => setStep('assessment')} className="bg-white text-black hover:bg-white/90">
               Continue
@@ -295,22 +386,62 @@ export default function RaceDetailPage() {
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
               <h2 className="text-lg font-medium text-white mb-1">How are you feeling right now?</h2>
               <p className="text-white/40 text-sm mb-6">
-                Every question is optional — this only fills gaps in your logged data, it never replaces it.
+                {category === 'multisport'
+                  ? 'Rate your comfort level for each discipline (required) - everything else is optional and only fills gaps in your logged data.'
+                  : 'Every question is optional — this only fills gaps in your logged data, it never replaces it.'}
               </p>
-              <SelfAssessmentForm category={category} value={selfAssessment} onChange={setSelfAssessment} />
+              {category === 'multisport' ? (
+                <MultisportSelfAssessmentForm
+                  value={selfAssessment as MultisportSelfAssessment}
+                  onChange={(v) => {
+                    setSelfAssessment(v)
+                    setAssessmentError(null)
+                  }}
+                />
+              ) : (
+                <SelfAssessmentForm category={category} value={selfAssessment as SimpleSelfAssessment} onChange={setSelfAssessment} />
+              )}
             </div>
-            <Button onClick={() => setStep('snapshot')} className="bg-white text-black hover:bg-white/90">
-              Continue
+            {assessmentError && <p className="text-sm text-red-400">{assessmentError}</p>}
+            <Button onClick={handleAssessmentContinue} disabled={weaknessLoading} className="bg-white text-black hover:bg-white/90">
+              {weaknessLoading ? 'Analyzing...' : 'Continue'}
             </Button>
+          </div>
+        )}
+
+        {step === 'weakness' && disciplineWeakness && (
+          <div className="space-y-6">
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <h2 className="text-lg font-medium text-white mb-4">Discipline Analysis</h2>
+              <div className="space-y-4">
+                {disciplineWeakness.order.map((discipline, i) => (
+                  <div key={discipline}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white font-medium">{DISCIPLINE_LABELS[discipline]}</span>
+                      {i === 0 && <span className="px-2 py-0.5 rounded-full text-xs bg-white text-black">Primary Focus</span>}
+                    </div>
+                    <p className="text-white/60 text-sm">{disciplineWeakness.notes[discipline]}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setStep('assessment')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                Back
+              </button>
+              <Button onClick={() => setStep('snapshot')} className="bg-white text-black hover:bg-white/90">
+                Continue
+              </Button>
+            </div>
           </div>
         )}
 
         {step === 'snapshot' && (
           <div className="space-y-6">
-            {tensionFlags.length > 0 && (
+            {allFlags.length > 0 && (
               <div className="border border-yellow-500/20 rounded-2xl bg-yellow-500/[0.04] p-4">
                 <p className="text-yellow-200/80 text-sm font-medium mb-1">Worth double-checking</p>
-                {tensionFlags.map((flag, i) => (
+                {allFlags.map((flag, i) => (
                   <p key={i} className="text-yellow-200/60 text-xs mt-1">
                     {flag}
                   </p>
@@ -386,7 +517,10 @@ export default function RaceDetailPage() {
             )}
 
             <div className="flex gap-3">
-              <button onClick={() => setStep('assessment')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+              <button
+                onClick={() => setStep(category === 'multisport' ? 'weakness' : 'assessment')}
+                className="text-sm text-white/40 hover:text-white/60 transition-colors"
+              >
                 Back
               </button>
               <Button onClick={() => setStep('spectrum')} className="bg-white text-black hover:bg-white/90">
@@ -410,6 +544,8 @@ export default function RaceDetailPage() {
                 projectedFinishSeconds={projectedFinishSeconds}
                 targetFinishSeconds={targetFinishSeconds}
                 onTargetFinishSecondsChange={setTargetFinishSeconds}
+                disciplineWeights={disciplineWeights}
+                muscleVolume={snapshot.muscleVolume}
               />
 
               <Button onClick={handleGenerate} disabled={generating} className="w-full bg-white text-black hover:bg-white/90 mt-6">
@@ -461,6 +597,19 @@ export default function RaceDetailPage() {
                   </div>
                 )}
               </div>
+
+              {muscleImpact.length > 0 && (
+                <div className="pt-4 mt-4 border-t border-white/10">
+                  <p className="text-xs text-white/40 mb-2">Muscle Impact</p>
+                  <div className="space-y-1">
+                    {muscleImpact.map((line) => (
+                      <p key={line.muscle} className="text-white/70 text-sm">
+                        {line.muscle}: {line.description}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {weeksByPhase.map((group) => (
@@ -483,19 +632,36 @@ export default function RaceDetailPage() {
                               <span className="px-2 py-0.5 rounded-full text-xs bg-white text-black">This Week</span>
                             )}
                           </div>
-                          <div className="flex gap-4 text-right text-sm">
-                            <div>
-                              <p className="text-xs text-white/40">Cardio</p>
-                              <p className="text-white font-semibold">
-                                {isCurrentWeek && currentWeekActual ? `${currentWeekActual.cardioKm.toFixed(1)} / ` : ''}
-                                {week.targetCardioKm}km
-                              </p>
+                          {week.disciplines ? (
+                            <div className="flex gap-4 text-right text-sm flex-wrap justify-end">
+                              {(['swim', 'bike', 'run'] as Discipline[]).map((d) => (
+                                <div key={d}>
+                                  <p className="text-xs text-white/40">{DISCIPLINE_LABELS[d]}</p>
+                                  <p className="text-white font-semibold">
+                                    {week.disciplines![d].km}km · {week.disciplines![d].sessions}x
+                                  </p>
+                                </div>
+                              ))}
+                              <div>
+                                <p className="text-xs text-white/40">Strength</p>
+                                <p className="text-white font-semibold">{week.targetStrengthSessions}x</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-xs text-white/40">Sessions</p>
-                              <p className="text-white font-semibold">{week.targetCardioSessions} cardio · {week.targetStrengthSessions} strength</p>
+                          ) : (
+                            <div className="flex gap-4 text-right text-sm">
+                              <div>
+                                <p className="text-xs text-white/40">Cardio</p>
+                                <p className="text-white font-semibold">
+                                  {isCurrentWeek && currentWeekActual ? `${currentWeekActual.cardioKm.toFixed(1)} / ` : ''}
+                                  {week.targetCardioKm}km
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-white/40">Sessions</p>
+                                <p className="text-white font-semibold">{week.targetCardioSessions} cardio · {week.targetStrengthSessions} strength</p>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                         <p className="text-white/50 text-sm">{week.focusNote}</p>
                       </div>
@@ -510,4 +676,3 @@ export default function RaceDetailPage() {
     </AppLayout>
   )
 }
-

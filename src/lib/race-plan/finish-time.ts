@@ -30,3 +30,18 @@ export function estimateProjectedFinishSeconds(raceType: RaceType, facts: Fitnes
 
   return null
 }
+
+// Basic, data-only realism check for run-type races (the only ones with a
+// projection at all). A target more than ~10% faster than the data
+// estimate is flagged as an ambitious stretch, not silently accepted as
+// achievable - course-calibrated realism (factoring in course difficulty)
+// is Phase 2, this is deliberately simpler.
+const AMBITIOUS_TARGET_RATIO = 0.9
+
+export function assessGoalRealism(targetFinishSeconds: number, projectedFinishSeconds: number): string | null {
+  const ratio = targetFinishSeconds / projectedFinishSeconds
+  if (ratio < AMBITIOUS_TARGET_RATIO) {
+    return `Your target finish time is notably faster than your data-estimated pace suggests — an ambitious stretch goal, not a guarantee at this fitness level.`
+  }
+  return null
+}

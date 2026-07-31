@@ -2,7 +2,16 @@
 
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { RACE_APPROACHES, RACE_APPROACH_LABELS, previewApproachEffect, describeStrengthEmphasis, type RaceApproach } from '@/lib/race-plan/periodization'
+import {
+  RACE_APPROACHES,
+  RACE_APPROACH_LABELS,
+  previewApproachEffect,
+  describeStrengthEmphasis,
+  describeMuscleImpact,
+  type RaceApproach,
+} from '@/lib/race-plan/periodization'
+import type { Discipline } from '@/lib/race-plan/self-assessment'
+import type { MuscleVolume } from '@/lib/volume-analysis'
 
 interface ApproachSpectrumProps {
   value: RaceApproach
@@ -13,7 +22,11 @@ interface ApproachSpectrumProps {
   projectedFinishSeconds: number | null
   targetFinishSeconds: number | null
   onTargetFinishSecondsChange: (seconds: number | null) => void
+  disciplineWeights?: Record<Discipline, number>
+  muscleVolume: MuscleVolume[]
 }
+
+const DISCIPLINE_LABELS: Record<Discipline, string> = { swim: 'Swim', bike: 'Bike', run: 'Run' }
 
 function formatDuration(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600)
@@ -45,10 +58,13 @@ export default function ApproachSpectrum({
   projectedFinishSeconds,
   targetFinishSeconds,
   onTargetFinishSecondsChange,
+  disciplineWeights,
+  muscleVolume,
 }: ApproachSpectrumProps) {
   const index = RACE_APPROACHES.indexOf(value)
-  const preview = previewApproachEffect(value, currentWeeklyCardioKm, currentStrengthSessionsPerWeek)
+  const preview = previewApproachEffect(value, currentWeeklyCardioKm, currentStrengthSessionsPerWeek, disciplineWeights)
   const strengthEmphasisText = describeStrengthEmphasis(value, currentStrengthSessionsPerWeek)
+  const muscleImpact = describeMuscleImpact(value, currentStrengthSessionsPerWeek, muscleVolume)
 
   const hh = targetFinishSeconds != null ? String(Math.floor(targetFinishSeconds / 3600)) : ''
   const mm = targetFinishSeconds != null ? String(Math.floor((targetFinishSeconds % 3600) / 60)) : ''
@@ -74,10 +90,33 @@ export default function ApproachSpectrum({
       </div>
 
       <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4 space-y-1">
-        <p className="text-white/60 text-xs">Cardio peak target</p>
-        <p className="text-white text-sm">~{preview.previewPeakCardioKm}km/week at this plan's peak</p>
+        {preview.previewDisciplineKm ? (
+          <>
+            <p className="text-white/60 text-xs">Peak weekly targets</p>
+            {(['swim', 'bike', 'run'] as Discipline[]).map((discipline) => (
+              <p key={discipline} className="text-white text-sm">
+                {DISCIPLINE_LABELS[discipline]}: ~{preview.previewDisciplineKm![discipline]}km/week at peak
+              </p>
+            ))}
+          </>
+        ) : (
+          <>
+            <p className="text-white/60 text-xs">Cardio peak target</p>
+            <p className="text-white text-sm">~{preview.previewPeakCardioKm}km/week at this plan's peak</p>
+          </>
+        )}
         <p className="text-white/60 text-xs mt-3">Strength Emphasis</p>
         <p className="text-white text-sm">{strengthEmphasisText}</p>
+        {muscleImpact.length > 0 && (
+          <>
+            <p className="text-white/60 text-xs mt-3">Muscle Impact</p>
+            {muscleImpact.map((line) => (
+              <p key={line.muscle} className="text-white text-sm">
+                {line.muscle}: {line.description}
+              </p>
+            ))}
+          </>
+        )}
       </div>
 
       {showFinishTime && (
