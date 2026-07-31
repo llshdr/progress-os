@@ -1,5 +1,5 @@
 import { getLocalWeekStart, getLocalDateString } from '@/lib/date'
-import type { Discipline } from '@/lib/race-plan/self-assessment'
+import type { Discipline, ExperienceLevel } from '@/lib/race-plan/self-assessment'
 import type { DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
 import type { MuscleVolume } from '@/lib/volume-analysis'
 
@@ -29,6 +29,9 @@ export interface TrainingWeekSkeleton {
   // Populated only for multisport races; null for single-discipline races
   // - zero behavior change for those.
   disciplines: { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget } | null
+  // Multi-discipline (typically bike-to-run) sessions for the week - null
+  // for single-discipline races, where a brick has no meaning.
+  brickSessions: number | null
   targetCardioKm: number
   targetCardioSessions: number
   targetStrengthSessions: number
@@ -36,59 +39,113 @@ export interface TrainingWeekSkeleton {
 
 const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
 
-// Real per-discipline weekly ramp inputs: each discipline's own recent
-// activity (from computeDisciplineActivityFacts) plus the weakness
-// ranking (weakest first). Deliberately NOT a shared "cardio pool" split
-// into percentage shares - swim/bike/run sit on wildly different natural
-// km scales (a single bike ride covers far more distance than a swim or
-// run session), so treating them as fractions of one number produced
-// nonsensical targets (a bike target of ~2km/week). Each discipline ramps
-// from its own realistic floor instead.
-export interface DisciplineRampInputs {
-  activityFacts: Record<Discipline, DisciplineActivityFacts>
-  order: Discipline[]
+// ─── Multisport (Ironman/Xtri) discipline volume model ──────────────────
+// Grounded in commonly-published Ironman training plan guidance, not
+// arbitrary multipliers - see each constant below for what's sourced vs.
+// synthesized to fit the sourced envelope.
+
+// Peak weekly volume (km) per discipline, by athlete level. Sourced from
+// commonly-published Ironman training plans (Beginner Triathlete's
+// Intermediate/Advanced full-distance plans, MyMottiv's beginner/
+// intermediate/advanced plans, Dan's Swim / MyMottiv swim-specific
+// guidance):
+//  - Total peak hours: beginner ~8-13h, intermediate ~12-14h, advanced
+//    ~15-18h (some advanced plans reach 16-17.5h).
+//  - Peak bike: commonly 6-7.5+ hours/week (~150-200+km) for serious
+//    first-timer plans.
+//  - Peak swim: builds to a ~3,500-4,000m long swim for beginners, up to
+//    ~5,000-7,500m total weekly volume for more experienced athletes.
+//  - A typical week: three swims, three rides, three-to-four runs, plus
+//    one SEPARATE ~45-minute strength session (see STRENGTH_SESSION_CAPS
+//    below - strength is intentionally not scaled the same way).
+// Run peak km is synthesized to fit the overall sourced hour envelope
+// (bike still dominates total training time, since it's the longest race
+// leg) rather than independently sourced to the exact km.
+const LEVEL_PEAK_KM: Record<ExperienceLevel, Record<Discipline, number>> = {
+  beginner: { swim: 3.75, bike: 140, run: 30 },
+  intermediate: { swim: 5.5, bike: 175, run: 45 },
+  advanced: { swim: 7.25, bike: 210, run: 60 },
 }
 
-// Realistic per-discipline weekly floors (km), used when a user has
-// ~zero logged history for that discipline - starting points for full-
-// distance triathlon training (a single ride already covers this much
-// bike distance; swim/run floors are correspondingly smaller since those
-// disciplines sit on a different natural scale). These ramp upward as
-// real logged activity comes in on future regenerations, same as the
-// existing aggregate cardio floor already does for single-discipline
-// races.
-const DISCIPLINE_BASELINE_FLOOR_KM: Record<Discipline, number> = {
-  swim: 2,
-  bike: 30,
-  run: 10,
-}
+// Base phase builds aerobic foundation, not peak fitness - starts well
+// below peak and ramps up through Base/Build (same shared rampValue shape
+// used everywhere else in this file), consistent with published base-
+// phase guidance (an 8-12 week foundational block before volume ramps).
+const BASE_START_FRACTION_OF_PEAK = 0.3
 
 // Roughly how far a typical single session covers per discipline - used
-// to derive a session COUNT directly from a discipline's km target so
-// the two numbers can never disagree (a non-zero km target always
-// implies at least one session, and vice versa), instead of rounding km
-// and session counts independently.
+// to derive a session COUNT directly from the km target (see
+// buildDisciplineWeek below) so the two numbers can never disagree, tuned
+// so the resulting progression lands in the commonly-cited weekly
+// frequency (swim 3-4x/week, ~three bike rides, three-to-four runs).
 const TYPICAL_SESSION_KM: Record<Discipline, number> = {
-  swim: 2,
-  bike: 25,
-  run: 6,
+  swim: 1.8,
+  bike: 45,
+  run: 9,
 }
 
 const DISCIPLINE_MAX_SESSIONS: Record<Discipline, number> = {
   swim: 4,
   bike: 4,
-  run: 5,
+  run: 4,
 }
 
-// Applied to each discipline's OWN peak ramp (not a percentage of a
-// shared pool) - the weakest discipline ramps further above its own
-// baseline, the strongest slightly less, but every discipline still
-// ramps from its own realistic starting point.
-const RANK_ADJUSTMENT = [1.3, 1.0, 0.85] // weakest, middle, strongest
+// Cardio peak multiplier for the multisport discipline model (separate
+// from PEAK_MULTIPLIER below, which still drives the single-discipline
+// aggregate ramp unchanged). LEVEL_PEAK_KM above already IS the
+// "safe to finish" researched target, so this never goes below 1.0x:
+// race-focused athletes push meaningfully above it for a faster time;
+// muscle-focused/leaning approaches sit exactly AT it - never below,
+// since race completion is non-negotiable for every approach - and put
+// their extra recovery capacity toward more strength sessions instead
+// (see STRENGTH_SESSION_CAPS).
+const DISCIPLINE_PEAK_MULTIPLIER: Record<RaceApproach, number> = {
+  race_focused: 1.25,
+  race_leaning: 1.15,
+  balanced: 1.05,
+  muscle_leaning: 1.0,
+  muscle_focused: 1.0,
+}
 
-function disciplineRankAdjustment(discipline: Discipline, order: Discipline[]): number {
+// Applied on top of DISCIPLINE_PEAK_MULTIPLIER for the weakest/strongest
+// discipline specifically - a real, visible bias toward the weak
+// discipline (matches "weak swimmer + strong runner -> plan emphasizes
+// swim more"), deliberately modest so the strongest discipline never
+// drops far below its own safe researched target.
+const RANK_ADJUSTMENT = [1.15, 1.0, 0.95] // weakest, middle, strongest
+
+// Brick (multi-discipline, typically bike-to-run) sessions per week by
+// phase - none in Base (no foundation yet), most commonly introduced at
+// 1x/week in Build, up to 2x/week at Peak, easing back to 1x/week during
+// Taper (TrainingPeaks/Triathlete guidance: bricks introduced ~8-16 weeks
+// before race day, 1-3x/week closer to race, tapering off in the final
+// weeks). The literal race week itself gets 0 regardless of phase - see
+// computeTrainingWeeks.
+const BRICK_SESSIONS_BY_PHASE: Record<TrainingPhase, number> = {
+  base: 0,
+  build: 1,
+  peak: 2,
+  taper: 1,
+}
+
+export interface DisciplineRampInputs {
+  activityFacts: Record<Discipline, DisciplineActivityFacts>
+  order: Discipline[] // weakest first
+  level: ExperienceLevel
+}
+
+function disciplinePeakKm(discipline: Discipline, level: ExperienceLevel, approach: RaceApproach, order: Discipline[]): number {
   const rank = order.indexOf(discipline)
-  return rank >= 0 ? RANK_ADJUSTMENT[rank] : 1.0
+  const rankMultiplier = rank >= 0 ? RANK_ADJUSTMENT[rank] : 1.0
+  return LEVEL_PEAK_KM[level][discipline] * DISCIPLINE_PEAK_MULTIPLIER[approach] * rankMultiplier
+}
+
+function disciplineBaselineKm(discipline: Discipline, level: ExperienceLevel, activityFacts: DisciplineActivityFacts): number {
+  // The Base-phase starting point is level-appropriate (not rank-
+  // adjusted - Base is general foundation-building, not yet weakness-
+  // targeted), but never understates a real, already-established habit.
+  const levelFloor = LEVEL_PEAK_KM[level][discipline] * BASE_START_FRACTION_OF_PEAK
+  return Math.max(activityFacts.recentAvgWeeklyKm, levelFloor)
 }
 
 interface PhaseAllocation {
@@ -123,7 +180,12 @@ function allocatePhases(totalWeeks: number): PhaseAllocation {
 }
 
 // The race week itself is always the last taper week - always meaningfully
-// cut back from peak, never a fresh volume push right before the race.
+// cut back from peak (best-supported published guidance: >=1 week taper,
+// 40-60% volume reduction, with the final race week itself reduced
+// further still - last long run 18-22 days out, last long bike 14-21 days
+// out, last long swim 9-10 days out, race week down to a short shakeout
+// swim and a ~30-45min easy ride with a few pickups), never a fresh
+// volume push right before the race.
 const TAPER_FRACTIONS: Record<number, number[]> = {
   1: [0.4],
   2: [0.6, 0.35],
@@ -158,14 +220,12 @@ function rampValue(
   return peak * taperFraction(allocation.taper, taperIndex)
 }
 
-// Cardio peak multiplier per approach - race_focused ramps hardest,
+// Cardio peak multiplier for the single-discipline AGGREGATE ramp only
+// (marathon/half/10k/5k/ultra_run races) - unrelated to and unaffected by
+// the multisport discipline model above. race_focused ramps hardest,
 // muscle_focused still ramps (just modestly): "maximize muscle while
 // still finishing the race safely" means real endurance preparation, not
-// none. A flat 1.0x (no increase over current baseline at all) would mean
-// zero race-specific endurance build-up regardless of how far out the
-// race is - not a genuine floor, just no training. 1.08x keeps
-// muscle_focused's ramp clearly the smallest of the five while still
-// being real.
+// none.
 const PEAK_MULTIPLIER: Record<RaceApproach, number> = {
   race_focused: 1.9,
   race_leaning: 1.55,
@@ -177,17 +237,18 @@ const PEAK_MULTIPLIER: Record<RaceApproach, number> = {
 // Strength-session frequency ceilings per approach x phase (never a
 // floor - always capped by the user's own logged baseline, so this never
 // invents a habit they don't already have). Grounded in concurrent-
-// training/interference-effect guidance: high-frequency strength work
-// (up to 4-5x/week) is only sustainable while concurrent endurance volume
-// is still low, i.e. early Base; as endurance volume ramps toward
-// Peak/Taper, recovery capacity increasingly has to go to the endurance
-// side, so strength frequency must come down for every approach - what
-// actually distinguishes the five approaches is HOW FAST it comes down,
-// not whether it does. race_focused drops hardest and earliest;
-// muscle_focused preserves the most for the longest, but still tapers
-// into Peak/Taper rather than staying flat, since "can still finish the
-// race safely" requires some recovery capacity to shift toward the
-// endurance side as race day approaches.
+// training/interference-effect research: endurance training volume and
+// frequency are the primary drivers of interference with strength
+// adaptation, so high-frequency strength work is only sustainable while
+// concurrent endurance volume is still low, i.e. early Base; as endurance
+// volume ramps toward Peak/Taper, recovery capacity increasingly has to
+// go to the endurance side, so strength frequency must come down for
+// every approach - what actually distinguishes the five approaches is HOW
+// FAST it comes down, not whether it does. race_focused's 1-2x/week
+// matches the standard single-focus triathlete baseline cited in
+// published plans; muscle_leaning/muscle_focused deliberately go higher
+// as a genuine choice within safe concurrent-training limits, and are
+// never eliminated to zero even at Peak/Taper.
 const STRENGTH_SESSION_CAPS: Record<RaceApproach, Record<TrainingPhase, number>> = {
   race_focused: { base: 2, build: 2, peak: 1, taper: 1 },
   race_leaning: { base: 3, build: 2, peak: 1, taper: 1 },
@@ -215,8 +276,7 @@ export function previewApproachEffect(
   disciplineInputs?: DisciplineRampInputs
 ): { previewPeakCardioKm: number; previewSteadyStrengthSessions: number; previewDisciplineKm?: Record<Discipline, number> } {
   const cardioBaseline = Math.max(currentWeeklyCardioKm, 5)
-  const peakMultiplier = PEAK_MULTIPLIER[approach]
-  const previewPeakCardioKm = Math.round(cardioBaseline * peakMultiplier * 10) / 10
+  const previewPeakCardioKm = Math.round(cardioBaseline * PEAK_MULTIPLIER[approach] * 10) / 10
 
   const result: ReturnType<typeof previewApproachEffect> = {
     previewPeakCardioKm,
@@ -226,9 +286,7 @@ export function previewApproachEffect(
   if (disciplineInputs) {
     const previewDisciplineKm = {} as Record<Discipline, number>
     for (const d of DISCIPLINES) {
-      const baseline = Math.max(disciplineInputs.activityFacts[d].recentAvgWeeklyKm, DISCIPLINE_BASELINE_FLOOR_KM[d])
-      const peak = baseline * peakMultiplier * disciplineRankAdjustment(d, disciplineInputs.order)
-      previewDisciplineKm[d] = Math.round(peak * 10) / 10
+      previewDisciplineKm[d] = Math.round(disciplinePeakKm(d, disciplineInputs.level, approach, disciplineInputs.order) * 10) / 10
     }
     result.previewDisciplineKm = previewDisciplineKm
   }
@@ -332,24 +390,22 @@ export function computeTrainingWeeks(
   // Floors avoid multiplying a zero baseline into a permanently-zero ramp
   // for someone with little/no logged cardio history yet.
   const cardioBaseline = Math.max(currentWeeklyCardioKm, 5)
-  const peakMultiplier = PEAK_MULTIPLIER[approach]
-  const peakTargetKm = cardioBaseline * peakMultiplier
+  const peakTargetKm = cardioBaseline * PEAK_MULTIPLIER[approach]
   const rampWeeks = allocation.base + allocation.build
   const sessionsBaseline = Math.max(currentCardioSessionsPerWeek, 2)
 
   // Per-discipline baselines/peaks, computed once - each ramps from its
-  // own realistic starting point (see DisciplineRampInputs above), with
-  // the weakness ranking adjusting how far above that baseline each
-  // discipline's own peak sits.
+  // own level-appropriate, researched starting point and peak (see
+  // LEVEL_PEAK_KM above), with the weakness ranking adjusting how far
+  // above the safe peak each discipline sits.
   let disciplineBaselines: Record<Discipline, number> | null = null
   let disciplinePeaks: Record<Discipline, number> | null = null
   if (disciplineInputs) {
     disciplineBaselines = {} as Record<Discipline, number>
     disciplinePeaks = {} as Record<Discipline, number>
     for (const d of DISCIPLINES) {
-      const baseline = Math.max(disciplineInputs.activityFacts[d].recentAvgWeeklyKm, DISCIPLINE_BASELINE_FLOOR_KM[d])
-      disciplineBaselines[d] = baseline
-      disciplinePeaks[d] = baseline * peakMultiplier * disciplineRankAdjustment(d, disciplineInputs.order)
+      disciplineBaselines[d] = disciplineBaselineKm(d, disciplineInputs.level, disciplineInputs.activityFacts[d])
+      disciplinePeaks[d] = disciplinePeakKm(d, disciplineInputs.level, approach, disciplineInputs.order)
     }
   }
 
@@ -359,12 +415,14 @@ export function computeTrainingWeeks(
     const weekStart = new Date(startMonday)
     weekStart.setDate(weekStart.getDate() + i * 7)
     const weekStartDate = getLocalDateString(weekStart)
+    const isRaceWeek = i === phases.length - 1
 
     const targetCardioKm = Math.round(rampValue(cardioBaseline, peakTargetKm, phase, i, rampWeeks, allocation, taperIndex) * 10) / 10
     const targetCardioSessions = Math.min(7, Math.max(2, Math.round(sessionsBaseline * (targetCardioKm / cardioBaseline))))
     const targetStrengthSessions = strengthSessionsForWeek(phase, approach, currentStrengthSessionsPerWeek)
 
     let disciplines: TrainingWeekSkeleton['disciplines'] = null
+    let brickSessions: number | null = null
     if (disciplineBaselines && disciplinePeaks) {
       const built = {} as { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget }
       for (const d of DISCIPLINES) {
@@ -376,10 +434,14 @@ export function computeTrainingWeeks(
         built[d] = { km, sessions }
       }
       disciplines = built
+      // Race week itself never includes a training brick, regardless of
+      // phase - by then it's taper/rest, not a fresh simulated-fatigue
+      // session.
+      brickSessions = isRaceWeek ? 0 : BRICK_SESSIONS_BY_PHASE[phase]
     }
 
     if (phase === 'taper') taperIndex += 1
 
-    return { weekStartDate, phase, disciplines, targetCardioKm, targetCardioSessions, targetStrengthSessions }
+    return { weekStartDate, phase, disciplines, brickSessions, targetCardioKm, targetCardioSessions, targetStrengthSessions }
   })
 }

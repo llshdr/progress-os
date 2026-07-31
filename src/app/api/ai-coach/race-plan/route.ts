@@ -8,7 +8,7 @@ import { getLocalDateString } from '@/lib/date'
 import { daysBetween } from '@/lib/goals'
 import { computeTensionFlags } from '@/lib/race-plan/tension'
 import { estimateProjectedFinishSeconds, assessGoalRealism } from '@/lib/race-plan/finish-time'
-import { raceCategoryFor, type SelfAssessment, type Discipline } from '@/lib/race-plan/self-assessment'
+import { raceCategoryFor, experienceLevelFor, type SelfAssessment, type Discipline } from '@/lib/race-plan/self-assessment'
 import { computeDisciplineActivityFacts, assessMultisportReadiness } from '@/lib/race-plan/discipline-weakness'
 
 const MODEL = 'gemini-2.5-flash'
@@ -130,8 +130,12 @@ export async function POST(request: NextRequest) {
   // can't drift.
   const disciplineActivityFacts = category === 'multisport' ? await computeDisciplineActivityFacts(supabase) : null
   const disciplineInputs =
-    category === 'multisport' && disciplineWeakness && disciplineActivityFacts
-      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order }
+    category === 'multisport' && disciplineWeakness && disciplineActivityFacts && selfAssessment?.kind === 'multisport'
+      ? {
+          activityFacts: disciplineActivityFacts,
+          order: disciplineWeakness.order,
+          level: experienceLevelFor(selfAssessment.pastMultisportExperience),
+        }
       : undefined
 
   // Unlike the per-exercise recommend route, this deliberately has no
@@ -233,7 +237,8 @@ export async function POST(request: NextRequest) {
   const weeksTable = skeleton
     .map((w) => {
       if (w.disciplines) {
-        return `${w.weekStartDate} (${w.phase}): swim ${w.disciplines.swim.km}km/${w.disciplines.swim.sessions} session(s), bike ${w.disciplines.bike.km}km/${w.disciplines.bike.sessions} session(s), run ${w.disciplines.run.km}km/${w.disciplines.run.sessions} session(s), ${w.targetStrengthSessions} strength session(s)`
+        const brick = w.brickSessions ? `, ${w.brickSessions} brick (bike-run) session(s)` : ''
+        return `${w.weekStartDate} (${w.phase}): swim ${w.disciplines.swim.km}km/${w.disciplines.swim.sessions} session(s), bike ${w.disciplines.bike.km}km/${w.disciplines.bike.sessions} session(s), run ${w.disciplines.run.km}km/${w.disciplines.run.sessions} session(s), ${w.targetStrengthSessions} strength session(s)${brick}`
       }
       return `${w.weekStartDate} (${w.phase}): ${w.targetCardioKm}km cardio across ${w.targetCardioSessions} session(s), ${w.targetStrengthSessions} strength session(s)`
     })
@@ -256,7 +261,7 @@ ${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${w
 Here is the week-by-week schedule already computed for this athlete (the numbers are fixed - do not change or restate them numerically, just write about them):
 ${weeksTable}
 
-For each week listed above, write ONE short, specific sentence (its "focus_note") explaining what to prioritize that week and why - ground it in the numbers already given, especially early weeks where you should reference the athlete's actual current fitness. Also write one short overview paragraph (2-4 sentences) summarizing the plan's overall shape and how it reconciles the athlete's current situation (training phase, consistency, any competing goals) with the chosen approach.`
+For each week listed above, write ONE short, specific sentence (its "focus_note") explaining what to prioritize that week and why - ground it in the numbers already given, especially early weeks where you should reference the athlete's actual current fitness. When a week includes brick (bike-run) session(s), mention what they're for (practicing race-day transitions and running on tired legs), not just that they exist. Also write one short overview paragraph (2-4 sentences) summarizing the plan's overall shape and how it reconciles the athlete's current situation (training phase, consistency, any competing goals) with the chosen approach.`
 
   try {
     const ai = new GoogleGenAI({ apiKey })

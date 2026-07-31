@@ -40,6 +40,25 @@ export interface MultisportSelfAssessment {
   notes: string | null
 }
 
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
+
+// Maps self-reported past multi-sport race experience to a training
+// level, driving the researched peak-volume targets in periodization.ts.
+// Conservative by design: unanswered/no past experience defaults to
+// beginner rather than assuming more capability than demonstrated.
+const EXPERIENCE_LEVEL_BY_PAST_EXPERIENCE: Record<NonNullable<MultisportSelfAssessment['pastMultisportExperience']>, ExperienceLevel> = {
+  none: 'beginner',
+  sprint: 'beginner',
+  olympic: 'intermediate',
+  half_iron: 'intermediate',
+  full_iron: 'advanced',
+  other: 'intermediate',
+}
+
+export function experienceLevelFor(pastMultisportExperience: MultisportSelfAssessment['pastMultisportExperience']): ExperienceLevel {
+  return pastMultisportExperience ? EXPERIENCE_LEVEL_BY_PAST_EXPERIENCE[pastMultisportExperience] : 'beginner'
+}
+
 // Light, fully-optional single-discipline form - unchanged shape/behavior
 // from before this phase, still drives self-assessment-form.tsx for
 // 'run'/'other' races.

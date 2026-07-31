@@ -24,6 +24,7 @@ import {
   emptySelfAssessmentFor,
   normalizeSelfAssessment,
   raceCategoryFor,
+  experienceLevelFor,
   type SelfAssessment,
   type SimpleSelfAssessment,
   type MultisportSelfAssessment,
@@ -47,6 +48,7 @@ type PlanWeek = {
   weekStartDate: string
   phase: TrainingPhase
   disciplines: { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget } | null
+  brickSessions: number | null
   targetCardioKm: number
   targetCardioSessions: number
   targetStrengthSessions: number
@@ -310,8 +312,12 @@ export default function RaceDetailPage() {
   const allFlags = [...tensionFlags, ...readinessFlags, ...(realismFlag ? [realismFlag] : [])]
 
   const disciplineInputs =
-    category === 'multisport' && disciplineWeakness && disciplineActivityFacts
-      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order }
+    category === 'multisport' && disciplineWeakness && disciplineActivityFacts && selfAssessment.kind === 'multisport'
+      ? {
+          activityFacts: disciplineActivityFacts,
+          order: disciplineWeakness.order,
+          level: experienceLevelFor(selfAssessment.pastMultisportExperience),
+        }
       : undefined
 
   const stepSequence: Step[] = category === 'multisport' ? ['confirm', 'assessment', 'weakness', 'snapshot', 'spectrum'] : ['confirm', 'assessment', 'snapshot', 'spectrum']
@@ -628,6 +634,11 @@ export default function RaceDetailPage() {
                             <span className="text-white font-medium">Week of {formatWeekDate(week.weekStartDate)}</span>
                             {isCurrentWeek && (
                               <span className="px-2 py-0.5 rounded-full text-xs bg-white text-black">This Week</span>
+                            )}
+                            {!!week.brickSessions && (
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60 border border-white/20">
+                                {week.brickSessions} brick
+                              </span>
                             )}
                           </div>
                           {week.disciplines ? (
