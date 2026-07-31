@@ -2,7 +2,7 @@
 
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { RACE_APPROACHES, RACE_APPROACH_LABELS, previewApproachEffect, type RaceApproach } from '@/lib/race-plan/periodization'
+import { RACE_APPROACHES, RACE_APPROACH_LABELS, previewApproachEffect, describeStrengthEmphasis, type RaceApproach } from '@/lib/race-plan/periodization'
 
 interface ApproachSpectrumProps {
   value: RaceApproach
@@ -48,18 +48,7 @@ export default function ApproachSpectrum({
 }: ApproachSpectrumProps) {
   const index = RACE_APPROACHES.indexOf(value)
   const preview = previewApproachEffect(value, currentWeeklyCardioKm, currentStrengthSessionsPerWeek)
-  const strengthBaseline = Math.round(currentStrengthSessionsPerWeek)
-
-  let strengthEmphasisText: string
-  if (currentStrengthSessionsPerWeek <= 0) {
-    strengthEmphasisText = 'No recent strength training logged, so this spectrum only shapes cardio volume.'
-  } else if (preview.previewSteadyStrengthSessions === strengthBaseline) {
-    strengthEmphasisText = `${preview.previewSteadyStrengthSessions} strength session(s)/week — matches your current training.`
-  } else if (preview.previewSteadyStrengthSessions < strengthBaseline) {
-    strengthEmphasisText = `${preview.previewSteadyStrengthSessions} strength session(s)/week — a cut from your current ${strengthBaseline}/week to prioritize race prep.`
-  } else {
-    strengthEmphasisText = `${preview.previewSteadyStrengthSessions} strength session(s)/week — holding above your current ${strengthBaseline}/week.`
-  }
+  const strengthEmphasisText = describeStrengthEmphasis(value, currentStrengthSessionsPerWeek)
 
   const hh = targetFinishSeconds != null ? String(Math.floor(targetFinishSeconds / 3600)) : ''
   const mm = targetFinishSeconds != null ? String(Math.floor((targetFinishSeconds % 3600) / 60)) : ''

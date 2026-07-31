@@ -138,6 +138,27 @@ export function previewApproachEffect(
   }
 }
 
+// Shared by the live spectrum slider (approach-spectrum.tsx) and the review
+// step's static summary (the race detail page) - same wording either way,
+// can't drift between "choosing" and "already generated" views of the
+// same approach.
+export function describeStrengthEmphasis(approach: RaceApproach, currentStrengthSessionsPerWeek: number): string {
+  if (currentStrengthSessionsPerWeek <= 0) {
+    return 'No recent strength training logged, so this spectrum only shapes cardio volume.'
+  }
+
+  const { previewSteadyStrengthSessions } = previewApproachEffect(approach, 0, currentStrengthSessionsPerWeek)
+  const baseline = Math.round(currentStrengthSessionsPerWeek)
+
+  if (previewSteadyStrengthSessions === baseline) {
+    return `${previewSteadyStrengthSessions} strength session(s)/week — matches your current training.`
+  }
+  if (previewSteadyStrengthSessions < baseline) {
+    return `${previewSteadyStrengthSessions} strength session(s)/week — a cut from your current ${baseline}/week to prioritize race prep.`
+  }
+  return `${previewSteadyStrengthSessions} strength session(s)/week — holding above your current ${baseline}/week.`
+}
+
 // All date/phase/number arithmetic lives here, never in the AI prompt -
 // the model only ever writes the per-week focus_note and overview text on
 // top of these already-decided numbers (see race-plan/route.ts).

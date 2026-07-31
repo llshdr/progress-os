@@ -12,7 +12,7 @@ import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
 import { daysBetween } from '@/lib/goals'
 import { fetchCardioActivity } from '@/lib/cardio-stats'
 import { analyzeCurrentFitness, type FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
-import { RACE_APPROACH_LABELS, type RaceApproach, type TrainingPhase } from '@/lib/race-plan/periodization'
+import { RACE_APPROACH_LABELS, describeStrengthEmphasis, type RaceApproach, type TrainingPhase } from '@/lib/race-plan/periodization'
 import { EMPTY_SELF_ASSESSMENT, raceCategoryFor, type SelfAssessment } from '@/lib/race-plan/self-assessment'
 import { computeTensionFlags } from '@/lib/race-plan/tension'
 import { estimateProjectedFinishSeconds } from '@/lib/race-plan/finish-time'
@@ -62,6 +62,14 @@ const PHASE_LABELS: Record<TrainingPhase, string> = {
 
 function formatWeekDate(dateString: string): string {
   return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function formatDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`
 }
 
 export default function RaceDetailPage() {
@@ -423,23 +431,36 @@ export default function RaceDetailPage() {
           </div>
         )}
 
-        {step === 'review' && plan && (
+        {step === 'review' && plan && snapshot && (
           <div className="space-y-8">
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
               <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
                 <h2 className="text-lg font-medium text-white">
                   Training Plan <span className="text-white/40 text-sm font-normal">({RACE_APPROACH_LABELS[plan.approach]})</span>
                 </h2>
-                <div className="flex gap-4">
+                <div className="flex items-center gap-3">
                   <button onClick={() => setStep('assessment')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
                     Edit my assessment
                   </button>
-                  <button onClick={() => setStep('spectrum')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                  <Button onClick={() => setStep('spectrum')} variant="outline" className="border-white/10 text-white hover:bg-white/5">
                     Regenerate Plan
-                  </button>
+                  </Button>
                 </div>
               </div>
-              <p className="text-white/70 text-sm leading-relaxed">{plan.overview}</p>
+              <p className="text-white/70 text-sm leading-relaxed mb-4">{plan.overview}</p>
+
+              <div className="flex flex-wrap gap-8 pt-4 border-t border-white/10">
+                <div>
+                  <p className="text-xs text-white/40 mb-1">Strength Emphasis</p>
+                  <p className="text-white text-sm">{describeStrengthEmphasis(plan.approach, snapshot.strength.recentSessionsPerWeek)}</p>
+                </div>
+                {category === 'run' && (targetFinishSeconds != null || projectedFinishSeconds != null) && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-1">{targetFinishSeconds != null ? 'Target Finish Time' : 'Projected Finish Time'}</p>
+                    <p className="text-white text-sm">{formatDuration(targetFinishSeconds ?? projectedFinishSeconds!)}</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {weeksByPhase.map((group) => (
