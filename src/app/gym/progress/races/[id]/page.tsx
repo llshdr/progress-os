@@ -22,6 +22,8 @@ import {
   type DisciplineTarget,
 } from '@/lib/race-plan/periodization'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
+import type { PhaseTemplate, PhaseTemplates } from '@/lib/race-plan/day-template'
+import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
 import {
   emptySelfAssessmentFor,
   normalizeSelfAssessment,
@@ -80,6 +82,7 @@ type Plan = {
   approach: RaceApproach
   overview: string
   weeks: PlanWeek[]
+  phaseTemplates: PhaseTemplates
 }
 
 type CurrentWeekActual = { cardioKm: number; strengthSessions: number }
@@ -184,7 +187,7 @@ export default function RaceDetailPage() {
         .eq('id', raceId)
         .eq('user_id', user.id)
         .maybeSingle(),
-      supabase.from('race_training_plans').select('approach, overview, weeks').eq('race_id', raceId).maybeSingle(),
+      supabase.from('race_training_plans').select('approach, overview, weeks, phase_templates').eq('race_id', raceId).maybeSingle(),
     ])
 
     if (!raceRow) {
@@ -225,7 +228,7 @@ export default function RaceDetailPage() {
     }
 
     if (planRow) {
-      setPlan(planRow as Plan)
+      setPlan({ approach: planRow.approach, overview: planRow.overview, weeks: planRow.weeks, phaseTemplates: planRow.phase_templates ?? {} })
       setApproach(planRow.approach)
       setStep('review')
     }
@@ -324,6 +327,10 @@ export default function RaceDetailPage() {
     } finally {
       setGenerating(false)
     }
+  }
+
+  const handleTemplateSaved = (phase: TrainingPhase, updated: PhaseTemplate) => {
+    setPlan((prev) => (prev ? { ...prev, phaseTemplates: { ...prev.phaseTemplates, [phase]: updated } } : prev))
   }
 
   if (loading) {
@@ -737,7 +744,19 @@ export default function RaceDetailPage() {
 
             {weeksByPhase.map((group) => (
               <div key={group.phase}>
-                <h3 className="text-sm font-medium text-white/60 mb-1">{PHASE_LABELS[group.phase]} Phase</h3>
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="text-sm font-medium text-white/60">{PHASE_LABELS[group.phase]} Phase</h3>
+                  {plan.phaseTemplates[group.phase] && (
+                    <PhaseTemplateDialog
+                      raceId={raceId}
+                      phase={group.phase}
+                      template={plan.phaseTemplates[group.phase]!}
+                      allTemplates={plan.phaseTemplates}
+                      weeksInPhase={group.weeks}
+                      onSaved={(updated) => handleTemplateSaved(group.phase, updated)}
+                    />
+                  )}
+                </div>
                 <p className="text-white/40 text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
                 <p className="text-white/40 text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
                 <div className="grid gap-3">

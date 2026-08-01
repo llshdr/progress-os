@@ -18,6 +18,7 @@ import { raceCategoryFor, experienceLevelFor, type SelfAssessment, type Discipli
 import { computeDisciplineActivityFacts, assessMultisportReadiness } from '@/lib/race-plan/discipline-weakness'
 import { fetchCourseProfile, fetchCourseTimeBand, fetchCourseCutoffs } from '@/lib/race-plan/course-data'
 import { assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
+import { computeDayByDayTemplates } from '@/lib/race-plan/day-template'
 
 const MODEL = 'gemini-2.5-flash'
 
@@ -169,6 +170,11 @@ export async function POST(request: NextRequest) {
     facts.strength.recentSessionsPerWeek,
     disciplineInputs
   )
+
+  // Deterministic, code-computed - never involves the model. Sized
+  // against each phase's own highest-session-count week (see
+  // day-template.ts for why that isn't simply "the last week").
+  const phaseTemplates = computeDayByDayTemplates(skeleton)
 
   // Current-week phase - skeleton always starts at today's week, so
   // skeleton[0] is always "the phase the athlete is in right now" at
@@ -360,6 +366,7 @@ For each week listed above, write ONE short, specific sentence (its "focus_note"
         approach,
         overview: parsed.overview,
         weeks: mergedWeeks,
+        phase_templates: phaseTemplates,
         generated_at: new Date().toISOString(),
       },
       { onConflict: 'race_id' }
@@ -372,7 +379,7 @@ For each week listed above, write ONE short, specific sentence (its "focus_note"
 
     return NextResponse.json({
       status: 'ok',
-      plan: { approach, overview: parsed.overview, weeks: mergedWeeks },
+      plan: { approach, overview: parsed.overview, weeks: mergedWeeks, phaseTemplates },
     })
   } catch (err) {
     console.error('Race plan generation failed:', err)
