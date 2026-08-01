@@ -17,6 +17,7 @@ import {
 import { raceCategoryFor, experienceLevelFor, type SelfAssessment, type Discipline } from '@/lib/race-plan/self-assessment'
 import { computeDisciplineActivityFacts, assessMultisportReadiness } from '@/lib/race-plan/discipline-weakness'
 import { fetchCourseProfile, fetchCourseTimeBand, fetchCourseCutoffs } from '@/lib/race-plan/course-data'
+import { assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 
 const MODEL = 'gemini-2.5-flash'
 
@@ -169,6 +170,12 @@ export async function POST(request: NextRequest) {
     disciplineInputs
   )
 
+  // Current-week phase - skeleton always starts at today's week, so
+  // skeleton[0] is always "the phase the athlete is in right now" at
+  // generation time.
+  const nutritionTensionFlag = assessNutritionPhaseTension(skeleton[0].phase, facts.trainingPhase, facts.trainingIntensity, facts.maintenanceCalories)
+  const nutritionTensionSummary = nutritionTensionFlag ? `\n\n${nutritionTensionFlag}` : ''
+
   const daysUntilRace = daysBetween(race.race_date, getLocalDateString())
 
   const readinessFlags = disciplineActivityFacts ? assessMultisportReadiness(disciplineActivityFacts, daysUntilRace) : []
@@ -293,7 +300,7 @@ ${strengthSummary}
 ${volumeSummary}
 ${consistencySummary}
 ${phaseSummary}
-${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${weightTrendSummary}${finishTimeSummary}${courseContextSummary}${cutoffSummary}${weaknessSummary}${readinessSummary}
+${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${weightTrendSummary}${finishTimeSummary}${courseContextSummary}${cutoffSummary}${weaknessSummary}${readinessSummary}${nutritionTensionSummary}
 
 Here is the week-by-week schedule already computed for this athlete (the numbers are fixed - do not change or restate them numerically, just write about them):
 ${weeksTable}

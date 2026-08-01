@@ -5,6 +5,7 @@ import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { getLocalWeekStart, getLocalDateString } from '@/lib/date'
 import { fetchActiveActionItems } from '@/lib/goals'
 import type { RaceType } from '@/lib/race-constants'
+import type { TrainingPhase as NutritionPhase, TrainingIntensity as NutritionIntensity } from '@/lib/nutrition'
 
 export interface MuscleGroupTrend {
   muscleGroup: string
@@ -44,8 +45,9 @@ export interface FitnessSnapshot {
   muscleVolume: MuscleVolume[]
   gymConsistencyWeeks: number // distinct weeks with a completed workout, last 90 days
   nutritionConsistencyWeeks: number // distinct weeks with a nutrition entry, last 90 days
-  trainingPhase: string | null
-  trainingIntensity: string | null
+  trainingPhase: NutritionPhase | null
+  trainingIntensity: NutritionIntensity | null
+  maintenanceCalories: number | null
   competingGoalsCount: number
   pastRaceResults: PastRaceResult[] // the user's other completed races with a logged result, most recent first
   weightTrend: WeightTrend | null // null if no weight_entries logged at all
@@ -224,7 +226,7 @@ export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: st
       computeMuscleVolume(supabase),
       computeConsistencyWeeks(supabase, 'workouts', 'completed_at', userId),
       computeConsistencyWeeks(supabase, 'nutrition_entries', 'date', userId),
-      supabase.from('user_settings').select('training_phase, training_intensity').eq('user_id', userId).maybeSingle(),
+      supabase.from('user_settings').select('training_phase, training_intensity, maintenance_calories').eq('user_id', userId).maybeSingle(),
       fetchActiveActionItems(supabase, userId),
       fetchPastRaceResults(supabase, userId, excludeRaceId),
       computeWeightTrend(supabase, userId),
@@ -244,8 +246,9 @@ export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: st
     muscleVolume,
     gymConsistencyWeeks,
     nutritionConsistencyWeeks,
-    trainingPhase: settingsResult.data?.training_phase ?? null,
-    trainingIntensity: settingsResult.data?.training_intensity ?? null,
+    trainingPhase: (settingsResult.data?.training_phase as NutritionPhase | undefined) ?? null,
+    trainingIntensity: (settingsResult.data?.training_intensity as NutritionIntensity | undefined) ?? null,
+    maintenanceCalories: settingsResult.data?.maintenance_calories ?? null,
     competingGoalsCount: actionItems.filter((item) => item.kind === 'goal').length,
     pastRaceResults,
     weightTrend,

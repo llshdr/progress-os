@@ -153,12 +153,15 @@ export function estimateCourseFinishRange(
 
 export interface CutoffRiskFlag {
   segment: CutoffSegment
+  cutoffSecondsFromStart: number
+  // Cutoff minus the range's slow (high) end - positive is margin, negative means the slow end misses the cutoff.
+  marginSecondsSlowEnd: number
   risk: 'comfortable' | 'watch' | 'risk'
   message: string
 }
 
 const COMFORTABLE_MARGIN_SECONDS = 30 * 60
-const SEGMENT_LABEL: Record<CutoffSegment, string> = { swim: 'swim', bike: 'bike', overall: 'overall race' }
+export const SEGMENT_LABEL: Record<CutoffSegment, string> = { swim: 'swim', bike: 'bike', overall: 'overall race' }
 
 function rangeForSegment(range: ProjectedRaceTimeRange, segment: CutoffSegment): { low: number; high: number } | null {
   if (segment === 'swim') {
@@ -190,17 +193,19 @@ export function assessCutoffRisk(range: ProjectedRaceTimeRange, cutoffs: RaceCou
     const marginFast = cutoff.cutoffSecondsFromStart - segmentRange.low
     const label = SEGMENT_LABEL[cutoff.segment]
 
+    const base = { segment: cutoff.segment, cutoffSecondsFromStart: cutoff.cutoffSecondsFromStart, marginSecondsSlowEnd: marginSlow }
+
     if (marginSlow >= COMFORTABLE_MARGIN_SECONDS) {
-      flags.push({ segment: cutoff.segment, risk: 'comfortable', message: `Comfortably under the ${label} cutoff, even on your slower end.` })
+      flags.push({ ...base, risk: 'comfortable', message: `Comfortably under the ${label} cutoff, even on your slower end.` })
     } else if (marginFast > 0) {
       flags.push({
-        segment: cutoff.segment,
+        ...base,
         risk: 'watch',
         message: `Could be tight against the ${label} cutoff on a tougher day — worth keeping an eye on pacing here.`,
       })
     } else {
       flags.push({
-        segment: cutoff.segment,
+        ...base,
         risk: 'risk',
         message: `Your projected pace is a real risk against the ${label} cutoff — this needs direct attention, not just general fitness.`,
       })

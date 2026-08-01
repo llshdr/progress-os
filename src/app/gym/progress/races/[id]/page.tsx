@@ -16,10 +16,12 @@ import {
   RACE_APPROACH_LABELS,
   describeStrengthEmphasis,
   describeMuscleImpact,
+  STRENGTH_SEQUENCING_NOTES,
   type RaceApproach,
   type TrainingPhase,
   type DisciplineTarget,
 } from '@/lib/race-plan/periodization'
+import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import {
   emptySelfAssessmentFor,
   normalizeSelfAssessment,
@@ -37,6 +39,9 @@ import {
   estimateCourseFinishRange,
   assessCutoffRisk,
   assessGoalRealismForRange,
+  SEGMENT_LABEL,
+  type CutoffRiskFlag,
+  type ProjectedRaceTimeRange,
 } from '@/lib/race-plan/finish-time'
 import { computeDisciplineActivityFacts, assessMultisportReadiness, type DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
 import {
@@ -111,6 +116,20 @@ function formatDuration(totalSeconds: number): string {
   const seconds = totalSeconds % 60
   if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
   return `${minutes}m ${String(seconds).padStart(2, '0')}s`
+}
+
+function formatMargin(marginSeconds: number): string {
+  return marginSeconds >= 0 ? `${formatDuration(marginSeconds)} margin` : `${formatDuration(Math.abs(marginSeconds))} over cutoff`
+}
+
+function formatCutoffMarginLine(flag: CutoffRiskFlag, range: ProjectedRaceTimeRange): string {
+  const projectedSlowEnd =
+    flag.segment === 'overall'
+      ? range.totalSecondsHigh
+      : flag.segment === 'swim'
+        ? (range.swimExitSecondsHigh ?? range.totalSecondsHigh)
+        : (range.bikeFinishSecondsHigh ?? range.totalSecondsHigh)
+  return `${SEGMENT_LABEL[flag.segment]}: ${formatDuration(projectedSlowEnd)} projected (slow end) vs ${formatDuration(flag.cutoffSecondsFromStart)} cutoff → ${formatMargin(flag.marginSecondsSlowEnd)}`
 }
 
 export default function RaceDetailPage() {
@@ -342,7 +361,7 @@ export default function RaceDetailPage() {
     category === 'multisport' && snapshot
       ? estimateCourseFinishRange(race.race_type, level, snapshot.pastRaceResults, race.courseId, courseTimeBands[level] ?? null)
       : null
-  const cutoffFlags = courseRange ? assessCutoffRisk(courseRange, courseCutoffs).map((f) => f.message) : []
+  const cutoffRiskFlags: CutoffRiskFlag[] = courseRange ? assessCutoffRisk(courseRange, courseCutoffs) : []
   const readinessFlags = category === 'multisport' && disciplineActivityFacts ? assessMultisportReadiness(disciplineActivityFacts, daysUntil) : []
   const realismFlag =
     category === 'run' && targetFinishSeconds != null && projectedFinishSeconds != null
@@ -350,7 +369,7 @@ export default function RaceDetailPage() {
       : category === 'multisport' && targetFinishSeconds != null && courseRange != null
         ? assessGoalRealismForRange(targetFinishSeconds, courseRange)
         : null
-  const allFlags = [...tensionFlags, ...readinessFlags, ...cutoffFlags, ...(realismFlag ? [realismFlag] : [])]
+  const allFlags = [...tensionFlags, ...readinessFlags, ...cutoffRiskFlags.map((f) => f.message), ...(realismFlag ? [realismFlag] : [])]
 
   const disciplineInputs =
     category === 'multisport' && disciplineWeakness && disciplineActivityFacts
@@ -372,6 +391,15 @@ export default function RaceDetailPage() {
   }
 
   const muscleImpact = snapshot && plan ? describeMuscleImpact(plan.approach, snapshot.strength.recentSessionsPerWeek, snapshot.muscleVolume) : []
+
+  // plan.weeks is a fixed snapshot from generation time - find the week
+  // matching today's date rather than assuming weeks[0], which is only
+  // "current" right after generation.
+  const currentPlanPhase = plan?.weeks.find((w) => w.weekStartDate === currentWeekStartDate)?.phase ?? null
+  const nutritionTensionFlag =
+    currentPlanPhase && snapshot
+      ? assessNutritionPhaseTension(currentPlanPhase, snapshot.trainingPhase, snapshot.trainingIntensity, snapshot.maintenanceCalories)
+      : null
 
   return (
     <AppLayout>
@@ -557,14 +585,26 @@ export default function RaceDetailPage() {
               </div>
             )}
 
-            {courseProfile && (
+            {(courseProfile || cutoffRiskFlags.length > 0) && (
               <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
                 <h2 className="text-lg font-medium text-white mb-3">About This Course</h2>
-                <div className="space-y-1">
-                  {courseProfile.swimNotes && <p className="text-white/70 text-sm">Swim: {courseProfile.swimNotes}</p>}
-                  {courseProfile.bikeNotes && <p className="text-white/70 text-sm">Bike: {courseProfile.bikeNotes}</p>}
-                  {courseProfile.runNotes && <p className="text-white/70 text-sm">Run: {courseProfile.runNotes}</p>}
-                </div>
+                {courseProfile && (
+                  <div className="space-y-1">
+                    {courseProfile.swimNotes && <p className="text-white/70 text-sm">Swim: {courseProfile.swimNotes}</p>}
+                    {courseProfile.bikeNotes && <p className="text-white/70 text-sm">Bike: {courseProfile.bikeNotes}</p>}
+                    {courseProfile.runNotes && <p className="text-white/70 text-sm">Run: {courseProfile.runNotes}</p>}
+                  </div>
+                )}
+                {cutoffRiskFlags.length > 0 && courseRange && (
+                  <div className={courseProfile ? 'mt-4 pt-4 border-t border-white/10 space-y-1' : 'space-y-1'}>
+                    <p className="text-white/40 text-xs mb-1">Cutoff safety margin</p>
+                    {cutoffRiskFlags.map((f) => (
+                      <p key={f.segment} className="text-white/70 text-sm">
+                        {formatCutoffMarginLine(f, courseRange)}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -661,6 +701,19 @@ export default function RaceDetailPage() {
                 )}
               </div>
 
+              {cutoffRiskFlags.length > 0 && courseRange && (
+                <div className="pt-4 mt-4 border-t border-white/10">
+                  <p className="text-xs text-white/40 mb-2">Cutoff safety margin</p>
+                  <div className="space-y-1">
+                    {cutoffRiskFlags.map((f) => (
+                      <p key={f.segment} className="text-white/70 text-sm">
+                        {formatCutoffMarginLine(f, courseRange)}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {muscleImpact.length > 0 && (
                 <div className="pt-4 mt-4 border-t border-white/10">
                   <p className="text-xs text-white/40 mb-2">Muscle Impact</p>
@@ -673,11 +726,20 @@ export default function RaceDetailPage() {
                   </div>
                 </div>
               )}
+
+              {nutritionTensionFlag && (
+                <div className="mt-4 border border-yellow-500/20 rounded-2xl bg-yellow-500/[0.04] p-4">
+                  <p className="text-yellow-200/80 text-sm font-medium mb-1">Worth double-checking</p>
+                  <p className="text-yellow-200/60 text-xs">{nutritionTensionFlag}</p>
+                </div>
+              )}
             </div>
 
             {weeksByPhase.map((group) => (
               <div key={group.phase}>
-                <h3 className="text-sm font-medium text-white/60 mb-3">{PHASE_LABELS[group.phase]} Phase</h3>
+                <h3 className="text-sm font-medium text-white/60 mb-1">{PHASE_LABELS[group.phase]} Phase</h3>
+                <p className="text-white/40 text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
+                <p className="text-white/40 text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
                 <div className="grid gap-3">
                   {group.weeks.map((week) => {
                     const isCurrentWeek = week.weekStartDate === currentWeekStartDate

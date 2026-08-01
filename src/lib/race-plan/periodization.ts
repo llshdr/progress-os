@@ -257,6 +257,28 @@ const STRENGTH_SESSION_CAPS: Record<RaceApproach, Record<TrainingPhase, number>>
   muscle_focused: { base: 5, build: 4, peak: 3, taper: 2 },
 }
 
+// Concurrent-training sequencing guidance, phase-specific because
+// interference risk scales with how much endurance volume that phase
+// carries (same logic STRENGTH_SESSION_CAPS above applies to session
+// frequency). Static, cited text - not model-generated, since this is a
+// factual claim, not a per-athlete judgment call:
+//  - sequence-within-a-session has small/negligible effect on most
+//    adaptations; the real risk factor is pairing hard+hard same day,
+//    not which one comes first (Frontiers 2025 semi-systematic review,
+//    https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2025.1692399/full)
+//  - pair strength with a low-intensity endurance day rather than a
+//    hard one when both must land same day (PMC 2024,
+//    https://pmc.ncbi.nlm.nih.gov/articles/PMC11359207/)
+//  - >=6 hours of separation between a hard endurance session and
+//    strength meaningfully reduces acute interference (TrainingPeaks,
+//    https://www.trainingpeaks.com/blog/risks-of-concurrent-training/)
+export const STRENGTH_SEQUENCING_NOTES: Record<TrainingPhase, string> = {
+  base: 'Cardio volume is still low here, so same-day strength + cardio carries the least interference risk of any phase.',
+  build: "Cardio volume is ramping - avoid stacking strength right after your longest/hardest session of the week; pair it with an easy day instead, or separate the two by several hours.",
+  peak: 'Cardio volume is at its highest this cycle - same-day pairing carries the most interference risk. Keep strength on easy days only, clear of brick/long sessions.',
+  taper: "Strength frequency is already capped low here - keep any remaining sessions on easy days, away from the taper's remaining key efforts.",
+}
+
 function strengthSessionsForWeek(phase: TrainingPhase, approach: RaceApproach, currentStrengthSessionsPerWeek: number): number {
   // Never invent a strength habit the user doesn't already have.
   if (currentStrengthSessionsPerWeek <= 0) return 0
