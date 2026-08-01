@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Flag, ArrowLeft } from 'lucide-react'
+import { Flag, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { raceTypeLabel, RACE_TYPE_DISTANCE, type RaceType } from '@/lib/race-constants'
 import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
@@ -22,8 +22,9 @@ import {
   type DisciplineTarget,
 } from '@/lib/race-plan/periodization'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
-import type { PhaseTemplate, PhaseTemplates } from '@/lib/race-plan/day-template'
+import { slotsForWeek, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
+import WeekDayList from '@/components/races/week-day-list'
 import {
   emptySelfAssessmentFor,
   normalizeSelfAssessment,
@@ -122,17 +123,44 @@ function formatDuration(totalSeconds: number): string {
 }
 
 function formatMargin(marginSeconds: number): string {
-  return marginSeconds >= 0 ? `${formatDuration(marginSeconds)} margin` : `${formatDuration(Math.abs(marginSeconds))} over cutoff`
+  return marginSeconds >= 0 ? formatDuration(marginSeconds) : `${formatDuration(Math.abs(marginSeconds))} over`
 }
 
-function formatCutoffMarginLine(flag: CutoffRiskFlag, range: ProjectedRaceTimeRange): string {
+const MARGIN_RISK_COLOR: Record<CutoffRiskFlag['risk'], string> = {
+  comfortable: 'text-white',
+  watch: 'text-yellow-200',
+  risk: 'text-red-300',
+}
+
+// Three separately-labeled mini-stats (matching the Swim/Bike/Run/Strength
+// stat pattern already used in the week card) instead of one dense
+// sentence - "16h projected / 17h cutoff / 1h margin" is easy to misread
+// as prose but hard to misread once each number has its own label.
+function CutoffMarginRow({ flag, range }: { flag: CutoffRiskFlag; range: ProjectedRaceTimeRange }) {
   const projectedSlowEnd =
     flag.segment === 'overall'
       ? range.totalSecondsHigh
       : flag.segment === 'swim'
         ? (range.swimExitSecondsHigh ?? range.totalSecondsHigh)
         : (range.bikeFinishSecondsHigh ?? range.totalSecondsHigh)
-  return `${SEGMENT_LABEL[flag.segment]}: ${formatDuration(projectedSlowEnd)} projected (slow end) vs ${formatDuration(flag.cutoffSecondsFromStart)} cutoff → ${formatMargin(flag.marginSecondsSlowEnd)}`
+
+  return (
+    <div className="flex items-center gap-6">
+      <span className="text-white/40 text-xs w-20 shrink-0 capitalize">{SEGMENT_LABEL[flag.segment]}</span>
+      <div>
+        <p className="text-xs text-white/40 mb-0.5">Projected (slow)</p>
+        <p className="text-white text-sm">{formatDuration(projectedSlowEnd)}</p>
+      </div>
+      <div>
+        <p className="text-xs text-white/40 mb-0.5">Cutoff</p>
+        <p className="text-white text-sm">{formatDuration(flag.cutoffSecondsFromStart)}</p>
+      </div>
+      <div>
+        <p className="text-xs text-white/40 mb-0.5">Margin</p>
+        <p className={`text-sm font-medium ${MARGIN_RISK_COLOR[flag.risk]}`}>{formatMargin(flag.marginSecondsSlowEnd)}</p>
+      </div>
+    </div>
+  )
 }
 
 export default function RaceDetailPage() {
@@ -148,6 +176,11 @@ export default function RaceDetailPage() {
   const [courseTimeBands, setCourseTimeBands] = useState<Partial<Record<ExperienceLevel, RaceCourseTimeBand | null>>>({})
   const [courseCutoffs, setCourseCutoffs] = useState<RaceCourseCutoff[]>([])
   const [currentWeekActual, setCurrentWeekActual] = useState<CurrentWeekActual | null>(null)
+  // The day-by-day list is the primary way to see "what do I do this
+  // week" - expanded by default only for the current week so a
+  // multi-month plan stays scannable; every other week can still be
+  // peeked at on demand.
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set([getLocalDateString(getLocalWeekStart())]))
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [step, setStep] = useState<Step>('confirm')
@@ -331,6 +364,15 @@ export default function RaceDetailPage() {
 
   const handleTemplateSaved = (phase: TrainingPhase, updated: PhaseTemplate) => {
     setPlan((prev) => (prev ? { ...prev, phaseTemplates: { ...prev.phaseTemplates, [phase]: updated } } : prev))
+  }
+
+  const toggleWeekExpanded = (weekStartDate: string) => {
+    setExpandedWeeks((prev) => {
+      const next = new Set(prev)
+      if (next.has(weekStartDate)) next.delete(weekStartDate)
+      else next.add(weekStartDate)
+      return next
+    })
   }
 
   if (loading) {
@@ -603,12 +645,10 @@ export default function RaceDetailPage() {
                   </div>
                 )}
                 {cutoffRiskFlags.length > 0 && courseRange && (
-                  <div className={courseProfile ? 'mt-4 pt-4 border-t border-white/10 space-y-1' : 'space-y-1'}>
-                    <p className="text-white/40 text-xs mb-1">Cutoff safety margin</p>
+                  <div className={courseProfile ? 'mt-4 pt-4 border-t border-white/10 space-y-3' : 'space-y-3'}>
+                    <p className="text-white/40 text-xs">Cutoff safety margin</p>
                     {cutoffRiskFlags.map((f) => (
-                      <p key={f.segment} className="text-white/70 text-sm">
-                        {formatCutoffMarginLine(f, courseRange)}
-                      </p>
+                      <CutoffMarginRow key={f.segment} flag={f} range={courseRange} />
                     ))}
                   </div>
                 )}
@@ -709,15 +749,11 @@ export default function RaceDetailPage() {
               </div>
 
               {cutoffRiskFlags.length > 0 && courseRange && (
-                <div className="pt-4 mt-4 border-t border-white/10">
-                  <p className="text-xs text-white/40 mb-2">Cutoff safety margin</p>
-                  <div className="space-y-1">
-                    {cutoffRiskFlags.map((f) => (
-                      <p key={f.segment} className="text-white/70 text-sm">
-                        {formatCutoffMarginLine(f, courseRange)}
-                      </p>
-                    ))}
-                  </div>
+                <div className="pt-4 mt-4 border-t border-white/10 space-y-3">
+                  <p className="text-xs text-white/40">Cutoff safety margin</p>
+                  {cutoffRiskFlags.map((f) => (
+                    <CutoffMarginRow key={f.segment} flag={f} range={courseRange} />
+                  ))}
                 </div>
               )}
 
@@ -760,8 +796,10 @@ export default function RaceDetailPage() {
                 <p className="text-white/40 text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
                 <p className="text-white/40 text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
                 <div className="grid gap-3">
-                  {group.weeks.map((week) => {
+                  {group.weeks.map((week, weekIndex) => {
                     const isCurrentWeek = week.weekStartDate === currentWeekStartDate
+                    const phaseTemplate = plan.phaseTemplates[week.phase]
+                    const isExpanded = expandedWeeks.has(week.weekStartDate)
                     return (
                       <div
                         key={week.weekStartDate}
@@ -813,6 +851,21 @@ export default function RaceDetailPage() {
                           )}
                         </div>
                         <p className="text-white/50 text-sm">{week.focusNote}</p>
+
+                        {phaseTemplate && (
+                          <>
+                            <button
+                              onClick={() => toggleWeekExpanded(week.weekStartDate)}
+                              className="flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors mt-3"
+                            >
+                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              {isExpanded ? 'Hide days' : 'Show days'}
+                            </button>
+                            {isExpanded && (
+                              <WeekDayList slots={slotsForWeek(phaseTemplate, week)} week={week} weekIndexWithinPhase={weekIndex} />
+                            )}
+                          </>
+                        )}
                       </div>
                     )
                   })}

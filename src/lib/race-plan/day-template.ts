@@ -192,6 +192,50 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase): P
   return { enduranceSlots, strengthSlots, brickDays }
 }
 
+// Reduces a phase's template down to what THIS specific week actually
+// has - the piece the count-mismatch bug was missing. A week's own
+// session counts (week.disciplines[d].sessions/targetCardioSessions/
+// targetStrengthSessions) ramp continuously within Base/Build and
+// decrease across Taper, but computeDayByDayTemplates sizes one static
+// template against the phase's single highest-count week; every other
+// week needs a subset of that template's slots, not the whole thing.
+//
+// Priority when a discipline's real count this week is lower than the
+// template's slot count for it: any slot on a day that's this week's
+// actual brick day, then the 'key' slot, then the rest in day order.
+// week.brickSessions is phase-constant except on the literal race week
+// (forced to 0 - see periodization.ts's computeTrainingWeeks), so
+// brickDays only ever needs to shrink to [] there, never partially.
+export interface WeekSlots {
+  enduranceSlots: EnduranceSlot[]
+  strengthSlots: StrengthSlot[]
+  brickDays: number[]
+}
+
+export function slotsForWeek(template: PhaseTemplate, week: TrainingWeekSkeleton): WeekSlots {
+  const brickDays = week.brickSessions ? template.brickDays.slice(0, week.brickSessions) : []
+  const brickDaySet = new Set(brickDays)
+
+  const slotPriority = (s: EnduranceSlot): number => {
+    if (brickDaySet.has(s.day) && (s.type === 'bike' || s.type === 'run')) return 0
+    if (s.role === 'key') return 1
+    return 2
+  }
+
+  const enduranceSlots: EnduranceSlot[] = []
+  const types: EnduranceSlotType[] = week.disciplines ? ['swim', 'bike', 'run'] : ['cardio']
+  for (const type of types) {
+    const targetCount = week.disciplines ? week.disciplines[type as Discipline].sessions : week.targetCardioSessions
+    const candidates = template.enduranceSlots.filter((s) => s.type === type)
+    const prioritized = [...candidates].sort((a, b) => slotPriority(a) - slotPriority(b))
+    enduranceSlots.push(...prioritized.slice(0, Math.min(targetCount, candidates.length)))
+  }
+
+  const strengthSlots = template.strengthSlots.slice(0, Math.min(week.targetStrengthSessions, template.strengthSlots.length))
+
+  return { enduranceSlots, strengthSlots, brickDays }
+}
+
 function totalSessionsInWeek(w: TrainingWeekSkeleton): number {
   const enduranceCount = w.disciplines ? w.disciplines.swim.sessions + w.disciplines.bike.sessions + w.disciplines.run.sessions : w.targetCardioSessions
   return enduranceCount + w.targetStrengthSessions

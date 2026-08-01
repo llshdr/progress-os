@@ -14,14 +14,9 @@ import {
   type EnduranceSlot,
 } from '@/lib/race-plan/day-template'
 import type { TrainingPhase, TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
+import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, ROLE_LABEL, formatSlotKm } from '@/components/races/day-slot-display'
 
-const ROLE_LABEL: Record<EnduranceSlot['role'], string> = { key: 'Key', easy: 'Easy', technique: 'Technique' }
-const TYPE_LABEL: Record<EnduranceSlot['type'], string> = { swim: 'Swim', bike: 'Bike', run: 'Run', cardio: 'Cardio' }
 const PHASE_LABEL: Record<TrainingPhase, string> = { base: 'Base', build: 'Build', peak: 'Peak', taper: 'Taper' }
-
-function formatKm(km: number): string {
-  return `${Math.round(km * 10) / 10}km`
-}
 
 interface Props {
   raceId: string
@@ -53,10 +48,10 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
   const kmRangeLabel = (slot: EnduranceSlot): string => {
     const siblings = edited.enduranceSlots.filter((s) => s.type === slot.type)
     const startKm = enduranceSlotKmForWeek(slot, siblings, 0, weekDisciplineTotalKm(slot.type, 0))
-    if (!slot.progression) return `${formatKm(startKm)} (flat)`
+    if (!slot.progression) return `${formatSlotKm(startKm)} (flat)`
     const peakIndex = weeksInPhase.length - 1
     const peakKm = enduranceSlotKmForWeek(slot, siblings, peakIndex, weekDisciplineTotalKm(slot.type, peakIndex))
-    return `${formatKm(startKm)} → ${formatKm(peakKm)} across the phase`
+    return `${formatSlotKm(startKm)} → ${formatSlotKm(peakKm)} across the phase`
   }
 
   const hardDays = new Set<number>([...edited.enduranceSlots.filter((s) => s.role === 'key').map((s) => s.day), ...edited.brickDays])
@@ -136,10 +131,13 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
                 </div>
 
                 <div className="space-y-2 pl-1">
-                  {endurance.map((slot) => (
+                  {endurance.map((slot) => {
+                    const Icon = SLOT_TYPE_ICON[slot.type]
+                    return (
                     <div key={slot.index} className="flex items-center gap-2 flex-wrap text-sm">
-                      <span className="text-white/80">
-                        {TYPE_LABEL[slot.type]} ({ROLE_LABEL[slot.role]})
+                      <span className="flex items-center gap-1.5 text-white/80">
+                        <Icon className="w-4 h-4 text-white/40" />
+                        {TYPE_LABEL[slot.type]} <span className="text-white/40 text-xs">({ROLE_LABEL[slot.role]})</span>
                       </span>
                       <span className="text-white/40 text-xs">{kmRangeLabel(slot)}</span>
                       <select
@@ -178,11 +176,14 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
                         </span>
                       )}
                     </div>
-                  ))}
+                  )})}
 
                   {strength.map((slot) => (
                     <div key={`strength-${slot.index}`} className="flex items-center gap-2 flex-wrap text-sm">
-                      <span className="text-white/80">Strength</span>
+                      <span className="flex items-center gap-1.5 text-white/80">
+                        <STRENGTH_ICON className="w-4 h-4 text-white/40" />
+                        Strength
+                      </span>
                       <select
                         value={slot.day}
                         onChange={(e) => updateStrengthDay(slot.index, Number(e.target.value))}
