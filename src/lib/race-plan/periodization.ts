@@ -84,10 +84,16 @@ const TYPICAL_SESSION_KM: Record<Discipline, number> = {
   run: 9,
 }
 
+// Matches this file's own already-cited source ("three swims, three
+// rides, three-to-four runs") - the old 4/4/4 caps never actually lined
+// up with that citation. Also the primary lever (alongside letting
+// strength share an easy endurance day - see buildPhaseTemplate in
+// day-template.ts) for keeping a week's total sessions representable
+// within 7 calendar days.
 const DISCIPLINE_MAX_SESSIONS: Record<Discipline, number> = {
-  swim: 4,
-  bike: 4,
-  run: 4,
+  swim: 3,
+  bike: 3,
+  run: 3,
 }
 
 // Cardio peak multiplier for the multisport discipline model (separate
@@ -189,6 +195,19 @@ function allocatePhases(totalWeeks: number): PhaseAllocation {
 const TAPER_FRACTIONS: Record<number, number[]> = {
   1: [0.4],
   2: [0.6, 0.35],
+}
+
+// Race week itself is NOT a taper-formula fraction of peak - published
+// guidance (and this file's own long-standing comment on TAPER_FRACTIONS
+// above) describes it as a genuine token shakeout: a short easy swim, a
+// ~30-45min easy spin with a few pickups, a couple of short shakeout
+// jogs. Absolute, not level-scaled - "a token shakeout" doesn't
+// meaningfully change with fitness level the way peak volume does.
+const RACE_WEEK_TOKEN_KM: { swim: number; bike: number; run: number; cardio: number } = {
+  swim: 1,
+  bike: 15,
+  run: 4,
+  cardio: 3,
 }
 
 function taperFraction(taperWeeks: number, indexWithinTaper: number): number {
@@ -442,8 +461,13 @@ export function computeTrainingWeeks(
     const weekStartDate = getLocalDateString(weekStart)
     const isRaceWeek = i === phases.length - 1
 
-    const targetCardioKm = Math.round(rampValue(cardioBaseline, peakTargetKm, phase, i, rampWeeks, allocation, taperIndex) * 10) / 10
-    const targetCardioSessions = Math.min(7, Math.max(2, Math.round(sessionsBaseline * (targetCardioKm / cardioBaseline))))
+    const targetCardioKm = isRaceWeek
+      ? RACE_WEEK_TOKEN_KM.cardio
+      : Math.round(rampValue(cardioBaseline, peakTargetKm, phase, i, rampWeeks, allocation, taperIndex) * 10) / 10
+    // The Math.max(2, ...) floor exists to avoid an under-scheduled early
+    // plan, but it would also force 2 sessions onto race week's tiny token
+    // km - override directly to a single shakeout session there instead.
+    const targetCardioSessions = isRaceWeek ? 1 : Math.min(7, Math.max(2, Math.round(sessionsBaseline * (targetCardioKm / cardioBaseline))))
     const targetStrengthSessions = strengthSessionsForWeek(phase, approach, currentStrengthSessionsPerWeek)
 
     let disciplines: TrainingWeekSkeleton['disciplines'] = null
@@ -451,7 +475,9 @@ export function computeTrainingWeeks(
     if (disciplineBaselines && disciplinePeaks) {
       const built = {} as { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget }
       for (const d of DISCIPLINES) {
-        const km = Math.round(rampValue(disciplineBaselines[d], disciplinePeaks[d], phase, i, rampWeeks, allocation, taperIndex) * 10) / 10
+        const km = isRaceWeek
+          ? RACE_WEEK_TOKEN_KM[d]
+          : Math.round(rampValue(disciplineBaselines[d], disciplinePeaks[d], phase, i, rampWeeks, allocation, taperIndex) * 10) / 10
         // Sessions derived FROM km (not rounded independently) - a
         // non-zero km target always implies at least one session, and
         // vice versa, so the two numbers can never disagree.

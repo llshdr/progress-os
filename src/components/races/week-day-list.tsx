@@ -1,7 +1,7 @@
 import { TrendingUp } from 'lucide-react'
 import { enduranceSlotKmForWeek, type EnduranceSlot, type WeekSlots } from '@/lib/race-plan/day-template'
 import type { TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
-import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, formatSlotKm, DAY_ABBREVIATIONS } from '@/components/races/day-slot-display'
+import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, ROLE_LABEL, formatSlotKm, DAY_ABBREVIATIONS } from '@/components/races/day-slot-display'
 
 interface Props {
   slots: WeekSlots
@@ -50,6 +50,7 @@ export default function WeekDayList({ slots, week, weekIndexWithinPhase }: Props
                   <span key={`${slot.type}-${i}`} className="flex items-center gap-1 text-xs text-white/70">
                     <Icon className="w-3.5 h-3.5 text-white/40" />
                     {TYPE_LABEL[slot.type]} {formatSlotKm(km)}
+                    <span className="text-white/40">({ROLE_LABEL[slot.role]})</span>
                     {slot.progression && <TrendingUp className="w-3 h-3 text-white/40" />}
                   </span>
                 )

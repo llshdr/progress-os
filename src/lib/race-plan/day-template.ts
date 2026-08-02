@@ -5,8 +5,8 @@ export type EnduranceSlotType = 'swim' | 'bike' | 'run' | 'cardio' // 'cardio' o
 export type SlotRole = 'key' | 'easy' | 'technique'
 
 export interface SlotProgression {
-  incrementPct: number // relative growth applied per interval, e.g. 8 = +8%
-  intervalWeeks: number
+  startShareFraction: number // this slot's share at week 0 of the phase, as a fraction of its target shareOfWeeklyTotal (e.g. 0.65 = starts at 65% of eventual target)
+  rampWeeks: number // reaches the full target share after this many weeks; holds there after - never overshoots the target
 }
 
 export interface EnduranceSlot {
@@ -54,36 +54,58 @@ export function enduranceSlotKmForWeek(
   weekIndexWithinPhase: number,
   weekDisciplineTotalKm: number
 ): number {
-  const rawShare = (s: EnduranceSlot) =>
-    s.progression
-      ? s.shareOfWeeklyTotal * Math.pow(1 + s.progression.incrementPct / 100, Math.floor(weekIndexWithinPhase / s.progression.intervalWeeks))
-      : s.shareOfWeeklyTotal
+  // Bounded linear ramp from startShareFraction*target up to the target
+  // itself (never past it) - a previous compounding-%-per-interval model
+  // could overshoot its own stored target share; this can't.
+  const rawShare = (s: EnduranceSlot) => {
+    if (!s.progression) return s.shareOfWeeklyTotal
+    const progress = Math.min(1, weekIndexWithinPhase / Math.max(1, s.progression.rampWeeks))
+    return s.shareOfWeeklyTotal * (s.progression.startShareFraction + (1 - s.progression.startShareFraction) * progress)
+  }
 
   const total = siblingSlots.reduce((sum, s) => sum + rawShare(s), 0)
   return total > 0 ? weekDisciplineTotalKm * (rawShare(slot) / total) : 0
 }
 
-// Peak-appropriate share for the key slot, scaled down as session count
-// rises - not independently sourced, just a reasonable split so the key
-// slot is always clearly the largest.
-function keyShareForSessionCount(sessions: number): number {
-  if (sessions <= 1) return 1
-  if (sessions === 2) return 0.55
-  if (sessions === 3) return 0.45
-  return 0.4
+// Real Ironman weeks are built around ONE clearly dominant long session
+// per discipline, not an even split - published guidance (Beginner
+// Triathlete/MyMottiv plans already cited above, TrainingPeaks, Triathlete,
+// 220 Triathlon) puts the long ride at ~70-85% of weekly bike km, the long
+// run at ~55-65% of weekly run km. Swim is the exception - technique and
+// endurance work are more evenly distributed by design, so its long swim
+// is only ~40-50%. 'cardio' (single-discipline run races) follows run's
+// shape but can exceed 3 sessions/week, unlike the multisport disciplines
+// (see DISCIPLINE_MAX_SESSIONS in periodization.ts).
+const KEY_SHARE: Record<EnduranceSlotType, Record<number, number>> = {
+  bike: { 1: 1.0, 2: 0.8, 3: 0.75 },
+  run: { 1: 1.0, 2: 0.65, 3: 0.6 },
+  cardio: { 1: 1.0, 2: 0.65, 3: 0.6, 4: 0.58, 5: 0.56, 6: 0.55, 7: 0.55 },
+  swim: { 1: 1.0, 2: 0.5, 3: 0.45 },
 }
 
-// Only Build/Peak assign a progression to the key slot - Base is
-// foundation/technique (no within-phase shape shift beyond the week-
-// level ramp already happening) and Taper is already cutting back, so
-// neither reshapes further. Peak's progression matters most since
-// Peak's week-level total is flat (rampValue holds at `peak` for the
-// whole phase) - any felt growth in the key session there is entirely
-// attributable to this share-shift.
+function keyShareForSessionCount(type: EnduranceSlotType, sessions: number): number {
+  const table = KEY_SHARE[type]
+  if (table[sessions] != null) return table[sessions]
+  const knownCounts = Object.keys(table).map(Number)
+  return table[Math.max(...knownCounts)]
+}
+
+// Only Build ramps the key slot's share - Base is foundation/technique
+// (no within-phase shape shift beyond the week-level ramp already
+// happening). Peak is deliberately frozen (null), not ramping further:
+// real plans reach peak long-ride/run-session distance by mid-Build and
+// REPEAT it through Peak (Peak's week-level total is already flat via
+// rampValue) rather than continuing to grow every week - Hal Higdon's
+// well-known marathon plan is the clearest public example (peak 20-miler
+// repeated in weeks 17/19/21, not escalating past 20). Taper stays null
+// too - already cutting back, no reason to reshape further.
+// rampWeeks=6/startShareFraction=0.65 are synthesized, not independently
+// sourced to the exact week/fraction - a reasonable ramp-in shape, not a
+// claim of precise research.
 const PROGRESSION_BY_PHASE: Record<TrainingPhase, SlotProgression | null> = {
   base: null,
-  build: { incrementPct: 5, intervalWeeks: 2 },
-  peak: { incrementPct: 8, intervalWeeks: 2 },
+  build: { startShareFraction: 0.65, rampWeeks: 6 },
+  peak: null,
   taper: null,
 }
 
@@ -97,7 +119,7 @@ function buildEnduranceSlots(type: EnduranceSlotType, days: number[], phase: Tra
   // in every other phase are technique/drill sessions alongside the key
   // one, also flat.
   const swimBaseTechnique = type === 'swim' && phase === 'base'
-  const keyShare = keyShareForSessionCount(days.length)
+  const keyShare = keyShareForSessionCount(type, days.length)
   const restShare = days.length > 1 ? (1 - keyShare) / (days.length - 1) : 0
 
   return days.map((day, i) => {
@@ -179,12 +201,19 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase): P
 
   const strengthSlots: StrengthSlot[] = []
   if (week.targetStrengthSessions > 0) {
-    let days = assignDays(week.targetStrengthSessions, new Set([...usedDays, ...restrictedDays]))
+    // Strength MAY share a day with an easy/technique endurance slot -
+    // same-day pairing with low-intensity endurance is the research-
+    // backed guidance already cited in STRENGTH_SEQUENCING_NOTES
+    // (periodization.ts: "pair it with an easy day instead" / "keep
+    // strength on easy days only") - only key/brick days and the day
+    // right after them stay off-limits. This (plus the lower
+    // DISCIPLINE_MAX_SESSIONS caps) is what keeps a realistic week's
+    // total sessions representable within 7 calendar days.
+    let days = assignDays(week.targetStrengthSessions, new Set([...hardDays, ...restrictedDays]))
     if (days.length < week.targetStrengthSessions) {
-      // Graceful degradation: not enough non-restricted free days - allow
-      // a restricted day (never one that already has an endurance
-      // session) rather than under-placing strength sessions.
-      days = assignDays(week.targetStrengthSessions, new Set(usedDays))
+      // Last-resort degradation: relax even the day-after restriction,
+      // but never place strength directly on a key/brick day itself.
+      days = assignDays(week.targetStrengthSessions, new Set(hardDays))
     }
     for (const day of days) strengthSlots.push({ day })
   }

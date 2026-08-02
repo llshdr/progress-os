@@ -68,11 +68,11 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
   const toggleProgression = (index: number, enabled: boolean) => {
     setEdited((prev) => ({
       ...prev,
-      enduranceSlots: prev.enduranceSlots.map((s, i) => (i === index ? { ...s, progression: enabled ? { incrementPct: 5, intervalWeeks: 2 } : null } : s)),
+      enduranceSlots: prev.enduranceSlots.map((s, i) => (i === index ? { ...s, progression: enabled ? { startShareFraction: 0.65, rampWeeks: 6 } : null } : s)),
     }))
   }
 
-  const updateProgressionField = (index: number, field: 'incrementPct' | 'intervalWeeks', value: number) => {
+  const updateProgressionField = (index: number, field: 'startShareFraction' | 'rampWeeks', value: number) => {
     setEdited((prev) => ({
       ...prev,
       enduranceSlots: prev.enduranceSlots.map((s, i) => (i === index && s.progression ? { ...s, progression: { ...s.progression, [field]: value } } : s)),
@@ -159,17 +159,18 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
                       )}
                       {slot.progression && (
                         <span className="flex items-center gap-1 text-xs text-white/50">
+                          starts at
                           <Input
                             type="number"
-                            value={slot.progression.incrementPct}
-                            onChange={(e) => updateProgressionField(slot.index, 'incrementPct', Number(e.target.value))}
+                            value={Math.round(slot.progression.startShareFraction * 100)}
+                            onChange={(e) => updateProgressionField(slot.index, 'startShareFraction', Number(e.target.value) / 100)}
                             className="bg-white/5 border-white/10 text-white w-14 h-7 text-xs"
                           />
-                          % every
+                          % of peak, reaches full over
                           <Input
                             type="number"
-                            value={slot.progression.intervalWeeks}
-                            onChange={(e) => updateProgressionField(slot.index, 'intervalWeeks', Number(e.target.value))}
+                            value={slot.progression.rampWeeks}
+                            onChange={(e) => updateProgressionField(slot.index, 'rampWeeks', Number(e.target.value))}
                             className="bg-white/5 border-white/10 text-white w-12 h-7 text-xs"
                           />
                           wk(s)
