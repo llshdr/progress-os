@@ -9,6 +9,7 @@ import { WEEKDAY_NAMES } from '@/lib/gym-schedule'
 import {
   enduranceSlotKmForWeek,
   computeRestrictedStrengthDays,
+  ZONE_GUIDANCE,
   type PhaseTemplate,
   type PhaseTemplates,
   type EnduranceSlot,
@@ -133,11 +134,15 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
                 <div className="space-y-2 pl-1">
                   {endurance.map((slot) => {
                     const Icon = SLOT_TYPE_ICON[slot.type]
+                    const zone = ZONE_GUIDANCE[slot.role][phase]
                     return (
                     <div key={slot.index} className="flex items-center gap-2 flex-wrap text-sm">
                       <span className="flex items-center gap-1.5 text-white/80">
                         <Icon className="w-4 h-4 text-white/40" />
                         {TYPE_LABEL[slot.type]} <span className="text-white/40 text-xs">({ROLE_LABEL[slot.role]})</span>
+                        <span className="text-white/30 text-xs" title={zone.full}>
+                          {zone.short}
+                        </span>
                       </span>
                       <span className="text-white/40 text-xs">{kmRangeLabel(slot)}</span>
                       <select

@@ -219,10 +219,29 @@ function taperFraction(taperWeeks: number, indexWithinTaper: number): number {
   return 0.7 - t * 0.4
 }
 
-// One shared ramp shape (base/build ramp linearly to peak, hold at peak,
-// cut back for taper) reused for both the aggregate cardio number
-// (single-discipline races) and each discipline's own number (multisport
-// races) - same curve, different baseline/peak per call.
+// Every 4th week within the Base/Build ramp is a lighter recovery week
+// (~25% cut from that week's ramped value) instead of a continued climb -
+// the "3:1" build-then-recover cycle is standard practice, and NOT
+// something block periodization (the main legitimate alternative model)
+// dispenses with either - USA Triathlon states plainly that a plan which
+// "just builds volume week after week" leads to accumulated fatigue and
+// eventual performance decline, not just diminishing returns
+// (https://www.usatriathlon.org/articles/training-tips/the-importance-of-recovery-weeks-and-rest-days,
+// https://process3.com.au/triathlon-periodization/). Peak is
+// deliberately excluded - its week-level total is already flat (not
+// climbing), so the "absorb increasing load" rationale doesn't apply the
+// same way; Taper already has its own reduction via taperFraction.
+const RECOVERY_WEEK_FRACTION = 0.75 // ~25% cut, within the commonly-cited 20-30%/20-40% range
+
+function isRecoveryWeek(phase: TrainingPhase, weekIndex: number): boolean {
+  return (phase === 'base' || phase === 'build') && (weekIndex + 1) % 4 === 0
+}
+
+// One shared ramp shape (base/build ramp linearly to peak with a
+// periodic recovery dip, hold at peak, cut back for taper) reused for
+// both the aggregate cardio number (single-discipline races) and each
+// discipline's own number (multisport races) - same curve, different
+// baseline/peak per call.
 function rampValue(
   baseline: number,
   peak: number,
@@ -233,7 +252,8 @@ function rampValue(
   taperIndex: number
 ): number {
   if (phase === 'base' || phase === 'build') {
-    return baseline + (peak - baseline) * ((weekIndex + 1) / Math.max(rampWeeks, 1))
+    const ramped = baseline + (peak - baseline) * ((weekIndex + 1) / Math.max(rampWeeks, 1))
+    return isRecoveryWeek(phase, weekIndex) ? ramped * RECOVERY_WEEK_FRACTION : ramped
   }
   if (phase === 'peak') return peak
   return peak * taperFraction(allocation.taper, taperIndex)

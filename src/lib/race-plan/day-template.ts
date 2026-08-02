@@ -31,6 +31,40 @@ export interface PhaseTemplate {
 
 export type PhaseTemplates = Partial<Record<TrainingPhase, PhaseTemplate>>
 
+// Zone/intensity guidance per role, phase-aware for 'key' since race-pace
+// segments only belong once race day is close. Static, cited text - not
+// model-generated, same pattern as STRENGTH_SEQUENCING_NOTES
+// (periodization.ts). Zone 2 = "conversational effort" - ~70-80% of
+// total training time should sit here for athletes training 8+ hrs/week
+// (Tri-Revolution: https://www.tri-revolution.co.uk/tips/zone-2-training-for-triathlons/,
+// D3 Multisport: https://www.d3multisport.com/d3-university/the-ideal-heart-rate-for-ironman-training,
+// 80/20 Endurance: https://www.8020endurance.com/understanding-your-8020-triathlon-plan/);
+// race-pace segments belong in the final part of Build and especially
+// Peak, not earlier (MyProCoach: https://www.myprocoach.net/blog/how-to-structure-a-triathlon-training-program/,
+// Triathlon Magazine Canada: https://triathlonmagazine.ca/training/periodize-your-triathlon-training-for-peak-race-day-performance/).
+// Technique work is drill-focused, not zone-based - consistent with how
+// this feature already treats the 'technique' role for swim.
+export const ZONE_GUIDANCE: Record<SlotRole, Record<TrainingPhase, { short: string; full: string }>> = {
+  key: {
+    base: { short: 'Zone 2', full: 'Zone 2, aerobic - building the long-session foundation, no race-pace work yet.' },
+    build: { short: 'Zone 2 (+ race pace)', full: 'Mostly Zone 2, with occasional short race-pace segments as race day approaches.' },
+    peak: { short: 'Zone 2 + race pace', full: 'Zone 2 with real race-pace segments woven in - the closest training gets to race-day effort.' },
+    taper: { short: 'Zone 2', full: 'Zone 2, shorter - keep the intensity, cut the duration.' },
+  },
+  easy: {
+    base: { short: 'Zone 1-2', full: 'Zone 1-2, recovery effort - conversational pace throughout.' },
+    build: { short: 'Zone 1-2', full: 'Zone 1-2, recovery effort - conversational pace throughout.' },
+    peak: { short: 'Zone 1-2', full: 'Zone 1-2, recovery effort - conversational pace throughout.' },
+    taper: { short: 'Zone 1-2', full: 'Zone 1-2, recovery effort - conversational pace throughout.' },
+  },
+  technique: {
+    base: { short: 'Drills', full: 'Drill-focused, not zone-based - about form, not effort.' },
+    build: { short: 'Drills', full: 'Drill-focused, not zone-based - about form, not effort.' },
+    peak: { short: 'Drills', full: 'Drill-focused, not zone-based - about form, not effort.' },
+    taper: { short: 'Drills', full: 'Drill-focused, not zone-based - about form, not effort.' },
+  },
+}
+
 const ALL_PHASES: TrainingPhase[] = ['base', 'build', 'peak', 'taper']
 const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
 
