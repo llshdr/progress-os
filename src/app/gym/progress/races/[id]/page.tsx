@@ -7,6 +7,8 @@ import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Flag, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { raceTypeLabel, RACE_TYPE_DISTANCE, type RaceType } from '@/lib/race-constants'
 import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
 import { daysBetween } from '@/lib/goals'
@@ -16,11 +18,13 @@ import {
   RACE_APPROACH_LABELS,
   describeStrengthEmphasis,
   describeMuscleImpact,
+  sortMuscleImpact,
   STRENGTH_SEQUENCING_NOTES,
   type RaceApproach,
   type TrainingPhase,
   type DisciplineTarget,
 } from '@/lib/race-plan/periodization'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { slotsForWeek, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
@@ -66,6 +70,7 @@ type Race = {
   courseId: string | null
   courseOrLocation: string | null
   race_date: string
+  trainingStartDate: string | null
 }
 
 type PlanWeek = {
@@ -163,6 +168,27 @@ function CutoffMarginRow({ flag, range }: { flag: CutoffRiskFlag; range: Project
   )
 }
 
+// Escalated, hard-to-miss treatment for a real (risk-tier) cutoff margin -
+// one severity step up from the yellow "Worth double-checking" box used
+// for softer flags. The whole point is that this can't just blend in as
+// another line among many; it's the single thing this plan most needs to
+// react to.
+function CutoffRiskBanner({ flags }: { flags: CutoffRiskFlag[] }) {
+  const riskFlags = flags.filter((f) => f.risk === 'risk')
+  if (riskFlags.length === 0) return null
+
+  return (
+    <div className="border border-red-500/30 rounded-2xl bg-red-500/[0.06] p-4">
+      <p className="text-red-300 text-sm font-semibold mb-1">Real cutoff risk</p>
+      {riskFlags.map((f) => (
+        <p key={f.segment} className="text-red-200/80 text-xs mt-1">
+          {f.message}
+        </p>
+      ))}
+    </div>
+  )
+}
+
 export default function RaceDetailPage() {
   const params = useParams()
   const raceId = params.id as string
@@ -191,9 +217,15 @@ export default function RaceDetailPage() {
   const [weaknessLoading, setWeaknessLoading] = useState(false)
 
   const [approach, setApproach] = useState<RaceApproach>('balanced')
+  // Tracks whether the user has ever manually moved the slider - once
+  // true, the cutoff-risk smart default (below) never overrides them
+  // again, this session or any future one for this race.
+  const [approachTouched, setApproachTouched] = useState(false)
   const [targetFinishSeconds, setTargetFinishSeconds] = useState<number | null>(null)
+  const [trainingStartDateInput, setTrainingStartDateInput] = useState<string>('')
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [showCutoffConfirm, setShowCutoffConfirm] = useState(false)
 
   useEffect(() => {
     fetchAll()
@@ -202,6 +234,19 @@ export default function RaceDetailPage() {
   useEffect(() => {
     if (plan) computeCurrentWeekActual()
   }, [plan])
+
+  // Smart default, not a forced value: if there's a real (risk-tier)
+  // cutoff margin and the athlete hasn't touched the approach slider yet,
+  // default it toward Race-Leaning instead of Balanced - fully
+  // overridable, never re-applied once touched or once a plan exists.
+  useEffect(() => {
+    if (!race || !snapshot || plan || approachTouched) return
+    if (raceCategoryFor(race.race_type) !== 'multisport') return
+    const lvl = selfAssessment.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
+    const range = estimateCourseFinishRange(race.race_type, lvl, snapshot.pastRaceResults, race.courseId, courseTimeBands[lvl] ?? null)
+    const flags = assessCutoffRisk(range, courseCutoffs)
+    if (flags.some((f) => f.risk === 'risk')) setApproach('race_leaning')
+  }, [race, snapshot, courseTimeBands, courseCutoffs, plan, approachTouched, selfAssessment])
 
   const fetchAll = async () => {
     setLoading(true)
@@ -216,7 +261,7 @@ export default function RaceDetailPage() {
     const [{ data: raceRow }, { data: planRow }] = await Promise.all([
       supabase
         .from('races')
-        .select('id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds, discipline_weakness')
+        .select('id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds, discipline_weakness, training_start_date')
         .eq('id', raceId)
         .eq('user_id', user.id)
         .maybeSingle(),
@@ -235,7 +280,15 @@ export default function RaceDetailPage() {
       courseName = course?.name ?? null
     }
     const raceType = raceRow.race_type as RaceType
-    setRace({ id: raceRow.id, race_type: raceType, courseId: raceRow.course_id ?? null, courseOrLocation: courseName ?? raceRow.location, race_date: raceRow.race_date })
+    setRace({
+      id: raceRow.id,
+      race_type: raceType,
+      courseId: raceRow.course_id ?? null,
+      courseOrLocation: courseName ?? raceRow.location,
+      race_date: raceRow.race_date,
+      trainingStartDate: raceRow.training_start_date ?? null,
+    })
+    setTrainingStartDateInput(raceRow.training_start_date ?? getLocalDateString())
 
     const category = raceCategoryFor(raceType)
     setSelfAssessment(normalizeSelfAssessment(raceRow.self_assessment, category))
@@ -294,6 +347,12 @@ export default function RaceDetailPage() {
     const strengthDays = new Set((sets ?? []).map((s: any) => getLocalDateString(new Date(s.created_at)))).size
 
     setCurrentWeekActual({ cardioKm, strengthSessions: strengthDays })
+  }
+
+  const handleConfirmStartDate = async () => {
+    await supabase.from('races').update({ training_start_date: trainingStartDateInput }).eq('id', raceId)
+    setRace((prev) => (prev ? { ...prev, trainingStartDate: trainingStartDateInput } : prev))
+    setStep('assessment')
   }
 
   const handleAssessmentContinue = async () => {
@@ -411,6 +470,7 @@ export default function RaceDetailPage() {
       ? estimateCourseFinishRange(race.race_type, level, snapshot.pastRaceResults, race.courseId, courseTimeBands[level] ?? null)
       : null
   const cutoffRiskFlags: CutoffRiskFlag[] = courseRange ? assessCutoffRisk(courseRange, courseCutoffs) : []
+  const hasCutoffRisk = cutoffRiskFlags.some((f) => f.risk === 'risk')
   const readinessFlags = category === 'multisport' && disciplineActivityFacts ? assessMultisportReadiness(disciplineActivityFacts, daysUntil) : []
   const realismFlag =
     category === 'run' && targetFinishSeconds != null && projectedFinishSeconds != null
@@ -439,7 +499,7 @@ export default function RaceDetailPage() {
     }
   }
 
-  const muscleImpact = snapshot && plan ? describeMuscleImpact(plan.approach, snapshot.strength.recentSessionsPerWeek, snapshot.muscleVolume) : []
+  const muscleImpact = snapshot && plan ? sortMuscleImpact(describeMuscleImpact(plan.approach, snapshot.strength.recentSessionsPerWeek, snapshot.muscleVolume)) : []
 
   // plan.weeks is a fixed snapshot from generation time - find the week
   // matching today's date rather than assuming weeks[0], which is only
@@ -493,7 +553,22 @@ export default function RaceDetailPage() {
               Next, a few questions about your current condition, then a look at your real training data, then you
               choose how this race should shape your training.
             </p>
-            <Button onClick={() => setStep('assessment')} className="bg-white text-black hover:bg-white/90">
+            <div className="space-y-2 mb-6 max-w-xs">
+              <Label htmlFor="training-start-date" className="text-white/80">
+                When do you want to start training?
+              </Label>
+              <Input
+                id="training-start-date"
+                type="date"
+                value={trainingStartDateInput}
+                min={today}
+                max={race.race_date}
+                onChange={(e) => setTrainingStartDateInput(e.target.value)}
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <p className="text-white/40 text-xs">Defaults to today - the plan's week-by-week schedule is built from whichever date you pick.</p>
+            </div>
+            <Button onClick={handleConfirmStartDate} className="bg-white text-black hover:bg-white/90">
               Continue
             </Button>
           </div>
@@ -556,6 +631,8 @@ export default function RaceDetailPage() {
 
         {step === 'snapshot' && (
           <div className="space-y-6">
+            <CutoffRiskBanner flags={cutoffRiskFlags} />
+
             {allFlags.length > 0 && (
               <div className="border border-yellow-500/20 rounded-2xl bg-yellow-500/[0.04] p-4">
                 <p className="text-yellow-200/80 text-sm font-medium mb-1">Worth double-checking</p>
@@ -671,12 +748,17 @@ export default function RaceDetailPage() {
 
         {step === 'spectrum' && snapshot && (
           <div className="space-y-6">
+            <CutoffRiskBanner flags={cutoffRiskFlags} />
+
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
               <h2 className="text-lg font-medium text-white mb-1">Approach</h2>
               <p className="text-white/40 text-sm mb-6">Choose how much this race should take over your training.</p>
               <ApproachSpectrum
                 value={approach}
-                onChange={setApproach}
+                onChange={(v) => {
+                  setApproach(v)
+                  setApproachTouched(true)
+                }}
                 currentWeeklyCardioKm={snapshot.cardio.recentAvgWeeklyKm}
                 currentStrengthSessionsPerWeek={snapshot.strength.recentSessionsPerWeek}
                 showFinishTime={category === 'run' || courseRange != null}
@@ -688,7 +770,17 @@ export default function RaceDetailPage() {
                 muscleVolume={snapshot.muscleVolume}
               />
 
-              <Button onClick={handleGenerate} disabled={generating} className="w-full bg-white text-black hover:bg-white/90 mt-6">
+              <Button
+                onClick={() => {
+                  if (hasCutoffRisk && (approach === 'muscle_leaning' || approach === 'muscle_focused')) {
+                    setShowCutoffConfirm(true)
+                  } else {
+                    handleGenerate()
+                  }
+                }}
+                disabled={generating}
+                className="w-full bg-white text-black hover:bg-white/90 mt-6"
+              >
                 {generating ? 'Generating...' : plan ? 'Regenerate Plan' : 'Generate Plan'}
               </Button>
               {generateError && <p className="text-sm text-red-400 mt-2">{generateError}</p>}
@@ -709,12 +801,17 @@ export default function RaceDetailPage() {
 
         {step === 'review' && plan && snapshot && (
           <div className="space-y-8">
+            <CutoffRiskBanner flags={cutoffRiskFlags} />
+
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
               <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
                 <h2 className="text-lg font-medium text-white">
                   Training Plan <span className="text-white/40 text-sm font-normal">({RACE_APPROACH_LABELS[plan.approach]})</span>
                 </h2>
                 <div className="flex items-center gap-3">
+                  <button onClick={() => setStep('confirm')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                    Edit start date
+                  </button>
                   <button onClick={() => setStep('assessment')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
                     Edit my assessment
                   </button>
@@ -723,6 +820,12 @@ export default function RaceDetailPage() {
                   </Button>
                 </div>
               </div>
+              {race.trainingStartDate && race.trainingStartDate > today && (
+                <p className="text-white/40 text-xs mb-3">
+                  Training starts {new Date(race.trainingStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} -{' '}
+                  {daysBetween(race.trainingStartDate, today)} days from now.
+                </p>
+              )}
               <p className="text-white/70 text-sm leading-relaxed mb-4">{plan.overview}</p>
 
               <div className="flex flex-wrap gap-8 pt-4 border-t border-white/10">
@@ -760,11 +863,15 @@ export default function RaceDetailPage() {
               {muscleImpact.length > 0 && (
                 <div className="pt-4 mt-4 border-t border-white/10">
                   <p className="text-xs text-white/40 mb-2">Muscle Impact</p>
-                  <div className="space-y-1">
+                  <div className="flex flex-wrap gap-2">
                     {muscleImpact.map((line) => (
-                      <p key={line.muscle} className="text-white/70 text-sm">
-                        {line.muscle}: {line.description}
-                      </p>
+                      <span
+                        key={line.muscle}
+                        title={line.description}
+                        className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10"
+                      >
+                        {line.muscle}: {line.shortLabel}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -875,6 +982,15 @@ export default function RaceDetailPage() {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        open={showCutoffConfirm}
+        onOpenChange={setShowCutoffConfirm}
+        title="This approach may not close your cutoff gap"
+        description="Your projected pace is a real risk against the cutoff at this course, and a muscle-leaning/muscle-focused approach doesn't push training toward closing that gap. Generate the plan anyway?"
+        confirmText="Generate anyway"
+        onConfirm={handleGenerate}
+      />
     </AppLayout>
   )
 }

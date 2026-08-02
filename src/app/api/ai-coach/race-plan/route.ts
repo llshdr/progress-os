@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
   const { data: race, error: raceError } = await supabase
     .from('races')
-    .select('id, race_type, location, course_id, race_date, self_assessment, target_finish_seconds, discipline_weakness')
+    .select('id, race_type, location, course_id, race_date, self_assessment, target_finish_seconds, discipline_weakness, training_start_date')
     .eq('id', raceId)
     .eq('user_id', user.id)
     .maybeSingle()
@@ -168,7 +168,8 @@ export async function POST(request: NextRequest) {
     facts.cardio.recentAvgWeeklyKm,
     facts.cardio.recentAvgSessionsPerWeek,
     facts.strength.recentSessionsPerWeek,
-    disciplineInputs
+    disciplineInputs,
+    race.training_start_date
   )
 
   // Deterministic, code-computed - never involves the model. Sized
@@ -255,6 +256,9 @@ export async function POST(request: NextRequest) {
       ? estimateCourseFinishRange(race.race_type as RaceType, level, facts.pastRaceResults, race.course_id, courseTimeBand)
       : null
   const cutoffFlags = courseRange ? assessCutoffRisk(courseRange, courseCutoffs) : []
+  // Real risk of missing a cutoff, not just a "watch" - this needs to be
+  // impossible for the model to bury among everything else it's told.
+  const hasCutoffRisk = cutoffFlags.some((f) => f.risk === 'risk')
 
   const realismFlag =
     race.target_finish_seconds != null && projectedFinishSeconds != null
@@ -311,7 +315,11 @@ ${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${w
 Here is the week-by-week schedule already computed for this athlete (the numbers are fixed - do not change or restate them numerically, just write about them):
 ${weeksTable}
 
-For each week listed above, write ONE short, specific sentence (its "focus_note") explaining what to prioritize that week and why - ground it in the numbers already given, especially early weeks where you should reference the athlete's actual current fitness. When a week includes brick (bike-run) session(s), mention what they're for (practicing race-day transitions and running on tired legs), not just that they exist. Also write one short overview paragraph (2-4 sentences) summarizing the plan's overall shape and how it reconciles the athlete's current situation (training phase, consistency, any competing goals) with the chosen approach.`
+For each week listed above, write ONE short, specific sentence (its "focus_note") explaining what to prioritize that week and why - ground it in the numbers already given, especially early weeks where you should reference the athlete's actual current fitness. When a week includes brick (bike-run) session(s), mention what they're for (practicing race-day transitions and running on tired legs), not just that they exist. Also write one short overview paragraph (2-4 sentences) summarizing the plan's overall shape and how it reconciles the athlete's current situation (training phase, consistency, any competing goals) with the chosen approach.${
+      hasCutoffRisk
+        ? ' The athlete has a real risk of missing a course cutoff at their current projected pace (see the cutoff check above) - open the overview by naming this plainly, then explain whether the chosen approach actually pushes hard enough to close that gap or whether it does not.'
+        : ''
+    }`
 
   try {
     const ai = new GoogleGenAI({ apiKey })

@@ -42,13 +42,28 @@ export type PhaseTemplates = Partial<Record<TrainingPhase, PhaseTemplate>>
 // race-pace segments belong in the final part of Build and especially
 // Peak, not earlier (MyProCoach: https://www.myprocoach.net/blog/how-to-structure-a-triathlon-training-program/,
 // Triathlon Magazine Canada: https://triathlonmagazine.ca/training/periodize-your-triathlon-training-for-peak-race-day-performance/).
+// Peak's key session is deliberately worded as "this IS race effort," not
+// "Zone 2 plus a separate race-pace thing" - Ironman race pace itself is
+// commonly run at ~65-72% FTP / RPE 5-6, i.e. Zone 2, specifically
+// because overcooking the bike costs far more on the run than it gains
+// on the bike - a single pacing decision ~30km into the bike can cost
+// 15-25 minutes on the marathon (BestBikeSplit:
+// https://www.bestbikesplit.com/ironman-bike-pacing-plan, 8020 Endurance
+// / Jim Vance: https://www.8020endurance.com/how-to-pace-the-ironman-marathon/,
+// MyProCoach: https://www.myprocoach.net/blog/how-to-pace-an-ironman-triathlon/).
 // Technique work is drill-focused, not zone-based - consistent with how
 // this feature already treats the 'technique' role for swim.
 export const ZONE_GUIDANCE: Record<SlotRole, Record<TrainingPhase, { short: string; full: string }>> = {
   key: {
     base: { short: 'Zone 2', full: 'Zone 2, aerobic - building the long-session foundation, no race-pace work yet.' },
-    build: { short: 'Zone 2 (+ race pace)', full: 'Mostly Zone 2, with occasional short race-pace segments as race day approaches.' },
-    peak: { short: 'Zone 2 + race pace', full: 'Zone 2 with real race-pace segments woven in - the closest training gets to race-day effort.' },
+    build: {
+      short: 'Zone 2 (building toward race effort)',
+      full: "Mostly Zone 2, with occasional short race-pace segments as race day approaches - practicing the effort you'll actually hold on race day.",
+    },
+    peak: {
+      short: 'Zone 2 = race effort',
+      full: 'This IS your race effort, by design: Ironman pace is deliberately Zone 2 (commonly ~65-72% FTP, RPE 5-6/10) because overcooking it costs far more on the run than it gains on the bike - a single pacing decision ~30km into the bike can cost 15-25 minutes on the marathon.',
+    },
     taper: { short: 'Zone 2', full: 'Zone 2, shorter - keep the intensity, cut the duration.' },
   },
   easy: {

@@ -380,7 +380,16 @@ export interface MuscleImpactLine {
   muscle: string
   currentSetsPerWeek: number
   projectedTag: 'maintain' | 'reduced' | 'growth_room'
-  description: string
+  shortLabel: string // compact delta for a pill display, e.g. "-2/wk", "room to grow", "at cap"
+  description: string // full sentence - detail/tooltip only, not the primary display anymore
+}
+
+// Most-actionable-first: what you're giving up, then room still
+// available, then what's already maxed out. Ties broken alphabetically
+// for a stable render order.
+const PROJECTED_TAG_PRIORITY: Record<MuscleImpactLine['projectedTag'], number> = { reduced: 0, growth_room: 1, maintain: 2 }
+export function sortMuscleImpact(lines: MuscleImpactLine[]): MuscleImpactLine[] {
+  return [...lines].sort((a, b) => PROJECTED_TAG_PRIORITY[a.projectedTag] - PROJECTED_TAG_PRIORITY[b.projectedTag] || a.muscle.localeCompare(b.muscle))
 }
 
 // Compares the CHOSEN approach against muscle_focused (the spectrum's
@@ -414,6 +423,7 @@ export function describeMuscleImpact(
         muscle: mv.muscle,
         currentSetsPerWeek: mv.sets,
         projectedTag: 'reduced' as const,
+        shortLabel: `-${sessionGap}/wk`,
         description: `${sessionsAtApproach} strength session(s)/week — ${sessionGap} fewer than a muscle-focused approach would give you (${sessionsAtMuscleFocused}/week); ${guidelineNote}.`,
       }
     }
@@ -422,6 +432,7 @@ export function describeMuscleImpact(
       muscle: mv.muscle,
       currentSetsPerWeek: mv.sets,
       projectedTag: mv.status === 'under' ? ('growth_room' as const) : ('maintain' as const),
+      shortLabel: mv.status === 'under' ? 'room to grow' : 'at cap',
       description: `${sessionsAtApproach} strength session(s)/week — already matches what a muscle-focused approach would give you here; ${guidelineNote}.`,
     }
   })
@@ -436,9 +447,12 @@ export function computeTrainingWeeks(
   currentWeeklyCardioKm: number,
   currentCardioSessionsPerWeek: number,
   currentStrengthSessionsPerWeek: number,
-  disciplineInputs?: DisciplineRampInputs
+  disciplineInputs?: DisciplineRampInputs,
+  startDate?: string | null
 ): TrainingWeekSkeleton[] {
-  const startMonday = getLocalWeekStart()
+  // null/undefined means "start now" - preserves existing behavior for
+  // every race with no explicit chosen training start.
+  const startMonday = startDate ? getLocalWeekStart(new Date(startDate + 'T00:00:00')) : getLocalWeekStart()
   const raceMonday = getLocalWeekStart(new Date(raceDate + 'T00:00:00'))
   const diffWeeks = Math.round((raceMonday.getTime() - startMonday.getTime()) / (7 * 86400000))
   const totalWeeks = Math.max(1, diffWeeks + 1)

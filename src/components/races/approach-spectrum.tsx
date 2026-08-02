@@ -8,6 +8,7 @@ import {
   previewApproachEffect,
   describeStrengthEmphasis,
   describeMuscleImpact,
+  sortMuscleImpact,
   type RaceApproach,
   type DisciplineRampInputs,
 } from '@/lib/race-plan/periodization'
@@ -67,7 +68,7 @@ export default function ApproachSpectrum({
   const index = RACE_APPROACHES.indexOf(value)
   const preview = previewApproachEffect(value, currentWeeklyCardioKm, currentStrengthSessionsPerWeek, disciplineInputs)
   const strengthEmphasisText = describeStrengthEmphasis(value, currentStrengthSessionsPerWeek)
-  const muscleImpact = describeMuscleImpact(value, currentStrengthSessionsPerWeek, muscleVolume)
+  const muscleImpact = sortMuscleImpact(describeMuscleImpact(value, currentStrengthSessionsPerWeek, muscleVolume))
 
   const hh = targetFinishSeconds != null ? String(Math.floor(targetFinishSeconds / 3600)) : ''
   const mm = targetFinishSeconds != null ? String(Math.floor((targetFinishSeconds % 3600) / 60)) : ''
@@ -113,11 +114,17 @@ export default function ApproachSpectrum({
         {muscleImpact.length > 0 && (
           <>
             <p className="text-white/60 text-xs mt-3">Muscle Impact</p>
-            {muscleImpact.map((line) => (
-              <p key={line.muscle} className="text-white text-sm">
-                {line.muscle}: {line.description}
-              </p>
-            ))}
+            <div className="flex flex-wrap gap-2 mt-1">
+              {muscleImpact.map((line) => (
+                <span
+                  key={line.muscle}
+                  title={line.description}
+                  className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10"
+                >
+                  {line.muscle}: {line.shortLabel}
+                </span>
+              ))}
+            </div>
           </>
         )}
       </div>
