@@ -28,6 +28,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { deriveCurrentFormLevel } from '@/lib/race-plan/current-form'
 import { slotsForWeek, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
+import { PACKING_LISTS } from '@/lib/race-plan/race-day-prep'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
 import WeekDayList from '@/components/races/week-day-list'
 import {
@@ -523,6 +524,7 @@ export default function RaceDetailPage() {
   const daysUntil = daysBetween(race.race_date, today)
   const currentWeekStartDate = getLocalDateString(getLocalWeekStart())
   const category = raceCategoryFor(race.race_type)
+  const packingList = category === 'multisport' ? PACKING_LISTS.multisport : PACKING_LISTS.run_or_other
   const baselineLevel: ExperienceLevel = category === 'multisport' && selfAssessment.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
   // Re-derived from real, sustained recent activity rather than trusting
   // the self-report forever - see current-form.ts. Only ever affects
@@ -1060,6 +1062,60 @@ export default function RaceDetailPage() {
                 </div>
               </div>
             ))}
+
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <h2 className="text-lg font-medium text-white mb-3">Packing List</h2>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {packingList.t1 && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-2">T1 (Swim → Bike)</p>
+                    <ul className="space-y-1">
+                      {packingList.t1.map((item) => (
+                        <li key={item} className="text-white/70 text-sm">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {packingList.t2 && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-2">T2 (Bike → Run)</p>
+                    <ul className="space-y-1">
+                      {packingList.t2.map((item) => (
+                        <li key={item} className="text-white/70 text-sm">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {packingList.t3 && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-2">Special Needs (T3)</p>
+                    <ul className="space-y-1">
+                      {packingList.t3.map((item) => (
+                        <li key={item} className="text-white/70 text-sm">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {packingList.bag && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-2">Race Day Bag</p>
+                    <ul className="space-y-1">
+                      {packingList.bag.map((item) => (
+                        <li key={item} className="text-white/70 text-sm">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

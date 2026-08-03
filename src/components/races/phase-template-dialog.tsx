@@ -16,6 +16,7 @@ import {
 } from '@/lib/race-plan/day-template'
 import type { TrainingPhase, TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
 import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, ROLE_LABEL, formatSlotKm } from '@/components/races/day-slot-display'
+import { TRANSITION_GUIDANCE } from '@/lib/race-plan/race-day-prep'
 
 const PHASE_LABEL: Record<TrainingPhase, string> = { base: 'Base', build: 'Build', peak: 'Peak', taper: 'Taper' }
 
@@ -128,7 +129,14 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
               <div key={day} className="border border-white/10 rounded-xl p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-white text-sm font-medium w-24 shrink-0">{name}</span>
-                  {isBrick && <span className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60 border border-white/20">Brick</span>}
+                  {isBrick && (
+                    <span
+                      className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60 border border-white/20"
+                      title={TRANSITION_GUIDANCE[phase].full}
+                    >
+                      Brick
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-2 pl-1">
