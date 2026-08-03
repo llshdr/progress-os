@@ -15,8 +15,11 @@ import {
   type EnduranceSlot,
 } from '@/lib/race-plan/day-template'
 import type { TrainingPhase, TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
+import type { Discipline } from '@/lib/race-plan/self-assessment'
 import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, ROLE_LABEL, formatSlotKm } from '@/components/races/day-slot-display'
 import { TRANSITION_GUIDANCE } from '@/lib/race-plan/race-day-prep'
+import { paceTargetForWeek } from '@/lib/race-plan/pace-targets'
+import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
 
 const PHASE_LABEL: Record<TrainingPhase, string> = { base: 'Base', build: 'Build', peak: 'Peak', taper: 'Taper' }
 
@@ -27,9 +30,11 @@ interface Props {
   allTemplates: PhaseTemplates
   weeksInPhase: TrainingWeekSkeleton[]
   onSaved: (updated: PhaseTemplate) => void
+  easyPaceTargets: Record<Discipline, number> | null
+  peakPaceTargets: Record<Discipline, number> | null
 }
 
-export default function PhaseTemplateDialog({ raceId, phase, template, allTemplates, weeksInPhase, onSaved }: Props) {
+export default function PhaseTemplateDialog({ raceId, phase, template, allTemplates, weeksInPhase, onSaved, easyPaceTargets, peakPaceTargets }: Props) {
   const [open, setOpen] = useState(false)
   const [edited, setEdited] = useState<PhaseTemplate>(template)
   const [saving, setSaving] = useState(false)
@@ -54,6 +59,20 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
     const peakIndex = weeksInPhase.length - 1
     const peakKm = enduranceSlotKmForWeek(slot, siblings, peakIndex, weekDisciplineTotalKm(slot.type, peakIndex))
     return `${formatSlotKm(startKm)} → ${formatSlotKm(peakKm)} across the phase`
+  }
+
+  // Mirrors kmRangeLabel's shape exactly, applied to pace instead of km -
+  // only meaningful for a 'key' slot (see pace-targets.ts for why easy/
+  // technique slots never get a numeric pace target).
+  const paceRangeLabel = (slot: EnduranceSlot): string | null => {
+    if (slot.type === 'cardio' || slot.role !== 'key' || !easyPaceTargets || !peakPaceTargets) return null
+    const easy = easyPaceTargets[slot.type]
+    const peak = peakPaceTargets[slot.type]
+    const startPace = paceTargetForWeek(easy, peak, phase, 0, slot.progression)
+    if (!slot.progression) return `~${formatPaceForDiscipline(startPace, slot.type)} (flat)`
+    const peakIndex = weeksInPhase.length - 1
+    const peakPace = paceTargetForWeek(easy, peak, phase, peakIndex, slot.progression)
+    return `~${formatPaceForDiscipline(startPace, slot.type)} → ${formatPaceForDiscipline(peakPace, slot.type)}`
   }
 
   const hardDays = new Set<number>([...edited.enduranceSlots.filter((s) => s.role === 'key').map((s) => s.day), ...edited.brickDays])
@@ -143,6 +162,7 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
                   {endurance.map((slot) => {
                     const Icon = SLOT_TYPE_ICON[slot.type]
                     const zone = ZONE_GUIDANCE[slot.role][phase]
+                    const paceRange = paceRangeLabel(slot)
                     return (
                     <div key={slot.index} className="flex items-center gap-2 flex-wrap text-sm">
                       <span className="flex items-center gap-1.5 text-white/80">
@@ -153,6 +173,7 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
                         </span>
                       </span>
                       <span className="text-white/40 text-xs">{kmRangeLabel(slot)}</span>
+                      {paceRange && <span className="text-white/40 text-xs">{paceRange}</span>}
                       <select
                         value={slot.day}
                         onChange={(e) => updateEnduranceDay(slot.index, Number(e.target.value))}

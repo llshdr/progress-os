@@ -62,6 +62,7 @@ import {
   type DisciplineActivityFacts,
 } from '@/lib/race-plan/discipline-weakness'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
+import { resolvePeakPaceTargets, resolveEasyPaceTargets } from '@/lib/race-plan/pace-targets'
 import {
   fetchCourseProfile,
   fetchCourseTimeBand,
@@ -565,6 +566,28 @@ export default function RaceDetailPage() {
         : null
   const allFlags = [...tensionFlags, ...readinessFlags, ...cutoffRiskFlags.map((f) => f.message), ...(realismFlag ? [realismFlag] : [])]
 
+  // Peak-phase (= race-day) target pace per discipline, derived from the
+  // stated goal time when set, else the course band's slow end (same
+  // honest-margin basis the rest of this feature already uses) - and
+  // the Base-phase baseline each key session ramps from, prioritizing
+  // the athlete's own reported comfortableEffort pace, then real logged
+  // activity, before falling back to an estimate. See pace-targets.ts.
+  const peakPaceTargets = category === 'multisport' ? resolvePeakPaceTargets(race.race_type, targetFinishSeconds, courseRange) : null
+  const comfortableEffortByDiscipline =
+    category === 'multisport' && selfAssessment.kind === 'multisport'
+      ? { swim: selfAssessment.swim.comfortableEffort, bike: selfAssessment.bike.comfortableEffort, run: selfAssessment.run.comfortableEffort }
+      : { swim: null, bike: null, run: null }
+  const easyPaceTargets = peakPaceTargets ? resolveEasyPaceTargets(peakPaceTargets, comfortableEffortByDiscipline, disciplineActivityFacts) : null
+
+  // Only computed when a stated goal is already flagged as unrealistic in
+  // TIME terms (realismFlag) - reuses that same check as the trigger
+  // rather than a second comparison, so the pace-terms note and the
+  // time-terms note can never disagree about whether there's a real gap.
+  const safeCutoffPaceTargets =
+    category === 'multisport' && targetFinishSeconds != null && realismFlag && courseRange
+      ? resolvePeakPaceTargets(race.race_type, null, courseRange)
+      : null
+
   const disciplineInputs =
     category === 'multisport' && disciplineWeakness && disciplineActivityFacts
       ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order, level, hasCutoffRisk }
@@ -1037,6 +1060,8 @@ export default function RaceDetailPage() {
                       allTemplates={plan.phaseTemplates}
                       weeksInPhase={group.weeks}
                       onSaved={(updated) => handleTemplateSaved(group.phase, updated)}
+                      easyPaceTargets={easyPaceTargets}
+                      peakPaceTargets={peakPaceTargets}
                     />
                   )}
                 </div>
@@ -1109,7 +1134,13 @@ export default function RaceDetailPage() {
                               {isExpanded ? 'Hide days' : 'Show days'}
                             </button>
                             {isExpanded && (
-                              <WeekDayList slots={slotsForWeek(phaseTemplate, week)} week={week} weekIndexWithinPhase={weekIndex} />
+                              <WeekDayList
+                                slots={slotsForWeek(phaseTemplate, week)}
+                                week={week}
+                                weekIndexWithinPhase={weekIndex}
+                                easyPaceTargets={easyPaceTargets}
+                                peakPaceTargets={peakPaceTargets}
+                              />
                             )}
                           </>
                         )}
@@ -1226,6 +1257,22 @@ export default function RaceDetailPage() {
                 <div>
                   <p className="text-xs text-white/40 mb-1">Pacing</p>
                   <p className="text-white/70 text-sm">{ZONE_GUIDANCE.key.peak.full}</p>
+                  {peakPaceTargets && (
+                    <div className="mt-2 space-y-1">
+                      {(['swim', 'bike', 'run'] as Discipline[]).map((d) => (
+                        <p key={d} className="text-white/60 text-sm">
+                          {DISCIPLINE_LABELS[d]}: ~{formatPaceForDiscipline(peakPaceTargets[d], d)}
+                          {safeCutoffPaceTargets && (
+                            <span className="text-white/40 text-xs">
+                              {' '}
+                              (a safe-cutoff pace would be ~{formatPaceForDiscipline(safeCutoffPaceTargets[d], d)} - reaching your goal takes real
+                              improvement, not just showing up)
+                            </span>
+                          )}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {(courseRange || projectedFinishSeconds != null) && (

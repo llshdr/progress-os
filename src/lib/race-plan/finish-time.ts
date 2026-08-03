@@ -1,7 +1,16 @@
 import { RACE_TYPE_DISTANCE_KM, type RaceType } from '@/lib/race-constants'
 import type { FitnessSnapshot, PastRaceResult } from '@/lib/race-plan/analyze-fitness'
-import type { ExperienceLevel } from '@/lib/race-plan/self-assessment'
+import type { ExperienceLevel, Discipline } from '@/lib/race-plan/self-assessment'
 import type { RaceCourseTimeBand, RaceCourseCutoff, CutoffSegment } from '@/lib/race-plan/course-data'
+
+// Standard Ironman/Xtri leg distances, already shown to the athlete via
+// RACE_TYPE_DISTANCE (race-constants.ts) - the shared source of truth for
+// any per-discipline race-distance math (milestone sessions, per-session
+// pace targets), rather than a second, possibly-drifting copy.
+export const RACE_LEG_DISTANCE_KM: Partial<Record<RaceType, Record<Discipline, number>>> = {
+  ironman: { swim: 3.8, bike: 180.2, run: 42.2 },
+  xtri: { swim: 3.8, bike: 180.2, run: 42.2 },
+}
 
 // Riegel's formula - a standard, widely-cited endurance race-time
 // prediction (T2 = T1 * (D2/D1)^1.06), same "cite a real formula"
@@ -86,7 +95,10 @@ const XTRI_GENERIC_SHIFT = 1.15
 // yet (race_course_time_bands' swim_exit/bike_finish columns are null) -
 // distinguished from a real course-specific split via `source` above,
 // never claimed as independently sourced.
-const TYPICAL_ELAPSED_FRACTION = { swimExit: 0.09, bikeFinish: 0.63 }
+// Exported so pace-targets.ts can fall back to the same fraction when a
+// range has no real per-leg splits at all (the exact_course_result
+// source never computes them) - same estimate, not a second copy of it.
+export const TYPICAL_ELAPSED_FRACTION = { swimExit: 0.09, bikeFinish: 0.63 }
 
 function estimateSplitSeconds(totalSeconds: number, split: keyof typeof TYPICAL_ELAPSED_FRACTION): number {
   return Math.round(totalSeconds * TYPICAL_ELAPSED_FRACTION[split])

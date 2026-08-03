@@ -1,6 +1,7 @@
 import type { RaceType } from '@/lib/race-constants'
 import type { RaceCategory, Discipline } from '@/lib/race-plan/self-assessment'
 import type { TrainingPhase } from '@/lib/race-plan/periodization'
+import { RACE_LEG_DISTANCE_KM } from '@/lib/race-plan/finish-time'
 
 export interface MilestoneWeek {
   weekStartDate: string
@@ -11,14 +12,6 @@ export interface MilestoneSuggestion {
   discipline: Discipline
   km: number
   weekStartDate: string
-}
-
-// Standard Ironman/Xtri leg distances, already shown to the athlete via
-// RACE_TYPE_DISTANCE (race-constants.ts) - reused here rather than a
-// second, possibly-drifting copy of the same numbers.
-const RACE_LEG_DISTANCE_KM: Partial<Record<RaceType, Record<Discipline, number>>> = {
-  ironman: { swim: 3.8, bike: 180.2, run: 42.2 },
-  xtri: { swim: 3.8, bike: 180.2, run: 42.2 },
 }
 
 // A reasonable, adjustable starting fraction of race distance for an
