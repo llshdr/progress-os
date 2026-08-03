@@ -64,6 +64,8 @@ export interface ProjectedRaceTimeRange {
   sourceNote: string
 }
 
+const TIER_LABEL: Record<ExperienceLevel, string> = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }
+
 // Commonly-cited industry-standard full-distance triathlon finish windows
 // by ability tier - the same starting-point numbers seeded into
 // race_course_time_bands for courses without more specific data yet.
@@ -133,7 +135,7 @@ export function estimateCourseFinishRange(
       totalSecondsHigh: timeBand.totalSecondsHigh,
       ...deriveSplits(timeBand.totalSecondsLow, timeBand.totalSecondsHigh, timeBand),
       source: 'course_band',
-      sourceNote: "based on this course's typical range for your level",
+      sourceNote: `Based on typical finish times for ${TIER_LABEL[level]}-level athletes who complete a full training block for this course.`,
     }
   }
 
@@ -147,7 +149,7 @@ export function estimateCourseFinishRange(
     totalSecondsHigh,
     ...deriveSplits(totalSecondsLow, totalSecondsHigh, null),
     source: 'generic_band',
-    sourceNote: 'a general range for this race type, not calibrated to this specific course yet',
+    sourceNote: `A general range for ${TIER_LABEL[level]}-level athletes completing a full training block - not calibrated to this specific course yet.`,
   }
 }
 
@@ -204,11 +206,11 @@ export function assessCutoffRisk(range: ProjectedRaceTimeRange, cutoffs: RaceCou
         message: `Could be tight against the ${label} cutoff on a tougher day — worth keeping an eye on pacing here.`,
       })
     } else {
-      flags.push({
-        ...base,
-        risk: 'risk',
-        message: `Your projected pace is a real risk against the ${label} cutoff — this needs direct attention, not just general fitness.`,
-      })
+      const message =
+        range.source === 'exact_course_result'
+          ? `Your pace based on your past result at this course is a real risk against the ${label} cutoff — this needs direct attention.`
+          : `Even fully completing this training plan, you're projected to miss the ${label} cutoff — this needs a harder plan, not just consistent training.`
+      flags.push({ ...base, risk: 'risk', message })
     }
   }
 

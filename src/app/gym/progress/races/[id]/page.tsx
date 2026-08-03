@@ -207,10 +207,17 @@ function FinishTimeCard({
         ? formatDuration(targetFinishSeconds)
         : `${formatDuration(courseRange!.totalSecondsLow)}–${formatDuration(courseRange!.totalSecondsHigh)}`
 
+  const showingProjection = category === 'multisport' && targetFinishSeconds == null && courseRange != null
+  const showsTrainingAssumption = showingProjection && courseRange!.source !== 'exact_course_result'
+
   return (
     <div>
       <p className="text-xs text-white/40 mb-1">{label}</p>
       <p className="text-white text-sm">{value}</p>
+      {showsTrainingAssumption && (
+        <p className="text-white/40 text-xs mt-1 max-w-sm">Assumes you complete the training plan below - not a snapshot of your fitness today.</p>
+      )}
+      {showingProjection && <p className="text-white/40 text-xs mt-1 max-w-sm">{courseRange!.sourceNote}</p>}
       {reason && <p className="text-white/40 text-xs mt-1 max-w-sm">{reason}</p>}
     </div>
   )
@@ -832,6 +839,8 @@ export default function RaceDetailPage() {
                 showFinishTime={category === 'run' || courseRange != null}
                 projectedFinishSeconds={projectedFinishSeconds}
                 projectedFinishRange={courseRange ? { low: courseRange.totalSecondsLow, high: courseRange.totalSecondsHigh } : null}
+                finishRangeSource={courseRange?.source ?? null}
+                finishRangeSourceNote={courseRange?.sourceNote ?? null}
                 targetFinishSeconds={targetFinishSeconds}
                 onTargetFinishSecondsChange={setTargetFinishSeconds}
                 disciplineInputs={disciplineInputs}

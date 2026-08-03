@@ -13,6 +13,7 @@ import {
   type DisciplineRampInputs,
 } from '@/lib/race-plan/periodization'
 import type { Discipline } from '@/lib/race-plan/self-assessment'
+import type { ProjectedRaceTimeRange } from '@/lib/race-plan/finish-time'
 import type { MuscleVolume } from '@/lib/volume-analysis'
 
 interface ApproachSpectrumProps {
@@ -23,6 +24,8 @@ interface ApproachSpectrumProps {
   showFinishTime: boolean
   projectedFinishSeconds: number | null
   projectedFinishRange?: { low: number; high: number } | null
+  finishRangeSource?: ProjectedRaceTimeRange['source'] | null
+  finishRangeSourceNote?: string | null
   targetFinishSeconds: number | null
   onTargetFinishSecondsChange: (seconds: number | null) => void
   disciplineInputs?: DisciplineRampInputs
@@ -61,6 +64,8 @@ export default function ApproachSpectrum({
   showFinishTime,
   projectedFinishSeconds,
   projectedFinishRange,
+  finishRangeSource,
+  finishRangeSourceNote,
   targetFinishSeconds,
   onTargetFinishSecondsChange,
   disciplineInputs,
@@ -140,9 +145,15 @@ export default function ApproachSpectrum({
         <div className="space-y-2">
           <Label className="text-white/80">Target finish time (optional)</Label>
           {projectedFinishRange ? (
-            <p className="text-white/40 text-xs">
-              Estimated range: {formatDuration(projectedFinishRange.low)}–{formatDuration(projectedFinishRange.high)}. Override below if you have your own goal.
-            </p>
+            <>
+              <p className="text-white/40 text-xs">
+                Estimated range: {formatDuration(projectedFinishRange.low)}–{formatDuration(projectedFinishRange.high)}. Override below if you have your own goal.
+              </p>
+              {finishRangeSource !== 'exact_course_result' && (
+                <p className="text-white/40 text-xs">Assumes you complete the training plan below - not a snapshot of your fitness today.</p>
+              )}
+              {finishRangeSourceNote && <p className="text-white/40 text-xs">{finishRangeSourceNote}</p>}
+            </>
           ) : (
             projectedFinishSeconds != null && (
               <p className="text-white/40 text-xs">

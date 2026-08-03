@@ -48,7 +48,7 @@ export function deriveCurrentFormLevel(
       baselineLevel,
       changed: false,
       evidence: 'insufficient',
-      reason: 'No logged swim/bike/run activity in the last 4 weeks yet - log some cardio sessions and this projection will update automatically.',
+      reason: `This projection already assumes you complete your ${TIER_LABEL[baselineLevel]}-designed plan below - it isn't personalized to your real training yet since there's no logged swim/bike/run activity in the last 4 weeks. Log some sessions and it'll update to reflect your real trajectory.`,
     }
   }
 
@@ -70,6 +70,6 @@ export function deriveCurrentFormLevel(
     baselineLevel,
     changed: true,
     evidence: 'updated',
-    reason: `Your logged swim/bike/run volume over the last 4 weeks is ${direction} ${TIER_LABEL[derivedLevel]} than your original ${TIER_LABEL[baselineLevel]} self-assessment - the projection below uses ${TIER_LABEL[derivedLevel]}.`,
+    reason: `Your logged swim/bike/run volume over the last 4 weeks is ${direction} ${TIER_LABEL[derivedLevel]} than your original ${TIER_LABEL[baselineLevel]} self-assessment - so the projection below reflects ${TIER_LABEL[derivedLevel]}-level training outcomes for this course.`,
   }
 }
