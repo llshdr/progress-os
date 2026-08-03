@@ -1,4 +1,4 @@
-export type MealTag = 'breakfast' | 'lunch' | 'dinner' | 'pwo' | 'snack'
+export type MealTag = 'breakfast' | 'lunch' | 'dinner' | 'pwo' | 'snack' | 'intra_workout'
 
 export const MEAL_TAGS: { value: MealTag; label: string }[] = [
   { value: 'breakfast', label: 'Breakfast' },
@@ -6,6 +6,7 @@ export const MEAL_TAGS: { value: MealTag; label: string }[] = [
   { value: 'dinner', label: 'Dinner' },
   { value: 'pwo', label: 'PWO' },
   { value: 'snack', label: 'Snack' },
+  { value: 'intra_workout', label: 'Intra-Workout' },
 ]
 
 export function mealTagLabel(tag: string | null): string {

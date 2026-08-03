@@ -28,7 +28,8 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { deriveCurrentFormLevel } from '@/lib/race-plan/current-form'
 import { slotsForWeek, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
-import { PACKING_LISTS } from '@/lib/race-plan/race-day-prep'
+import { PACKING_LISTS, FUELING_GUIDANCE } from '@/lib/race-plan/race-day-prep'
+import { TYPE_LABEL } from '@/components/races/day-slot-display'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
 import WeekDayList from '@/components/races/week-day-list'
 import {
@@ -568,6 +569,24 @@ export default function RaceDetailPage() {
       }
     }
   }
+
+  // Which of this plan's phases actually have a 'key' (long) or brick
+  // session worth flagging for intra-workout fueling - reuses the
+  // already-computed phase templates rather than estimating session
+  // duration from scratch (see race-day-prep.ts's FUELING_GUIDANCE).
+  const fuelingPhaseSummaries: { phase: TrainingPhase; summary: string }[] = plan
+    ? weeksByPhase
+        .map((group) => {
+          const template = plan.phaseTemplates[group.phase]
+          if (!template) return null
+          const keySlots = template.enduranceSlots.filter((s) => s.role === 'key')
+          if (keySlots.length === 0 && template.brickDays.length === 0) return null
+          const parts: string[] = keySlots.map((s) => `${TYPE_LABEL[s.type]} key session`)
+          if (template.brickDays.length > 0) parts.push(`${template.brickDays.length} brick session(s)`)
+          return { phase: group.phase, summary: parts.join(', ') }
+        })
+        .filter((s): s is { phase: TrainingPhase; summary: string } => s != null)
+    : []
 
   const muscleImpact = snapshot && plan ? sortMuscleImpact(describeMuscleImpact(plan.approach, snapshot.strength.recentSessionsPerWeek, snapshot.muscleVolume)) : []
 
@@ -1116,6 +1135,23 @@ export default function RaceDetailPage() {
                 )}
               </div>
             </div>
+
+            {fuelingPhaseSummaries.length > 0 && (
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+                <h2 className="text-lg font-medium text-white mb-3">Fueling</h2>
+                <p className="text-white/70 text-sm leading-relaxed mb-4">{FUELING_GUIDANCE}</p>
+                <div className="space-y-1 mb-4">
+                  {fuelingPhaseSummaries.map((line) => (
+                    <p key={line.phase} className="text-white/40 text-xs">
+                      <span className="text-white/60">{PHASE_LABELS[line.phase]}:</span> {line.summary}
+                    </p>
+                  ))}
+                </div>
+                <Link href="/nutrition" className="text-sm text-white/70 hover:text-white underline underline-offset-2">
+                  Log an Intra-Workout entry →
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </div>
