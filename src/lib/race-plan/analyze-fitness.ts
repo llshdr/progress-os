@@ -1,11 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { fetchCardioActivity, bucketWeeklyCardioDistance } from '@/lib/cardio-stats'
+import { fetchCardioActivity, bucketWeeklyCardioDistance, averagePace } from '@/lib/cardio-stats'
 import { computeMuscleVolume, type MuscleVolume } from '@/lib/volume-analysis'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { getLocalWeekStart, getLocalDateString } from '@/lib/date'
 import { fetchActiveActionItems } from '@/lib/goals'
 import type { RaceType } from '@/lib/race-constants'
 import type { TrainingPhase as NutritionPhase, TrainingIntensity as NutritionIntensity } from '@/lib/nutrition'
+import { classifyDiscipline } from '@/lib/race-plan/discipline-weakness'
 
 export interface MuscleGroupTrend {
   muscleGroup: string
@@ -32,8 +33,8 @@ export interface FitnessSnapshot {
   cardio: {
     weeklyDistanceKm: number[] // last 8 weeks, oldest first
     weeksActive: number // out of 8
-    avgPaceSecPerKmRecent: number | null // last 4 weeks
-    avgPaceSecPerKmPrior: number | null // the 4 weeks before that
+    avgPaceSecPerKmRecent: number | null // last 4 weeks - RUN-classified activity only (mixing swim/bike/run paces would be meaningless, different units entirely)
+    avgPaceSecPerKmPrior: number | null // the 4 weeks before that, same run-only scope
     longestSessionKm: number
     recentAvgWeeklyKm: number // last 4 weeks - the periodization ramp's baseline
     recentAvgSessionsPerWeek: number // last 4 weeks
@@ -54,12 +55,6 @@ export interface FitnessSnapshot {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
-
-function averagePace(activities: { distanceKm: number; durationSeconds: number }[]): number | null {
-  const totalDistance = activities.reduce((sum, a) => sum + a.distanceKm, 0)
-  const totalDuration = activities.reduce((sum, a) => sum + a.durationSeconds, 0)
-  return totalDistance > 0 ? totalDuration / totalDistance : null
-}
 
 async function computeConsistencyWeeks(
   supabase: SupabaseClient,
@@ -231,6 +226,14 @@ export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: st
   const recentAvgSessionsPerWeek = recentActivities.length / 4
   const longestSessionKm = windowActivities.reduce((max, a) => Math.max(max, a.distanceKm), 0)
 
+  // Pace specifically needs run-only activity - averaging across
+  // swim/bike/run indiscriminately blends fundamentally different units
+  // into a meaningless number (the bug this fixes). Volume/session-count
+  // aggregates above stay broad on purpose ("were you active at all"
+  // should include every cardio type).
+  const recentRunActivities = recentActivities.filter((a) => classifyDiscipline(a.exerciseName) === 'run')
+  const priorRunActivities = priorActivities.filter((a) => classifyDiscipline(a.exerciseName) === 'run')
+
   const [strengthFacts, muscleVolume, gymConsistencyWeeks, nutritionConsistencyWeeks, settingsResult, actionItems, pastRaceResults, weightTrend] =
     await Promise.all([
       computeStrengthFacts(supabase),
@@ -247,8 +250,8 @@ export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: st
     cardio: {
       weeklyDistanceKm,
       weeksActive,
-      avgPaceSecPerKmRecent: averagePace(recentActivities),
-      avgPaceSecPerKmPrior: averagePace(priorActivities),
+      avgPaceSecPerKmRecent: averagePace(recentRunActivities),
+      avgPaceSecPerKmPrior: averagePace(priorRunActivities),
       longestSessionKm,
       recentAvgWeeklyKm,
       recentAvgSessionsPerWeek,

@@ -55,7 +55,13 @@ import {
   type CutoffRiskFlag,
   type ProjectedRaceTimeRange,
 } from '@/lib/race-plan/finish-time'
-import { computeDisciplineActivityFacts, assessMultisportReadiness, type DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
+import {
+  computeDisciplineActivityFacts,
+  assessMultisportReadiness,
+  describePaceTrend,
+  type DisciplineActivityFacts,
+} from '@/lib/race-plan/discipline-weakness'
+import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
 import {
   fetchCourseProfile,
   fetchCourseTimeBand,
@@ -696,6 +702,7 @@ export default function RaceDetailPage() {
                     setAssessmentError(null)
                     setWeaknessError(null)
                   }}
+                  disciplineActivityFacts={disciplineActivityFacts}
                 />
               ) : (
                 <SelfAssessmentForm category={category} value={selfAssessment as SimpleSelfAssessment} onChange={setSelfAssessment} />
@@ -721,6 +728,20 @@ export default function RaceDetailPage() {
                       {i === 0 && <span className="px-2 py-0.5 rounded-full text-xs bg-white text-black">Primary Focus</span>}
                     </div>
                     <p className="text-white/60 text-sm">{disciplineWeakness.notes[discipline]}</p>
+                    {(() => {
+                      const facts = disciplineActivityFacts?.[discipline]
+                      if (!facts) return null
+                      const trend = describePaceTrend(facts.avgPaceSecPerKmRecent, facts.avgPaceSecPerKmPrior)
+                      if (trend === 'insufficient_data') {
+                        return <p className="text-white/30 text-xs mt-1">No recent pace trend yet.</p>
+                      }
+                      return (
+                        <p className="text-white/30 text-xs mt-1">
+                          Pace: {trend} ({formatPaceForDiscipline(facts.avgPaceSecPerKmPrior!, discipline)} →{' '}
+                          {formatPaceForDiscipline(facts.avgPaceSecPerKmRecent!, discipline)} over the last 8 weeks)
+                        </p>
+                      )
+                    })()}
                   </div>
                 ))}
               </div>

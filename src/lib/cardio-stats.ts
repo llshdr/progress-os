@@ -76,6 +76,15 @@ export async function fetchCardioActivity(supabase: SupabaseClient): Promise<Car
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }
 
+// Shared distance/duration -> pace math, discipline-agnostic - callers
+// decide which activities to pass in (e.g. filtered to one discipline)
+// so this never assumes anything about what's being averaged.
+export function averagePace(activities: { distanceKm: number; durationSeconds: number }[]): number | null {
+  const totalDistance = activities.reduce((sum, a) => sum + a.distanceKm, 0)
+  const totalDuration = activities.reduce((sum, a) => sum + a.durationSeconds, 0)
+  return totalDistance > 0 ? totalDuration / totalDistance : null
+}
+
 // Shared by /gym/records (Weekly Distance section) and the race training
 // plan's fitness snapshot - one Monday-start bucketing so both stay in sync.
 export function bucketWeeklyCardioDistance(activities: CardioActivity[], weeksShown = 8): WeeklyCardioBucket[] {

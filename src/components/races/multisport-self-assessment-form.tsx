@@ -10,10 +10,13 @@ import {
   type DisciplineQuestion,
   type MultisportSelfAssessment,
 } from '@/lib/race-plan/self-assessment'
+import type { DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
+import { DISCIPLINE_PACE_UNIT, toSecPerKm, fromSecPerKm, formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
 
 interface MultisportSelfAssessmentFormProps {
   value: MultisportSelfAssessment
   onChange: (value: MultisportSelfAssessment) => void
+  disciplineActivityFacts: Record<Discipline, DisciplineActivityFacts> | null
 }
 
 const DISCIPLINE_LABELS: Record<Discipline, string> = { swim: 'Swim', bike: 'Bike', run: 'Run' }
@@ -39,7 +42,7 @@ const PAST_EXPERIENCE_OPTIONS = [
 // rest optional. Same scale/chips/distance/time rendering approach as
 // self-assessment-form.tsx, just scoped to one DisciplineAssessment at a
 // time instead of the flat SimpleSelfAssessment shape.
-export default function MultisportSelfAssessmentForm({ value, onChange }: MultisportSelfAssessmentFormProps) {
+export default function MultisportSelfAssessmentForm({ value, onChange, disciplineActivityFacts }: MultisportSelfAssessmentFormProps) {
   const patchDiscipline = (discipline: Discipline, fields: Partial<DisciplineAssessment>) => {
     onChange({ ...value, [discipline]: { ...value[discipline], ...fields } })
   }
@@ -93,6 +96,99 @@ export default function MultisportSelfAssessmentForm({ value, onChange }: Multis
               {opt.label}
             </button>
           ))}
+        </div>
+      )
+    }
+
+    if (q.type === 'pace_duration') {
+      const unit = DISCIPLINE_PACE_UNIT[discipline]
+      const current = disciplineValue.comfortableEffort
+      const facts = disciplineActivityFacts?.[discipline]
+      const paceValue = current ? fromSecPerKm(current.paceSecPerKm, unit) : null
+
+      const updatePace = (paceSecPerKm: number) => {
+        patchDiscipline(discipline, { comfortableEffort: { paceSecPerKm, sustainedMinutes: current?.sustainedMinutes ?? 45 } })
+      }
+      const updateSustainedMinutes = (sustainedMinutes: number) => {
+        if (!current) return
+        patchDiscipline(discipline, { comfortableEffort: { ...current, sustainedMinutes } })
+      }
+      const clear = () => patchDiscipline(discipline, { comfortableEffort: null })
+
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {unit === 'km_per_h' ? (
+              <>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={paceValue ?? ''}
+                  onChange={(e) => (e.target.value ? updatePace(toSecPerKm(parseFloat(e.target.value), unit)) : clear())}
+                  placeholder="e.g. 28"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-24"
+                />
+                <span className="text-white/40 text-sm">km/h</span>
+              </>
+            ) : (
+              <>
+                <Input
+                  type="number"
+                  value={paceValue != null ? Math.floor(paceValue) : ''}
+                  onChange={(e) => {
+                    if (!e.target.value && paceValue == null) return
+                    const mins = e.target.value ? parseInt(e.target.value, 10) : 0
+                    const secs = paceValue != null ? Math.round((paceValue - Math.floor(paceValue)) * 60) : 0
+                    updatePace(toSecPerKm(mins + secs / 60, unit))
+                  }}
+                  placeholder="mm"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+                />
+                <span className="text-white/40">:</span>
+                <Input
+                  type="number"
+                  value={paceValue != null ? Math.round((paceValue - Math.floor(paceValue)) * 60) : ''}
+                  onChange={(e) => {
+                    if (!e.target.value && paceValue == null) return
+                    const secs = e.target.value ? parseInt(e.target.value, 10) : 0
+                    const mins = paceValue != null ? Math.floor(paceValue) : 0
+                    updatePace(toSecPerKm(mins + secs / 60, unit))
+                  }}
+                  placeholder="ss"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+                />
+                <span className="text-white/40 text-sm">/{unit === 'min_per_100m' ? '100m' : 'km'}</span>
+              </>
+            )}
+            {current && (
+              <button type="button" onClick={clear} className="text-xs text-white/40 hover:text-white/60 transition-colors">
+                Clear
+              </button>
+            )}
+          </div>
+
+          {facts?.avgPaceSecPerKmRecent != null && (
+            <button
+              type="button"
+              onClick={() => updatePace(facts.avgPaceSecPerKmRecent!)}
+              className="text-xs text-white/50 hover:text-white/80 underline underline-offset-2 text-left block"
+            >
+              Use my logged average: {formatPaceForDiscipline(facts.avgPaceSecPerKmRecent, discipline)} — this blends easy and hard days, so your
+              comfortable pace is probably a bit slower than this
+            </button>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              value={current?.sustainedMinutes ?? ''}
+              onChange={(e) => e.target.value && updateSustainedMinutes(parseInt(e.target.value, 10))}
+              placeholder="45"
+              disabled={!current}
+              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-20 disabled:opacity-40"
+            />
+            <span className="text-white/40 text-sm">minutes you can currently hold that pace</span>
+          </div>
         </div>
       )
     }

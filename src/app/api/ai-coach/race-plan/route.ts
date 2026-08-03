@@ -15,7 +15,8 @@ import {
   assessGoalRealismForRange,
 } from '@/lib/race-plan/finish-time'
 import { raceCategoryFor, experienceLevelFor, type SelfAssessment, type Discipline } from '@/lib/race-plan/self-assessment'
-import { computeDisciplineActivityFacts, assessMultisportReadiness } from '@/lib/race-plan/discipline-weakness'
+import { computeDisciplineActivityFacts, assessMultisportReadiness, describePaceTrend } from '@/lib/race-plan/discipline-weakness'
+import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
 import { fetchCourseProfile, fetchCourseTimeBand, fetchCourseCutoffs } from '@/lib/race-plan/course-data'
 import { assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { computeDayByDayTemplates } from '@/lib/race-plan/day-template'
@@ -66,6 +67,9 @@ function buildSelfAssessmentSummary(assessment: SelfAssessment | null): string {
       const d = assessment[discipline]
       const bits: string[] = []
       if (d.comfortLevel != null) bits.push(`comfort ${d.comfortLevel}/5`)
+      if (d.comfortableEffort) {
+        bits.push(`comfortable pace ~${formatPaceForDiscipline(d.comfortableEffort.paceSecPerKm, discipline)}, sustainable ~${d.comfortableEffort.sustainedMinutes}min`)
+      }
       if (d.longestRecentSessionKm != null) bits.push(`longest recent session ${d.longestRecentSessionKm}km`)
       if (d.recentTimeTrial) bits.push(`time trial ${d.recentTimeTrial.distanceKm}km in ${formatDuration(d.recentTimeTrial.timeSeconds)}`)
       if (d.limiters.length > 0 && !d.limiters.includes('none')) bits.push(`limiters: ${d.limiters.join(', ')}`)
@@ -318,7 +322,12 @@ export async function POST(request: NextRequest) {
   const weaknessSummary =
     category === 'multisport' && disciplineWeakness
       ? `\n\nDiscipline weakness analysis (weakest first: ${disciplineWeakness.order.join(', ')}): ${(['swim', 'bike', 'run'] as Discipline[])
-          .map((d) => `${d} - ${disciplineWeakness.notes[d]}`)
+          .map((d) => {
+            const facts = disciplineActivityFacts?.[d]
+            const trend = facts ? describePaceTrend(facts.avgPaceSecPerKmRecent, facts.avgPaceSecPerKmPrior) : 'insufficient_data'
+            const trendNote = trend !== 'insufficient_data' ? ` (logged pace trend: ${trend})` : ''
+            return `${d} - ${disciplineWeakness.notes[d]}${trendNote}`
+          })
           .join(' ')} The weekly schedule below already allocates more volume to the weaker discipline(s) - explain this bias in your weekly notes rather than treating the split as arbitrary.${
           hasCutoffRisk
             ? ` Because there's real cutoff risk, ${disciplineWeakness.order[0]} (the weakest discipline) is getting an EXTRA emphasis on top of the usual weakness bias - mention this explicitly, don't just describe the normal weakness split.`

@@ -1,11 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { fetchCardioActivity, bucketWeeklyCardioDistance, type CardioActivity } from '@/lib/cardio-stats'
+import { fetchCardioActivity, bucketWeeklyCardioDistance, averagePace, type CardioActivity } from '@/lib/cardio-stats'
 import type { Discipline, MultisportSelfAssessment } from '@/lib/race-plan/self-assessment'
 
 export interface DisciplineActivityFacts {
   weeksActiveOf8: number
   recentAvgWeeklyKm: number
   longestSessionKm: number
+  // Last 4 weeks / the 4 weeks before that, this discipline only - see
+  // describePaceTrend below for turning the pair into a trend.
+  avgPaceSecPerKmRecent: number | null
+  avgPaceSecPerKmPrior: number | null
 }
 
 const DISCIPLINE_KEYWORDS: Record<Discipline, string[]> = {
@@ -14,7 +18,11 @@ const DISCIPLINE_KEYWORDS: Record<Discipline, string[]> = {
   run: ['run', 'jog'],
 }
 
-function classifyDiscipline(exerciseName: string): Discipline | null {
+// Exported so analyze-fitness.ts can filter its own aggregate activity
+// list down to running specifically before computing pace - mixing
+// swim/bike/run paces into one average is meaningless (different units
+// entirely), which is exactly the bug that classification here fixes.
+export function classifyDiscipline(exerciseName: string): Discipline | null {
   const lower = exerciseName.toLowerCase()
   for (const discipline of ['swim', 'bike', 'run'] as Discipline[]) {
     if (DISCIPLINE_KEYWORDS[discipline].some((keyword) => lower.includes(keyword))) return discipline
@@ -37,21 +45,39 @@ export async function computeDisciplineActivityFacts(supabase: SupabaseClient): 
   }
 
   const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
+  const eightWeeksAgo = new Date(Date.now() - 56 * 24 * 60 * 60 * 1000)
   const result = {} as Record<Discipline, DisciplineActivityFacts>
 
   for (const discipline of ['swim', 'bike', 'run'] as Discipline[]) {
     const activitiesForDiscipline = byDiscipline[discipline]
     const weeklyBuckets = bucketWeeklyCardioDistance(activitiesForDiscipline, 8)
     const recent = activitiesForDiscipline.filter((a) => new Date(a.date) >= fourWeeksAgo)
+    const prior = activitiesForDiscipline.filter((a) => new Date(a.date) >= eightWeeksAgo && new Date(a.date) < fourWeeksAgo)
 
     result[discipline] = {
       weeksActiveOf8: weeklyBuckets.filter((w) => w.totalKm > 0).length,
       recentAvgWeeklyKm: recent.reduce((sum, a) => sum + a.distanceKm, 0) / 4,
       longestSessionKm: activitiesForDiscipline.reduce((max, a) => Math.max(max, a.distanceKm), 0),
+      avgPaceSecPerKmRecent: averagePace(recent),
+      avgPaceSecPerKmPrior: averagePace(prior),
     }
   }
 
   return result
+}
+
+export type PaceTrend = 'improving' | 'flat' | 'declining' | 'insufficient_data'
+
+// Lower sec/km is FASTER, so "improving" means the ratio dropped - the
+// inverse of the raw-number direction, unlike a typical up/down trend.
+// Same +-5% flat-band shape as computeStrengthFacts' 1RM trend logic
+// (analyze-fitness.ts), just applied to pace instead of estimated 1RM.
+export function describePaceTrend(recentSecPerKm: number | null, priorSecPerKm: number | null): PaceTrend {
+  if (recentSecPerKm == null || priorSecPerKm == null) return 'insufficient_data'
+  const ratio = recentSecPerKm / priorSecPerKm
+  if (ratio < 0.95) return 'improving'
+  if (ratio > 1.05) return 'declining'
+  return 'flat'
 }
 
 export interface DisciplineRanking {

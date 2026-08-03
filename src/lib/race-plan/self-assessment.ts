@@ -15,6 +15,12 @@ export type Discipline = 'swim' | 'bike' | 'run'
 
 export interface DisciplineAssessment {
   comfortLevel: 1 | 2 | 3 | 4 | 5 | null
+  // A comfortable, talk-test-sustainable pace + how long it can currently
+  // be held - a real Zone 2 signal, distinct from recentTimeTrial (a
+  // near-max effort) and longestRecentSessionKm (distance only, no
+  // pace). Stored normalized as sec/km regardless of discipline (see
+  // pace-units.ts) so it compares directly against logged-activity pace.
+  comfortableEffort: { paceSecPerKm: number; sustainedMinutes: number } | null
   longestRecentSessionKm: number | null
   recentTimeTrial: { distanceKm: number; timeSeconds: number } | null
   limiters: string[]
@@ -22,6 +28,7 @@ export interface DisciplineAssessment {
 
 export const EMPTY_DISCIPLINE_ASSESSMENT: DisciplineAssessment = {
   comfortLevel: null,
+  comfortableEffort: null,
   longestRecentSessionKm: null,
   recentTimeTrial: null,
   limiters: [],
@@ -196,7 +203,7 @@ export function questionsForCategory(category: RaceCategory): AssessmentQuestion
 export interface DisciplineQuestion {
   id: keyof DisciplineAssessment
   label: string
-  type: 'scale' | 'chips' | 'distance' | 'time'
+  type: 'scale' | 'chips' | 'distance' | 'time' | 'pace_duration'
   helpText: string
   required?: boolean
   options?: { value: string; label: string }[]
@@ -233,6 +240,13 @@ export function questionsForDiscipline(discipline: Discipline): DisciplineQuesti
       required: true,
       helpText: 'Not sure? An honest low rating is a normal, useful answer — it just shapes how this discipline gets treated.',
       options: FITNESS_SCALE_OPTIONS,
+    },
+    {
+      id: 'comfortableEffort',
+      label: `A pace you can comfortably hold for 30-60 minutes in the ${label}`,
+      type: 'pace_duration',
+      helpText:
+        "Comfortable = you could hold a full conversation, breathing controlled, not gasping — not your fastest recent effort (that's the time trial question below).",
     },
     {
       id: 'longestRecentSessionKm',
