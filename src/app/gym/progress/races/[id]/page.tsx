@@ -28,7 +28,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { deriveCurrentFormLevel } from '@/lib/race-plan/current-form'
 import { slotsForWeek, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
-import { PACKING_LISTS, FUELING_GUIDANCE } from '@/lib/race-plan/race-day-prep'
+import { PACKING_LISTS, FUELING_GUIDANCE, summarizeSeasonMismatch } from '@/lib/race-plan/race-day-prep'
 import { TYPE_LABEL } from '@/components/races/day-slot-display'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
 import WeekDayList from '@/components/races/week-day-list'
@@ -270,6 +270,8 @@ export default function RaceDetailPage() {
 
   const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(emptySelfAssessmentFor('other'))
   const [disciplineWeakness, setDisciplineWeakness] = useState<DisciplineWeakness | null>(null)
+  const [openWaterSeasonStartMonth, setOpenWaterSeasonStartMonth] = useState<number | null>(null)
+  const [openWaterSeasonEndMonth, setOpenWaterSeasonEndMonth] = useState<number | null>(null)
   const [assessmentError, setAssessmentError] = useState<string | null>(null)
   const [weaknessError, setWeaknessError] = useState<string | null>(null)
   const [weaknessLoading, setWeaknessLoading] = useState(false)
@@ -317,7 +319,7 @@ export default function RaceDetailPage() {
       return
     }
 
-    const [{ data: raceRow }, { data: planRow }] = await Promise.all([
+    const [{ data: raceRow }, { data: planRow }, { data: settingsRow }] = await Promise.all([
       supabase
         .from('races')
         .select('id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds, discipline_weakness, training_start_date')
@@ -325,7 +327,11 @@ export default function RaceDetailPage() {
         .eq('user_id', user.id)
         .maybeSingle(),
       supabase.from('race_training_plans').select('approach, overview, weeks, phase_templates').eq('race_id', raceId).maybeSingle(),
+      supabase.from('user_settings').select('open_water_season_start_month, open_water_season_end_month').eq('user_id', user.id).maybeSingle(),
     ])
+
+    setOpenWaterSeasonStartMonth(settingsRow?.open_water_season_start_month ?? null)
+    setOpenWaterSeasonEndMonth(settingsRow?.open_water_season_end_month ?? null)
 
     if (!raceRow) {
       setNotFound(true)
@@ -587,6 +593,9 @@ export default function RaceDetailPage() {
         })
         .filter((s): s is { phase: TrainingPhase; summary: string } => s != null)
     : []
+
+  const seasonMismatchNote =
+    category === 'multisport' && plan ? summarizeSeasonMismatch(plan.weeks, openWaterSeasonStartMonth, openWaterSeasonEndMonth) : null
 
   const muscleImpact = snapshot && plan ? sortMuscleImpact(describeMuscleImpact(plan.approach, snapshot.strength.recentSessionsPerWeek, snapshot.muscleVolume)) : []
 
@@ -938,6 +947,7 @@ export default function RaceDetailPage() {
                 </p>
               )}
               <p className="text-white/70 text-sm leading-relaxed mb-4">{plan.overview}</p>
+              {seasonMismatchNote && <p className="text-white/40 text-xs mb-4">{seasonMismatchNote}</p>}
 
               <div className="flex flex-wrap gap-8 pt-4 border-t border-white/10">
                 <div>

@@ -12,12 +12,19 @@ import { displayToKg, kgToDisplay, WeightUnit } from '@/lib/weight'
 type TrainingPhase = 'bulk' | 'cut' | 'maintain'
 type TrainingIntensity = 'mild' | 'aggressive'
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
 export default function TrainingSettingsPage() {
   const [weeklyWorkoutGoal, setWeeklyWorkoutGoal] = useState('5')
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg')
   const [goalWeight, setGoalWeight] = useState('')
   const [trainingPhase, setTrainingPhase] = useState<TrainingPhase>('maintain')
   const [trainingIntensity, setTrainingIntensity] = useState<TrainingIntensity>('mild')
+  const [openWaterSeasonStart, setOpenWaterSeasonStart] = useState('')
+  const [openWaterSeasonEnd, setOpenWaterSeasonEnd] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -38,7 +45,7 @@ export default function TrainingSettingsPage() {
 
     const { data } = await supabase
       .from('user_settings')
-      .select('weekly_workout_goal, weight_unit, goal_weight, training_phase, training_intensity')
+      .select('weekly_workout_goal, weight_unit, goal_weight, training_phase, training_intensity, open_water_season_start_month, open_water_season_end_month')
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -56,6 +63,8 @@ export default function TrainingSettingsPage() {
     if (data?.training_intensity === 'mild' || data?.training_intensity === 'aggressive') {
       setTrainingIntensity(data.training_intensity)
     }
+    if (data?.open_water_season_start_month) setOpenWaterSeasonStart(String(data.open_water_season_start_month))
+    if (data?.open_water_season_end_month) setOpenWaterSeasonEnd(String(data.open_water_season_end_month))
     setLoading(false)
   }
 
@@ -96,6 +105,8 @@ export default function TrainingSettingsPage() {
         goal_weight: goalWeightKg,
         training_phase: trainingPhase,
         training_intensity: trainingIntensity,
+        open_water_season_start_month: openWaterSeasonStart ? parseInt(openWaterSeasonStart, 10) : null,
+        open_water_season_end_month: openWaterSeasonEnd ? parseInt(openWaterSeasonEnd, 10) : null,
       },
       { onConflict: 'user_id' }
     )
@@ -251,6 +262,61 @@ export default function TrainingSettingsPage() {
                         </button>
                       ))}
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+                <h2 className="text-lg font-medium text-white mb-1">Open Water Swim Season</h2>
+                <p className="text-white/40 text-sm mb-4">
+                  Optional - only used to suggest when open-water-specific swim sessions are realistic for a multisport race. Leave blank if you&apos;re not sure; nothing is guessed on your behalf.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ow-season-start" className="text-white/80">
+                      Season starts
+                    </Label>
+                    <select
+                      id="ow-season-start"
+                      value={openWaterSeasonStart}
+                      onChange={(e) => {
+                        setOpenWaterSeasonStart(e.target.value)
+                        setSaved(false)
+                      }}
+                      className="w-full bg-white/5 border border-white/10 text-white rounded-lg px-3 py-2 text-sm"
+                    >
+                      <option value="" className="bg-black">
+                        Not set
+                      </option>
+                      {MONTH_NAMES.map((name, i) => (
+                        <option key={i} value={i + 1} className="bg-black">
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ow-season-end" className="text-white/80">
+                      Season ends
+                    </Label>
+                    <select
+                      id="ow-season-end"
+                      value={openWaterSeasonEnd}
+                      onChange={(e) => {
+                        setOpenWaterSeasonEnd(e.target.value)
+                        setSaved(false)
+                      }}
+                      className="w-full bg-white/5 border border-white/10 text-white rounded-lg px-3 py-2 text-sm"
+                    >
+                      <option value="" className="bg-black">
+                        Not set
+                      </option>
+                      {MONTH_NAMES.map((name, i) => (
+                        <option key={i} value={i + 1} className="bg-black">
+                          {name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
