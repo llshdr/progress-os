@@ -29,6 +29,7 @@ import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/rac
 import { deriveCurrentFormLevel } from '@/lib/race-plan/current-form'
 import { slotsForWeek, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import { PACKING_LISTS, FUELING_GUIDANCE, summarizeSeasonMismatch } from '@/lib/race-plan/race-day-prep'
+import { suggestMilestoneSessions } from '@/lib/race-plan/milestone-sessions'
 import { TYPE_LABEL } from '@/components/races/day-slot-display'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
 import WeekDayList from '@/components/races/week-day-list'
@@ -264,6 +265,7 @@ export default function RaceDetailPage() {
   // multi-month plan stays scannable; every other week can still be
   // peeked at on demand.
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set([getLocalDateString(getLocalWeekStart())]))
+  const [milestoneExpanded, setMilestoneExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [step, setStep] = useState<Step>('confirm')
@@ -596,6 +598,11 @@ export default function RaceDetailPage() {
 
   const seasonMismatchNote =
     category === 'multisport' && plan ? summarizeSeasonMismatch(plan.weeks, openWaterSeasonStartMonth, openWaterSeasonEndMonth) : null
+
+  // Informational only - never mutates plan.weeks/phaseTemplates. Only
+  // ever offered (and only ever opt-in, via milestoneExpanded) for a
+  // long-runway multisport plan - see MIN_WEEKS_FOR_MILESTONE.
+  const milestoneSuggestions = plan ? suggestMilestoneSessions(race.race_type, category, plan.weeks) : null
 
   const muscleImpact = snapshot && plan ? sortMuscleImpact(describeMuscleImpact(plan.approach, snapshot.strength.recentSessionsPerWeek, snapshot.muscleVolume)) : []
 
@@ -1160,6 +1167,35 @@ export default function RaceDetailPage() {
                 <Link href="/nutrition" className="text-sm text-white/70 hover:text-white underline underline-offset-2">
                   Log an Intra-Workout entry →
                 </Link>
+              </div>
+            )}
+
+            {milestoneSuggestions && (
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+                <button
+                  onClick={() => setMilestoneExpanded((prev) => !prev)}
+                  className="flex items-center gap-1 text-lg font-medium text-white"
+                >
+                  {milestoneExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  Milestone session ideas
+                </button>
+                {!milestoneExpanded ? (
+                  <p className="text-white/40 text-sm mt-2">
+                    You have a long runway to this race - optionally, consider one longer-than-usual session per discipline for confidence and nutrition
+                    practice. Entirely optional and doesn&apos;t change your plan&apos;s numbers.
+                  </p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-white/40 text-xs mb-2">
+                      A one-off, occasional session per discipline - not a new weekly expectation. Adjust distance/timing to how it feels.
+                    </p>
+                    {milestoneSuggestions.map((s) => (
+                      <p key={s.discipline} className="text-white/70 text-sm">
+                        <span className="text-white/40">{DISCIPLINE_LABELS[s.discipline]}:</span> ~{s.km}km, around the week of {formatWeekDate(s.weekStartDate)}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
