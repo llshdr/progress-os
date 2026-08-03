@@ -386,15 +386,21 @@ export function describeStrengthEmphasis(approach: RaceApproach, currentStrength
   }
 
   const { previewSteadyStrengthSessions } = previewApproachEffect(approach, 0, currentStrengthSessionsPerWeek)
+  // Rounded ONLY for the whole-number equality check against a planned
+  // session count (you can't schedule "5.5 sessions") - the DISPLAYED
+  // "your current X/week" text below uses the same .toFixed(1)
+  // formatting as the overview's own strengthSummary (route.ts), so the
+  // two can never disagree the way an independently-rounded integer did.
   const baseline = Math.round(currentStrengthSessionsPerWeek)
+  const displayBaseline = currentStrengthSessionsPerWeek.toFixed(1)
 
   if (previewSteadyStrengthSessions === baseline) {
     return `${previewSteadyStrengthSessions} strength session(s)/week — matches your current training.`
   }
   if (previewSteadyStrengthSessions < baseline) {
-    return `${previewSteadyStrengthSessions} strength session(s)/week — a cut from your current ${baseline}/week to prioritize race prep.`
+    return `${previewSteadyStrengthSessions} strength session(s)/week — a cut from your current ${displayBaseline}/week to prioritize race prep.`
   }
-  return `${previewSteadyStrengthSessions} strength session(s)/week — holding above your current ${baseline}/week.`
+  return `${previewSteadyStrengthSessions} strength session(s)/week — holding above your current ${displayBaseline}/week.`
 }
 
 export interface MuscleImpactLine {

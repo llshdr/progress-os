@@ -6,6 +6,13 @@ export interface CurrentFormResult {
   level: ExperienceLevel
   baselineLevel: ExperienceLevel
   changed: boolean
+  // Distinguishes WHY changed is false - "insufficient" (no evidence
+  // yet, don't let this silently look identical to "confirmed") from
+  // "confirmed" (real evidence exists and simply agrees with the
+  // self-report) - previously collapsed into one reason:null shape,
+  // which read as "ignored the situation" when there was no logged
+  // activity at all.
+  evidence: 'insufficient' | 'confirmed' | 'updated'
   reason: string | null
 }
 
@@ -34,8 +41,15 @@ export function deriveCurrentFormLevel(
   activityFacts: Record<Discipline, DisciplineActivityFacts> | null
 ): CurrentFormResult {
   if (!activityFacts || DISCIPLINES.every((d) => activityFacts[d].weeksActiveOf8 === 0)) {
-    // Insufficient evidence either way - trust the self-report as-is.
-    return { level: baselineLevel, baselineLevel, changed: false, reason: null }
+    // Insufficient evidence either way - trust the self-report as-is,
+    // but say so explicitly rather than looking identical to "confirmed."
+    return {
+      level: baselineLevel,
+      baselineLevel,
+      changed: false,
+      evidence: 'insufficient',
+      reason: 'No logged swim/bike/run activity in the last 4 weeks yet - log some cardio sessions and this projection will update automatically.',
+    }
   }
 
   let derivedLevel: ExperienceLevel = 'beginner'
@@ -45,7 +59,9 @@ export function deriveCurrentFormLevel(
   }
 
   if (derivedLevel === baselineLevel) {
-    return { level: baselineLevel, baselineLevel, changed: false, reason: null }
+    // Real, sufficient evidence exists and simply agrees with the
+    // self-report - the one case that genuinely needs no explanation.
+    return { level: baselineLevel, baselineLevel, changed: false, evidence: 'confirmed', reason: null }
   }
 
   const direction = TIER_ORDER.indexOf(derivedLevel) > TIER_ORDER.indexOf(baselineLevel) ? 'more consistent with' : 'currently closer to'
@@ -53,6 +69,7 @@ export function deriveCurrentFormLevel(
     level: derivedLevel,
     baselineLevel,
     changed: true,
+    evidence: 'updated',
     reason: `Your logged swim/bike/run volume over the last 4 weeks is ${direction} ${TIER_LABEL[derivedLevel]} than your original ${TIER_LABEL[baselineLevel]} self-assessment - the projection below uses ${TIER_LABEL[derivedLevel]}.`,
   }
 }
