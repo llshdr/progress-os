@@ -26,6 +26,7 @@ import {
 } from '@/lib/race-plan/periodization'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
+import { deriveCurrentFormLevel } from '@/lib/race-plan/current-form'
 import { slotsForWeek, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
 import WeekDayList from '@/components/races/week-day-list'
@@ -34,6 +35,7 @@ import {
   normalizeSelfAssessment,
   raceCategoryFor,
   experienceLevelFor,
+  type RaceCategory,
   type SelfAssessment,
   type SimpleSelfAssessment,
   type MultisportSelfAssessment,
@@ -168,6 +170,52 @@ function CutoffMarginRow({ flag, range }: { flag: CutoffRiskFlag; range: Project
   )
 }
 
+// Shared between Snapshot and Review (Spectrum shows its own version via
+// ApproachSpectrum's props) so the number and its current-form
+// explanation - when the tier was re-derived from real recent activity,
+// not the frozen self-assessment answer - never drift between steps.
+function FinishTimeCard({
+  category,
+  targetFinishSeconds,
+  projectedFinishSeconds,
+  courseRange,
+  reason,
+}: {
+  category: RaceCategory
+  targetFinishSeconds: number | null
+  projectedFinishSeconds: number | null
+  courseRange: ProjectedRaceTimeRange | null
+  reason: string | null
+}) {
+  if (category === 'run' && targetFinishSeconds == null && projectedFinishSeconds == null) return null
+  if (category === 'multisport' && targetFinishSeconds == null && courseRange == null) return null
+  if (category !== 'run' && category !== 'multisport') return null
+
+  const label =
+    category === 'run'
+      ? targetFinishSeconds != null
+        ? 'Target Finish Time'
+        : 'Projected Finish Time'
+      : targetFinishSeconds != null
+        ? 'Target Finish Time'
+        : 'Projected Finish Range'
+
+  const value =
+    category === 'run'
+      ? formatDuration(targetFinishSeconds ?? projectedFinishSeconds!)
+      : targetFinishSeconds != null
+        ? formatDuration(targetFinishSeconds)
+        : `${formatDuration(courseRange!.totalSecondsLow)}–${formatDuration(courseRange!.totalSecondsHigh)}`
+
+  return (
+    <div>
+      <p className="text-xs text-white/40 mb-1">{label}</p>
+      <p className="text-white text-sm">{value}</p>
+      {reason && <p className="text-white/40 text-xs mt-1 max-w-sm">{reason}</p>}
+    </div>
+  )
+}
+
 // Escalated, hard-to-miss treatment for a real (risk-tier) cutoff margin -
 // one severity step up from the yellow "Worth double-checking" box used
 // for softer flags. The whole point is that this can't just blend in as
@@ -242,11 +290,12 @@ export default function RaceDetailPage() {
   useEffect(() => {
     if (!race || !snapshot || plan || approachTouched) return
     if (raceCategoryFor(race.race_type) !== 'multisport') return
-    const lvl = selfAssessment.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
+    const baseline = selfAssessment.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
+    const lvl = deriveCurrentFormLevel(baseline, disciplineActivityFacts).level
     const range = estimateCourseFinishRange(race.race_type, lvl, snapshot.pastRaceResults, race.courseId, courseTimeBands[lvl] ?? null)
     const flags = assessCutoffRisk(range, courseCutoffs)
     if (flags.some((f) => f.risk === 'risk')) setApproach('race_leaning')
-  }, [race, snapshot, courseTimeBands, courseCutoffs, plan, approachTouched, selfAssessment])
+  }, [race, snapshot, courseTimeBands, courseCutoffs, plan, approachTouched, selfAssessment, disciplineActivityFacts])
 
   const fetchAll = async () => {
     setLoading(true)
@@ -462,7 +511,14 @@ export default function RaceDetailPage() {
   const daysUntil = daysBetween(race.race_date, today)
   const currentWeekStartDate = getLocalDateString(getLocalWeekStart())
   const category = raceCategoryFor(race.race_type)
-  const level: ExperienceLevel = category === 'multisport' && selfAssessment.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
+  const baselineLevel: ExperienceLevel = category === 'multisport' && selfAssessment.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
+  // Re-derived from real, sustained recent activity rather than trusting
+  // the self-report forever - see current-form.ts. Only ever affects
+  // this always-fresh display (and a future, explicitly-triggered
+  // Generate/Regenerate) - never an already-generated plan's stored
+  // numbers.
+  const currentForm = deriveCurrentFormLevel(baselineLevel, disciplineActivityFacts)
+  const level = currentForm.level
   const tensionFlags = snapshot ? computeTensionFlags(selfAssessment, snapshot) : []
   const projectedFinishSeconds = snapshot ? estimateProjectedFinishSeconds(race.race_type, snapshot) : null
   const courseRange =
@@ -482,7 +538,7 @@ export default function RaceDetailPage() {
 
   const disciplineInputs =
     category === 'multisport' && disciplineWeakness && disciplineActivityFacts
-      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order, level }
+      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order, level, hasCutoffRisk }
       : undefined
 
   const stepSequence: Step[] = category === 'multisport' ? ['confirm', 'assessment', 'weakness', 'snapshot', 'spectrum'] : ['confirm', 'assessment', 'snapshot', 'spectrum']
@@ -633,6 +689,18 @@ export default function RaceDetailPage() {
           <div className="space-y-6">
             <CutoffRiskBanner flags={cutoffRiskFlags} />
 
+            {(category === 'run' || category === 'multisport') && (
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+                <FinishTimeCard
+                  category={category}
+                  targetFinishSeconds={targetFinishSeconds}
+                  projectedFinishSeconds={projectedFinishSeconds}
+                  courseRange={courseRange}
+                  reason={currentForm.reason}
+                />
+              </div>
+            )}
+
             {allFlags.length > 0 && (
               <div className="border border-yellow-500/20 rounded-2xl bg-yellow-500/[0.04] p-4">
                 <p className="text-yellow-200/80 text-sm font-medium mb-1">Worth double-checking</p>
@@ -768,6 +836,7 @@ export default function RaceDetailPage() {
                 onTargetFinishSecondsChange={setTargetFinishSeconds}
                 disciplineInputs={disciplineInputs}
                 muscleVolume={snapshot.muscleVolume}
+                currentFormReason={currentForm.reason}
               />
 
               <Button
@@ -833,22 +902,13 @@ export default function RaceDetailPage() {
                   <p className="text-xs text-white/40 mb-1">Strength Emphasis</p>
                   <p className="text-white text-sm">{describeStrengthEmphasis(plan.approach, snapshot.strength.recentSessionsPerWeek)}</p>
                 </div>
-                {category === 'run' && (targetFinishSeconds != null || projectedFinishSeconds != null) && (
-                  <div>
-                    <p className="text-xs text-white/40 mb-1">{targetFinishSeconds != null ? 'Target Finish Time' : 'Projected Finish Time'}</p>
-                    <p className="text-white text-sm">{formatDuration(targetFinishSeconds ?? projectedFinishSeconds!)}</p>
-                  </div>
-                )}
-                {category === 'multisport' && (targetFinishSeconds != null || courseRange != null) && (
-                  <div>
-                    <p className="text-xs text-white/40 mb-1">{targetFinishSeconds != null ? 'Target Finish Time' : 'Projected Finish Range'}</p>
-                    <p className="text-white text-sm">
-                      {targetFinishSeconds != null
-                        ? formatDuration(targetFinishSeconds)
-                        : `${formatDuration(courseRange!.totalSecondsLow)}–${formatDuration(courseRange!.totalSecondsHigh)}`}
-                    </p>
-                  </div>
-                )}
+                <FinishTimeCard
+                  category={category}
+                  targetFinishSeconds={targetFinishSeconds}
+                  projectedFinishSeconds={projectedFinishSeconds}
+                  courseRange={courseRange}
+                  reason={currentForm.reason}
+                />
               </div>
 
               {cutoffRiskFlags.length > 0 && courseRange && (

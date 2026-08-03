@@ -19,6 +19,7 @@ import { computeDisciplineActivityFacts, assessMultisportReadiness } from '@/lib
 import { fetchCourseProfile, fetchCourseTimeBand, fetchCourseCutoffs } from '@/lib/race-plan/course-data'
 import { assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { computeDayByDayTemplates } from '@/lib/race-plan/day-template'
+import { deriveCurrentFormLevel } from '@/lib/race-plan/current-form'
 
 const MODEL = 'gemini-2.5-flash'
 
@@ -137,12 +138,15 @@ export async function POST(request: NextRequest) {
   // from the STORED weakness analysis, never recomputed here, so the
   // split the athlete already saw and the split the plan actually uses
   // can't drift.
-  const level = category === 'multisport' && selfAssessment?.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
+  const baselineLevel = category === 'multisport' && selfAssessment?.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
   const disciplineActivityFacts = category === 'multisport' ? await computeDisciplineActivityFacts(supabase) : null
-  const disciplineInputs =
-    category === 'multisport' && disciplineWeakness && disciplineActivityFacts
-      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order, level }
-      : undefined
+  // Re-derived from real, sustained recent activity rather than trusting
+  // the self-report forever - feeds BOTH the volume model below and the
+  // course-band fetch/projection, since generating a plan is already the
+  // consent-gated moment for incorporating new evidence (see
+  // current-form.ts).
+  const currentForm = deriveCurrentFormLevel(baselineLevel, disciplineActivityFacts)
+  const level = currentForm.level
 
   // Course data (Phase 2) - fetched once, reused for the finish-time range,
   // cutoff risk, and qualitative prompt context below. Gracefully absent
@@ -157,6 +161,25 @@ export async function POST(request: NextRequest) {
       fetchCourseCutoffs(supabase, race.course_id),
     ])
   }
+
+  // Hoisted above disciplineInputs (moved up from its previous position
+  // further down, alongside finishTimeSummary/cutoffSummary) - the
+  // weakest-discipline emphasis below needs to know about real cutoff
+  // risk before the volume model runs, not after.
+  const courseRangeForGeneration =
+    category === 'multisport'
+      ? estimateCourseFinishRange(race.race_type as RaceType, level, facts.pastRaceResults, race.course_id, courseTimeBand)
+      : null
+  const cutoffFlags = courseRangeForGeneration ? assessCutoffRisk(courseRangeForGeneration, courseCutoffs) : []
+  // Real risk of missing a cutoff, not just a "watch" - this needs to be
+  // impossible for the model to bury among everything else it's told,
+  // and is what the weakest-discipline emphasis below reacts to.
+  const hasCutoffRisk = cutoffFlags.some((f) => f.risk === 'risk')
+
+  const disciplineInputs =
+    category === 'multisport' && disciplineWeakness && disciplineActivityFacts
+      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order, level, hasCutoffRisk }
+      : undefined
 
   // Unlike the per-exercise recommend route, this deliberately has no
   // "not enough history" gate - the periodization math below has explicit
@@ -251,14 +274,10 @@ export async function POST(request: NextRequest) {
     : ''
 
   const projectedFinishSeconds = estimateProjectedFinishSeconds(race.race_type as RaceType, facts)
-  const courseRange =
-    category === 'multisport'
-      ? estimateCourseFinishRange(race.race_type as RaceType, level, facts.pastRaceResults, race.course_id, courseTimeBand)
-      : null
-  const cutoffFlags = courseRange ? assessCutoffRisk(courseRange, courseCutoffs) : []
-  // Real risk of missing a cutoff, not just a "watch" - this needs to be
-  // impossible for the model to bury among everything else it's told.
-  const hasCutoffRisk = cutoffFlags.some((f) => f.risk === 'risk')
+  // courseRange/cutoffFlags/hasCutoffRisk are computed earlier now (see
+  // courseRangeForGeneration above) - reused here under the name the
+  // rest of this prompt-building section already expects.
+  const courseRange = courseRangeForGeneration
 
   const realismFlag =
     race.target_finish_seconds != null && projectedFinishSeconds != null
@@ -285,8 +304,16 @@ export async function POST(request: NextRequest) {
     category === 'multisport' && disciplineWeakness
       ? `\n\nDiscipline weakness analysis (weakest first: ${disciplineWeakness.order.join(', ')}): ${(['swim', 'bike', 'run'] as Discipline[])
           .map((d) => `${d} - ${disciplineWeakness.notes[d]}`)
-          .join(' ')} The weekly schedule below already allocates more volume to the weaker discipline(s) - explain this bias in your weekly notes rather than treating the split as arbitrary.`
+          .join(' ')} The weekly schedule below already allocates more volume to the weaker discipline(s) - explain this bias in your weekly notes rather than treating the split as arbitrary.${
+          hasCutoffRisk
+            ? ` Because there's real cutoff risk, ${disciplineWeakness.order[0]} (the weakest discipline) is getting an EXTRA emphasis on top of the usual weakness bias - mention this explicitly, don't just describe the normal weakness split.`
+            : ''
+        }`
       : ''
+
+  const currentFormSummary = currentForm.changed
+    ? `\n\n${currentForm.reason}`
+    : ''
 
   const weeksTable = skeleton
     .map((w) => {
@@ -310,7 +337,7 @@ ${strengthSummary}
 ${volumeSummary}
 ${consistencySummary}
 ${phaseSummary}
-${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${weightTrendSummary}${finishTimeSummary}${courseContextSummary}${cutoffSummary}${weaknessSummary}${readinessSummary}${nutritionTensionSummary}
+${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${weightTrendSummary}${currentFormSummary}${finishTimeSummary}${courseContextSummary}${cutoffSummary}${weaknessSummary}${readinessSummary}${nutritionTensionSummary}
 
 Here is the week-by-week schedule already computed for this athlete (the numbers are fixed - do not change or restate them numerically, just write about them):
 ${weeksTable}

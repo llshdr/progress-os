@@ -61,7 +61,10 @@ const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
 // Run peak km is synthesized to fit the overall sourced hour envelope
 // (bike still dominates total training time, since it's the longest race
 // leg) rather than independently sourced to the exact km.
-const LEVEL_PEAK_KM: Record<ExperienceLevel, Record<Discipline, number>> = {
+// Exported so current-form.ts can re-derive an athlete's effective tier
+// from real recent activity against these same published bands, rather
+// than inventing new thresholds.
+export const LEVEL_PEAK_KM: Record<ExperienceLevel, Record<Discipline, number>> = {
   beginner: { swim: 3.75, bike: 140, run: 30 },
   intermediate: { swim: 5.5, bike: 175, run: 45 },
   advanced: { swim: 7.25, bike: 210, run: 60 },
@@ -71,7 +74,7 @@ const LEVEL_PEAK_KM: Record<ExperienceLevel, Record<Discipline, number>> = {
 // below peak and ramps up through Base/Build (same shared rampValue shape
 // used everywhere else in this file), consistent with published base-
 // phase guidance (an 8-12 week foundational block before volume ramps).
-const BASE_START_FRACTION_OF_PEAK = 0.3
+export const BASE_START_FRACTION_OF_PEAK = 0.3
 
 // Roughly how far a typical single session covers per discipline - used
 // to derive a session COUNT directly from the km target (see
@@ -138,11 +141,29 @@ export interface DisciplineRampInputs {
   activityFacts: Record<Discipline, DisciplineActivityFacts>
   order: Discipline[] // weakest first
   level: ExperienceLevel
+  // Real risk of missing a course cutoff at the current projection -
+  // when true, the weakest discipline gets extra emphasis on top of its
+  // existing RANK_ADJUSTMENT bump (see CUTOFF_RISK_WEAKEST_BOOST below).
+  hasCutoffRisk?: boolean
 }
 
-function disciplinePeakKm(discipline: Discipline, level: ExperienceLevel, approach: RaceApproach, order: Discipline[]): number {
+// Extra emphasis on the weakest discipline specifically when a real
+// cutoff-risk margin exists - stacks multiplicatively with
+// RANK_ADJUSTMENT's existing weakest-discipline bump. Reuses the
+// already-computed weakness ranking as the proxy for "the discipline
+// most likely dragging total time down" - this app's seeded course
+// cutoffs (migrations 051/053) only carry an 'overall' row for
+// Barcelona/Kalmar/Copenhagen, not swim/bike-specific ones, so there's
+// no data to attribute risk to one specific segment directly. This is a
+// real, code-computed volume increase - it does NOT by itself move the
+// displayed cutoff margin, which is level/course-based only (see
+// current-form.ts for the mechanism that actually can).
+const CUTOFF_RISK_WEAKEST_BOOST = 1.15
+
+function disciplinePeakKm(discipline: Discipline, level: ExperienceLevel, approach: RaceApproach, order: Discipline[], hasCutoffRisk = false): number {
   const rank = order.indexOf(discipline)
-  const rankMultiplier = rank >= 0 ? RANK_ADJUSTMENT[rank] : 1.0
+  let rankMultiplier = rank >= 0 ? RANK_ADJUSTMENT[rank] : 1.0
+  if (hasCutoffRisk && rank === 0) rankMultiplier *= CUTOFF_RISK_WEAKEST_BOOST
   return LEVEL_PEAK_KM[level][discipline] * DISCIPLINE_PEAK_MULTIPLIER[approach] * rankMultiplier
 }
 
@@ -347,7 +368,7 @@ export function previewApproachEffect(
   if (disciplineInputs) {
     const previewDisciplineKm = {} as Record<Discipline, number>
     for (const d of DISCIPLINES) {
-      previewDisciplineKm[d] = Math.round(disciplinePeakKm(d, disciplineInputs.level, approach, disciplineInputs.order) * 10) / 10
+      previewDisciplineKm[d] = Math.round(disciplinePeakKm(d, disciplineInputs.level, approach, disciplineInputs.order, disciplineInputs.hasCutoffRisk ?? false) * 10) / 10
     }
     result.previewDisciplineKm = previewDisciplineKm
   }
@@ -483,7 +504,7 @@ export function computeTrainingWeeks(
     disciplinePeaks = {} as Record<Discipline, number>
     for (const d of DISCIPLINES) {
       disciplineBaselines[d] = disciplineBaselineKm(d, disciplineInputs.level, disciplineInputs.activityFacts[d])
-      disciplinePeaks[d] = disciplinePeakKm(d, disciplineInputs.level, approach, disciplineInputs.order)
+      disciplinePeaks[d] = disciplinePeakKm(d, disciplineInputs.level, approach, disciplineInputs.order, disciplineInputs.hasCutoffRisk ?? false)
     }
   }
 

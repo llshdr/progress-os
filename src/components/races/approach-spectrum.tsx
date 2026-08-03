@@ -27,6 +27,7 @@ interface ApproachSpectrumProps {
   onTargetFinishSecondsChange: (seconds: number | null) => void
   disciplineInputs?: DisciplineRampInputs
   muscleVolume: MuscleVolume[]
+  currentFormReason?: string | null
 }
 
 const DISCIPLINE_LABELS: Record<Discipline, string> = { swim: 'Swim', bike: 'Bike', run: 'Run' }
@@ -64,6 +65,7 @@ export default function ApproachSpectrum({
   onTargetFinishSecondsChange,
   disciplineInputs,
   muscleVolume,
+  currentFormReason,
 }: ApproachSpectrumProps) {
   const index = RACE_APPROACHES.indexOf(value)
   const preview = previewApproachEffect(value, currentWeeklyCardioKm, currentStrengthSessionsPerWeek, disciplineInputs)
@@ -102,6 +104,11 @@ export default function ApproachSpectrum({
                 {DISCIPLINE_LABELS[discipline]}: ~{preview.previewDisciplineKm![discipline]}km/week at peak
               </p>
             ))}
+            {disciplineInputs?.hasCutoffRisk && disciplineInputs.order[0] && (
+              <p className="text-white/40 text-xs mt-1">
+                {DISCIPLINE_LABELS[disciplineInputs.order[0]]} (your weakest discipline) is getting extra emphasis above the usual weakness bias to help close your cutoff gap.
+              </p>
+            )}
           </>
         ) : (
           <>
@@ -143,6 +150,7 @@ export default function ApproachSpectrum({
               </p>
             )
           )}
+          {currentFormReason && <p className="text-white/40 text-xs">{currentFormReason}</p>}
           <div className="flex items-center gap-2">
             <Input
               type="number"
