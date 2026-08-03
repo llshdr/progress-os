@@ -27,8 +27,8 @@ import {
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { deriveCurrentFormLevel } from '@/lib/race-plan/current-form'
-import { slotsForWeek, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
-import { PACKING_LISTS, FUELING_GUIDANCE, summarizeSeasonMismatch } from '@/lib/race-plan/race-day-prep'
+import { slotsForWeek, ZONE_GUIDANCE, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
+import { PACKING_LISTS, FUELING_GUIDANCE, TRANSITION_GUIDANCE, RACE_DAY_CHECKPOINTS, summarizeSeasonMismatch } from '@/lib/race-plan/race-day-prep'
 import { suggestMilestoneSessions } from '@/lib/race-plan/milestone-sessions'
 import { TYPE_LABEL } from '@/components/races/day-slot-display'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
@@ -1198,6 +1198,68 @@ export default function RaceDetailPage() {
                 )}
               </div>
             )}
+
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <h2 className="text-lg font-medium text-white mb-3">Race Day Plan</h2>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs text-white/40 mb-1">Pacing</p>
+                  <p className="text-white/70 text-sm">{ZONE_GUIDANCE.key.peak.full}</p>
+                </div>
+
+                {(courseRange || projectedFinishSeconds != null) && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-1">Projected Finish</p>
+                    <p className="text-white/70 text-sm">
+                      {courseRange
+                        ? `${formatDuration(courseRange.totalSecondsLow)}–${formatDuration(courseRange.totalSecondsHigh)}`
+                        : formatDuration(projectedFinishSeconds!)}
+                    </p>
+                  </div>
+                )}
+
+                {cutoffRiskFlags.length > 0 && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-1">Cutoff Margins</p>
+                    {cutoffRiskFlags.map((f) => (
+                      <p key={f.segment} className="text-white/70 text-sm">
+                        {f.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {category === 'multisport' && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-1">Transitions</p>
+                    <p className="text-white/70 text-sm">{TRANSITION_GUIDANCE.peak.full}</p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs text-white/40 mb-1">Fueling</p>
+                  <p className="text-white/70 text-sm">{FUELING_GUIDANCE}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-white/40 mb-2">Checkpoints</p>
+                  <div className="space-y-2">
+                    {RACE_DAY_CHECKPOINTS[category].map((checkpoint) => (
+                      <div key={checkpoint.label}>
+                        <p className="text-white text-sm font-medium">{checkpoint.label}</p>
+                        <ul className="list-disc ml-4">
+                          {checkpoint.notes.map((note) => (
+                            <li key={note} className="text-white/60 text-xs">
+                              {note}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
