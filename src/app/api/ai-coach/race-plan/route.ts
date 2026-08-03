@@ -116,6 +116,21 @@ export async function POST(request: NextRequest) {
   const category = raceCategoryFor(race.race_type as RaceType)
   const disciplineWeakness = (race.discipline_weakness ?? null) as { order: Discipline[]; notes: Record<Discipline, string> } | null
 
+  // Defensive guard: a multisport race must have completed discipline-
+  // weakness analysis before generation. Without it, disciplineInputs
+  // below would silently be undefined and computeTrainingWeeks would
+  // silently fall back to the single-discipline cardio path - a plan
+  // that LOOKS complete but is missing the discipline split/brick
+  // sessions with no warning to the athlete. Fail loudly instead (the
+  // client's own weakness-step flow is the primary place this is now
+  // prevented from happening at all - this is the last line of defense).
+  if (category === 'multisport' && !disciplineWeakness) {
+    return NextResponse.json(
+      { status: 'error', error: 'Discipline analysis is missing for this race - go back to the assessment step and complete it before generating a plan.' },
+      { status: 400 }
+    )
+  }
+
   let courseName: string | null = null
   if (race.course_id) {
     const { data: course } = await supabase.from('race_courses').select('name').eq('id', race.course_id).maybeSingle()

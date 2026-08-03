@@ -269,6 +269,7 @@ export default function RaceDetailPage() {
   const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(emptySelfAssessmentFor('other'))
   const [disciplineWeakness, setDisciplineWeakness] = useState<DisciplineWeakness | null>(null)
   const [assessmentError, setAssessmentError] = useState<string | null>(null)
+  const [weaknessError, setWeaknessError] = useState<string | null>(null)
   const [weaknessLoading, setWeaknessLoading] = useState(false)
 
   const [approach, setApproach] = useState<RaceApproach>('balanced')
@@ -423,6 +424,7 @@ export default function RaceDetailPage() {
       return
     }
     setAssessmentError(null)
+    setWeaknessError(null)
 
     await supabase.from('races').update({ self_assessment: selfAssessment }).eq('id', raceId)
 
@@ -438,12 +440,15 @@ export default function RaceDetailPage() {
         setDisciplineWeakness(data.disciplineWeakness)
         setStep('weakness')
       } else {
-        // Resilience: don't hard-block the flow if analysis fails.
-        setStep('snapshot')
+        // Must not silently advance - discipline_weakness would stay
+        // unset in the DB, and any later Generate/Regenerate would
+        // silently fall back to single-discipline mode with no warning
+        // (see route.ts's own guard against exactly that).
+        setWeaknessError('Discipline analysis failed - this is required for a multisport race before you can continue.')
       }
     } catch (err) {
       console.error('Error analyzing discipline weakness:', err)
-      setStep('snapshot')
+      setWeaknessError('Discipline analysis failed - this is required for a multisport race before you can continue.')
     } finally {
       setWeaknessLoading(false)
     }
@@ -467,7 +472,7 @@ export default function RaceDetailPage() {
         setPlan(data.plan)
         setStep('review')
       } else {
-        setGenerateError('Could not generate a plan right now — try again later.')
+        setGenerateError(data.error || 'Could not generate a plan right now — try again later.')
       }
     } catch (err) {
       console.error('Error generating race plan:', err)
@@ -652,6 +657,7 @@ export default function RaceDetailPage() {
                   onChange={(v) => {
                     setSelfAssessment(v)
                     setAssessmentError(null)
+                    setWeaknessError(null)
                   }}
                 />
               ) : (
@@ -659,8 +665,9 @@ export default function RaceDetailPage() {
               )}
             </div>
             {assessmentError && <p className="text-sm text-red-400">{assessmentError}</p>}
+            {weaknessError && <p className="text-sm text-red-400">{weaknessError}</p>}
             <Button onClick={handleAssessmentContinue} disabled={weaknessLoading} className="bg-white text-black hover:bg-white/90">
-              {weaknessLoading ? 'Analyzing...' : 'Continue'}
+              {weaknessLoading ? 'Analyzing...' : weaknessError ? 'Retry analysis' : 'Continue'}
             </Button>
           </div>
         )}
@@ -856,11 +863,16 @@ export default function RaceDetailPage() {
                     handleGenerate()
                   }
                 }}
-                disabled={generating}
+                disabled={generating || (category === 'multisport' && !disciplineWeakness)}
                 className="w-full bg-white text-black hover:bg-white/90 mt-6"
               >
                 {generating ? 'Generating...' : plan ? 'Regenerate Plan' : 'Generate Plan'}
               </Button>
+              {category === 'multisport' && !disciplineWeakness && (
+                <p className="text-sm text-red-400 mt-2">
+                  Discipline analysis is missing for this race - go back and complete the assessment step before generating a plan.
+                </p>
+              )}
               {generateError && <p className="text-sm text-red-400 mt-2">{generateError}</p>}
             </div>
 

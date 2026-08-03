@@ -106,20 +106,31 @@ async function computeStrengthFacts(
 
   const recentBest = new Map<string, number>()
   const priorBest = new Map<string, number>()
+  // Keyed by calendar date, not by session - a deliberate choice, not a
+  // silent one: two sessions on the same day (e.g. an AM/PM split)
+  // still count as one trained day here, matching "sessions/week" as
+  // used elsewhere in this app (cardio's weeksActive/recentAvgSessionsPerWeek
+  // are also day-based, not session-count-based).
   const recentDays = new Set<string>()
 
   for (const row of (data ?? []) as any[]) {
+    const createdAt = new Date(row.created_at)
+    // A day counts as "trained" from ANY completed set, whether or not
+    // its exercise resolves to a muscle group - a day shouldn't vanish
+    // from the frequency count just because one exercise in the library
+    // is missing that tag. Muscle-group data below is only for
+    // muscleGroupTrends, never for gating whether the day counts.
+    if (createdAt >= fourWeeksAgo) recentDays.add(getLocalDateString(createdAt))
+
     const muscleGroup: string | undefined = row.exercise?.exercise_library?.primary_muscle_group
     if (!muscleGroup) continue
 
     const weight = typeof row.weight === 'string' ? parseFloat(row.weight) : row.weight
     const reps = typeof row.reps === 'string' ? parseInt(row.reps) : row.reps
     const est1RM = estimateOneRepMax(weight, reps)
-    const createdAt = new Date(row.created_at)
 
     if (createdAt >= sixWeeksAgo) {
       recentBest.set(muscleGroup, Math.max(recentBest.get(muscleGroup) ?? 0, est1RM))
-      if (createdAt >= fourWeeksAgo) recentDays.add(getLocalDateString(createdAt))
     } else {
       priorBest.set(muscleGroup, Math.max(priorBest.get(muscleGroup) ?? 0, est1RM))
     }
