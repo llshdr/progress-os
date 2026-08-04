@@ -28,7 +28,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { deriveCurrentFormLevel, TIER_ORDER } from '@/lib/race-plan/current-form'
 import { slotsForWeek, ZONE_GUIDANCE, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
-import { PACKING_LISTS, FUELING_GUIDANCE, TRANSITION_GUIDANCE, RACE_DAY_CHECKPOINTS, summarizeSeasonMismatch } from '@/lib/race-plan/race-day-prep'
+import { PACKING_LISTS, FUELING_GUIDANCE, TRANSITION_GUIDANCE, RACE_DAY_CHECKPOINTS, summarizeSeasonMismatch, DISRUPTION_GUIDANCE } from '@/lib/race-plan/race-day-prep'
 import { suggestMilestoneSessions } from '@/lib/race-plan/milestone-sessions'
 import { TYPE_LABEL } from '@/components/races/day-slot-display'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
@@ -63,7 +63,8 @@ import {
 } from '@/lib/race-plan/discipline-weakness'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
 import { resolvePeakPaceTargets, resolveEasyPaceTargets } from '@/lib/race-plan/pace-targets'
-import { assessBenchmarkCompliance, type BenchmarkFlag } from '@/lib/race-plan/benchmark-verification'
+import { assessBenchmarkCompliance, type BenchmarkFlag, type DisruptionRange } from '@/lib/race-plan/benchmark-verification'
+import DisruptionDeclaration, { formatDateRange, type TrainingDisruption } from '@/components/races/disruption-declaration'
 import {
   fetchCourseProfile,
   fetchCourseTimeBand,
@@ -288,6 +289,7 @@ export default function RaceDetailPage() {
   const [snapshot, setSnapshot] = useState<FitnessSnapshot | null>(null)
   const [disciplineActivityFacts, setDisciplineActivityFacts] = useState<Record<Discipline, DisciplineActivityFacts> | null>(null)
   const [cardioActivities, setCardioActivities] = useState<CardioActivity[]>([])
+  const [disruptions, setDisruptions] = useState<TrainingDisruption[]>([])
   const [courseProfile, setCourseProfile] = useState<RaceCourseProfile | null>(null)
   const [courseTimeBands, setCourseTimeBands] = useState<Partial<Record<ExperienceLevel, RaceCourseTimeBand | null>>>({})
   const [courseCutoffs, setCourseCutoffs] = useState<RaceCourseCutoff[]>([])
@@ -353,7 +355,7 @@ export default function RaceDetailPage() {
       return
     }
 
-    const [{ data: raceRow }, { data: planRow }, { data: settingsRow }] = await Promise.all([
+    const [{ data: raceRow }, { data: planRow }, { data: settingsRow }, { data: disruptionRows }] = await Promise.all([
       supabase
         .from('races')
         .select('id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds, discipline_weakness, training_start_date')
@@ -362,10 +364,18 @@ export default function RaceDetailPage() {
         .maybeSingle(),
       supabase.from('race_training_plans').select('approach, overview, weeks, phase_templates').eq('race_id', raceId).maybeSingle(),
       supabase.from('user_settings').select('open_water_season_start_month, open_water_season_end_month').eq('user_id', user.id).maybeSingle(),
+      // User-level, not race-specific - shared across every race the
+      // athlete is training for. See migration 057.
+      supabase
+        .from('training_disruptions')
+        .select('id, start_date, end_date, reason, note')
+        .eq('user_id', user.id)
+        .order('start_date', { ascending: false }),
     ])
 
     setOpenWaterSeasonStartMonth(settingsRow?.open_water_season_start_month ?? null)
     setOpenWaterSeasonEndMonth(settingsRow?.open_water_season_end_month ?? null)
+    setDisruptions(disruptionRows ?? [])
 
     if (!raceRow) {
       setNotFound(true)
@@ -422,6 +432,19 @@ export default function RaceDetailPage() {
     const facts = await analyzeCurrentFitness(supabase, user.id, raceId)
     setSnapshot(facts)
     setLoading(false)
+  }
+
+  const refetchDisruptions = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase
+      .from('training_disruptions')
+      .select('id, start_date, end_date, reason, note')
+      .eq('user_id', user.id)
+      .order('start_date', { ascending: false })
+    setDisruptions(data ?? [])
   }
 
   const computeCurrentWeekActual = async () => {
@@ -626,12 +649,28 @@ export default function RaceDetailPage() {
   // Real logged activity vs. this plan's planned key sessions - purely
   // computed at render time from data already fetched, same "no cache
   // table, never silent auto-replanning" precedent as every other flag
-  // here. Only meaningful once a plan actually exists.
+  // here. Only meaningful once a plan actually exists. Declared
+  // disruptions exclude overlapping weeks entirely (never counted good
+  // or bad) - deliberately never passed to deriveCurrentFormLevel, which
+  // stays honest to real logged activity regardless of why a gap exists.
+  const disruptionRanges: DisruptionRange[] = disruptions.map((d) => ({ startDate: d.start_date, endDate: d.end_date }))
   const benchmarkFlags = plan
-    ? assessBenchmarkCompliance(plan, cardioActivities, currentWeekStartDate, category, easyPaceTargets, peakPaceTargets)
+    ? assessBenchmarkCompliance(plan, cardioActivities, currentWeekStartDate, category, easyPaceTargets, peakPaceTargets, disruptionRanges)
     : []
   const behindBenchmarkFlags = benchmarkFlags.filter((f) => f.status === 'behind')
   const watchBenchmarkFlags = benchmarkFlags.filter((f) => f.status === 'watch')
+
+  // Small, unobtrusive header indicator only - deliberately not a
+  // calendar view or dashboard-wide banner (over-building this wasn't
+  // the ask). Fires when a declared disruption is active now or starts
+  // within the next 7 days.
+  const activeOrUpcomingDisruption = disruptions.find((d) => {
+    const start = new Date(d.start_date + 'T00:00:00')
+    const end = new Date(d.end_date + 'T00:00:00')
+    const horizon = new Date(today + 'T00:00:00')
+    horizon.setDate(horizon.getDate() + 7)
+    return start <= horizon && end >= new Date(today + 'T00:00:00')
+  })
 
   const allFlags = [
     ...tensionFlags,
@@ -1027,6 +1066,15 @@ export default function RaceDetailPage() {
           <div className="space-y-8">
             <CutoffRiskBanner flags={cutoffRiskFlags} />
             <BenchmarkComplianceBanner flags={behindBenchmarkFlags} onRegenerate={() => setStep('spectrum')} />
+
+            {activeOrUpcomingDisruption && (
+              <p className="text-white/40 text-xs">
+                {formatDateRange(activeOrUpcomingDisruption.start_date, activeOrUpcomingDisruption.end_date)} (
+                {activeOrUpcomingDisruption.reason}) - {DISRUPTION_GUIDANCE[activeOrUpcomingDisruption.reason]}
+              </p>
+            )}
+
+            <DisruptionDeclaration disruptions={disruptions} onChanged={refetchDisruptions} />
 
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
               <div className="flex items-center justify-between flex-wrap gap-4 mb-3">

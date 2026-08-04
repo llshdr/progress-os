@@ -27,6 +27,25 @@ interface WeekEvidence {
   paceRatio: number | null // actual pace / target pace (>1 = slower); null when no pace data available
 }
 
+export interface DisruptionRange {
+  startDate: string
+  endDate: string
+}
+
+// A disrupted week is excluded entirely - not counted as good or bad.
+// "Insufficient undisrupted evidence" needs no separate handling: a
+// disrupted week just never reaches `evidence`, so the existing
+// MIN_WEEKS_FOR_EVIDENCE gate below already does the right thing when
+// disruptions eat into the available history.
+function weekOverlapsDisruption(weekStart: Date, weekEnd: Date, disruptions: DisruptionRange[]): boolean {
+  return disruptions.some((d) => {
+    const start = new Date(d.startDate + 'T00:00:00')
+    const end = new Date(d.endDate + 'T00:00:00')
+    end.setDate(end.getDate() + 1) // end_date is inclusive
+    return weekStart < end && weekEnd > start
+  })
+}
+
 // Best-effort proxy for "the key session" - same discipline-
 // classification caveat already flagged in discipline-weakness.ts.
 function longestSessionThisWeek(
@@ -58,7 +77,8 @@ export function assessBenchmarkCompliance(
   currentWeekStartDate: string,
   category: RaceCategory,
   easyPaceTargets: Record<Discipline, number> | null,
-  peakPaceTargets: Record<Discipline, number> | null
+  peakPaceTargets: Record<Discipline, number> | null,
+  disruptions: DisruptionRange[] = []
 ): BenchmarkFlag[] {
   const disciplines: EnduranceSlotType[] = category === 'multisport' ? ['swim', 'bike', 'run'] : category === 'run' ? ['cardio'] : []
   if (disciplines.length === 0) return []
@@ -100,6 +120,8 @@ export function assessBenchmarkCompliance(
       const weekStart = new Date(week.weekStartDate + 'T00:00:00')
       const weekEnd = new Date(weekStart)
       weekEnd.setDate(weekEnd.getDate() + 7)
+      if (weekOverlapsDisruption(weekStart, weekEnd, disruptions)) continue
+
       const longest = longestSessionThisWeek(activities, weekStart, weekEnd, discipline)
       const actualKm = longest?.distanceKm ?? 0
       const ratio = actualKm / plannedKm
