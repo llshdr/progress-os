@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
   // Deterministic, code-computed - never involves the model. Sized
   // against each phase's own highest-session-count week (see
   // day-template.ts for why that isn't simply "the last week").
-  const phaseTemplates = computeDayByDayTemplates(skeleton)
+  const phaseTemplates = computeDayByDayTemplates(skeleton, approach)
 
   // Current-week phase - skeleton always starts at today's week, so
   // skeleton[0] is always "the phase the athlete is in right now" at

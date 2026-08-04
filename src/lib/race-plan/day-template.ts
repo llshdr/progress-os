@@ -1,8 +1,8 @@
-import type { TrainingPhase, TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
+import type { TrainingPhase, TrainingWeekSkeleton, RaceApproach } from '@/lib/race-plan/periodization'
 import type { Discipline } from '@/lib/race-plan/self-assessment'
 
 export type EnduranceSlotType = 'swim' | 'bike' | 'run' | 'cardio' // 'cardio' only for single-discipline races
-export type SlotRole = 'key' | 'easy' | 'technique'
+export type SlotRole = 'key' | 'easy' | 'technique' | 'threshold'
 
 export interface SlotProgression {
   startShareFraction: number // this slot's share at week 0 of the phase, as a fraction of its target shareOfWeeklyTotal (e.g. 0.65 = starts at 65% of eventual target)
@@ -77,6 +77,29 @@ export const ZONE_GUIDANCE: Record<SlotRole, Record<TrainingPhase, { short: stri
     build: { short: 'Drills', full: 'Drill-focused, not zone-based - about form, not effort.' },
     peak: { short: 'Drills', full: 'Drill-focused, not zone-based - about form, not effort.' },
     taper: { short: 'Drills', full: 'Drill-focused, not zone-based - about form, not effort.' },
+  },
+  // Controlled Zone 3-4 work, not a VO2max/all-out interval session -
+  // per Stephen Seiler's 80/20 rule (the most cited, evidence-backed
+  // framework in endurance sport), roughly 1-2 quality/hard sessions a
+  // week is the correct ceiling, not more - this feature caps it at
+  // exactly one per discipline per week (see buildEnduranceSlots).
+  // Never present in Base (foundation first, no quality work yet) -
+  // introduced in Build, race-specific in Peak, deliberately minimal in
+  // Taper.
+  threshold: {
+    base: { short: 'N/A', full: 'No threshold work yet in Base - foundation first.' },
+    build: {
+      short: 'Zone 3-4 (threshold)',
+      full: 'A controlled, sustained hard effort - Zone 3-4, RPE 6-7/10, comfortably hard but not all-out. This is where real threshold adaptation happens; keep it controlled, not a race.',
+    },
+    peak: {
+      short: 'Zone 3-4, race-specific',
+      full: 'Threshold work here is race-specific - segments that mimic race-day surges or sustained hard efforts, still controlled (RPE 6-7/10), not a max-effort interval session.',
+    },
+    taper: {
+      short: 'Short and sharp',
+      full: "If included at all, keep it brief - a short, sharp reminder of race intensity, not a real training stimulus this close to race day.",
+    },
   },
 }
 
@@ -158,7 +181,13 @@ const PROGRESSION_BY_PHASE: Record<TrainingPhase, SlotProgression | null> = {
   taper: null,
 }
 
-function buildEnduranceSlots(type: EnduranceSlotType, days: number[], phase: TrainingPhase, progressionForKey: SlotProgression | null): EnduranceSlot[] {
+function buildEnduranceSlots(
+  type: EnduranceSlotType,
+  days: number[],
+  phase: TrainingPhase,
+  progressionForKey: SlotProgression | null,
+  approach: RaceApproach
+): EnduranceSlot[] {
   if (days.length === 0) return []
 
   // Swim in Base is technique-building, not volume-specific (published
@@ -171,9 +200,35 @@ function buildEnduranceSlots(type: EnduranceSlotType, days: number[], phase: Tra
   const keyShare = keyShareForSessionCount(type, days.length)
   const restShare = days.length > 1 ? (1 - keyShare) / (days.length - 1) : 0
 
+  // At most one non-key slot per discipline gets promoted to threshold
+  // intensity - never in Base (foundation first), never on the key slot
+  // itself (key stays Zone 2 race pace by design), and only when a real
+  // non-key slot exists to promote. Capped at exactly one per Seiler's
+  // 80/20 rule (see ZONE_GUIDANCE.threshold above).
+  //
+  // Muscle-leaning/muscle-focused approaches route this toward swim/bike
+  // over run: running carries measurably more injury-risk load AND a
+  // documented hypertrophy-interference effect vs. cycling (eccentric
+  // loading/inflammatory response) - real, sourced component facts, but
+  // not a single named "muscle-preservation protocol," so this is worded
+  // honestly in the UI as lower interference + lower injury risk, never
+  // as an established technique.
+  const muscleFocusedApproach = approach === 'muscle_leaning' || approach === 'muscle_focused'
+  const skipThresholdForRun = type === 'run' && muscleFocusedApproach
+  const thresholdDayIndex = phase !== 'base' && days.length >= 2 && !skipThresholdForRun ? 1 : -1
+
   return days.map((day, i) => {
     const isKey = i === 0 && !swimBaseTechnique
-    const role: SlotRole = swimBaseTechnique ? 'technique' : isKey ? 'key' : type === 'swim' ? 'technique' : 'easy'
+    const isThreshold = i === thresholdDayIndex
+    const role: SlotRole = swimBaseTechnique
+      ? 'technique'
+      : isKey
+        ? 'key'
+        : isThreshold
+          ? 'threshold'
+          : type === 'swim'
+            ? 'technique'
+            : 'easy'
     return {
       day,
       type,
@@ -210,7 +265,7 @@ function assignDays(count: number, blockedDays: Set<number>, preferredStart = 0)
   return days
 }
 
-function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase): PhaseTemplate {
+function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, approach: RaceApproach): PhaseTemplate {
   const usedDays = new Set<number>()
   const brickDays: number[] = []
 
@@ -238,14 +293,20 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase): P
       const remaining = sessions - brickDaysForDiscipline.length
       const days = [...brickDaysForDiscipline, ...assignDays(remaining, usedDays)]
 
-      enduranceSlots.push(...buildEnduranceSlots(discipline, days, phase, PROGRESSION_BY_PHASE[phase]))
+      enduranceSlots.push(...buildEnduranceSlots(discipline, days, phase, PROGRESSION_BY_PHASE[phase], approach))
     }
   } else if (week.targetCardioSessions > 0) {
     const days = assignDays(week.targetCardioSessions, usedDays)
-    enduranceSlots.push(...buildEnduranceSlots('cardio', days, phase, PROGRESSION_BY_PHASE[phase]))
+    enduranceSlots.push(...buildEnduranceSlots('cardio', days, phase, PROGRESSION_BY_PHASE[phase], approach))
   }
 
-  const hardDays = new Set<number>([...enduranceSlots.filter((s) => s.role === 'key').map((s) => s.day), ...brickDays])
+  // 'threshold' slots are hard days too - without this, the existing
+  // strength-sequencing interference protection (computeRestrictedStrengthDays/
+  // STRENGTH_SEQUENCING_NOTES) would silently not apply to them.
+  const hardDays = new Set<number>([
+    ...enduranceSlots.filter((s) => s.role === 'key' || s.role === 'threshold').map((s) => s.day),
+    ...brickDays,
+  ])
   const restrictedDays = computeRestrictedStrengthDays(hardDays)
 
   const strengthSlots: StrengthSlot[] = []
@@ -325,7 +386,7 @@ function totalSessionsInWeek(w: TrainingWeekSkeleton): number {
 // correct both for ramping-up phases (Base/Build, where the LAST week
 // is highest) and Taper, which ramps DOWN within itself (so its FIRST
 // week is highest) - "peak week" means "highest," not "last."
-export function computeDayByDayTemplates(skeleton: TrainingWeekSkeleton[]): PhaseTemplates {
+export function computeDayByDayTemplates(skeleton: TrainingWeekSkeleton[], approach: RaceApproach): PhaseTemplates {
   const templates: PhaseTemplates = {}
 
   for (const phase of ALL_PHASES) {
@@ -333,8 +394,30 @@ export function computeDayByDayTemplates(skeleton: TrainingWeekSkeleton[]): Phas
     if (weeksInPhase.length === 0) continue
 
     const sizingWeek = weeksInPhase.reduce((best, w) => (totalSessionsInWeek(w) > totalSessionsInWeek(best) ? w : best))
-    templates[phase] = buildPhaseTemplate(sizingWeek, phase)
+    templates[phase] = buildPhaseTemplate(sizingWeek, phase, approach)
   }
 
   return templates
+}
+
+// Opportunistic threshold-pace proxy only - reuses the athlete's own
+// already-captured recentTimeTrial (self-assessment.ts) ONLY when its
+// duration falls in a real threshold-test-like window per discipline
+// (CSS/FTP/10K-equivalent test durations - TrainingPeaks/dincalculator/
+// Total Tri Training, already cited elsewhere in this feature's pace
+// work), degrading to null (never a misapplied guess) otherwise. Never
+// a substitute for real protocol-based capture (an actual CSS/FTP
+// test) - that stays its own separate, bigger future phase. Returns
+// sec/km, same convention as pace-units.ts.
+const THRESHOLD_TEST_WINDOW_SECONDS: Record<Discipline, { min: number; max: number }> = {
+  swim: { min: 10 * 60, max: 30 * 60 },
+  bike: { min: 15 * 60, max: 25 * 60 },
+  run: { min: 20 * 60, max: 45 * 60 },
+}
+
+export function thresholdPaceHint(discipline: Discipline, recentTimeTrial: { distanceKm: number; timeSeconds: number } | null): number | null {
+  if (!recentTimeTrial || recentTimeTrial.distanceKm <= 0) return null
+  const window = THRESHOLD_TEST_WINDOW_SECONDS[discipline]
+  if (recentTimeTrial.timeSeconds < window.min || recentTimeTrial.timeSeconds > window.max) return null
+  return recentTimeTrial.timeSeconds / recentTimeTrial.distanceKm
 }

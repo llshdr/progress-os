@@ -24,6 +24,7 @@ export const ROLE_LABEL: Record<SlotRole, string> = {
   key: 'Key',
   easy: 'Easy',
   technique: 'Technique',
+  threshold: 'Threshold',
 }
 
 export function formatSlotKm(km: number): string {

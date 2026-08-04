@@ -16,6 +16,13 @@ interface Props {
   // (see pace-targets.ts for why easy/technique slots don't).
   easyPaceTargets: Record<Discipline, number> | null
   peakPaceTargets: Record<Discipline, number> | null
+  // Opportunistic threshold-pace proxy per discipline, from the
+  // athlete's own recentTimeTrial when its duration fits a real
+  // threshold-test window (see thresholdPaceHint in day-template.ts) -
+  // qualitative guidance is the baseline for 'threshold' slots, this is
+  // just an optional numeric hint layered on top when it's honestly
+  // available.
+  thresholdPaceHints: Record<Discipline, number | null> | null
 }
 
 function kmForSlot(slot: EnduranceSlot, sameTypeSlots: EnduranceSlot[], week: TrainingWeekSkeleton, weekIndexWithinPhase: number): number {
@@ -35,11 +42,18 @@ function paceLabelForSlot(
   return formatPaceForDiscipline(pace, slot.type)
 }
 
+function thresholdZoneTitle(slot: EnduranceSlot, phase: TrainingWeekSkeleton['phase'], thresholdPaceHints: Record<Discipline, number | null> | null): string {
+  const base = ZONE_GUIDANCE[slot.role][phase].full
+  if (slot.role !== 'threshold' || slot.type === 'cardio') return base
+  const hint = thresholdPaceHints?.[slot.type]
+  return hint != null ? `${base} Your recent time trial suggests a threshold pace around ${formatPaceForDiscipline(hint, slot.type)}.` : base
+}
+
 // Read-only per-week day list - the primary way to see "what do I do
 // this week." A vertical list (Mon-Sun), matching the gym Schedule
 // page's list-of-days pattern rather than a 7-column grid, since that
 // fits this app's mobile-first, monochrome design language better.
-export default function WeekDayList({ slots, week, weekIndexWithinPhase, easyPaceTargets, peakPaceTargets }: Props) {
+export default function WeekDayList({ slots, week, weekIndexWithinPhase, easyPaceTargets, peakPaceTargets, thresholdPaceHints }: Props) {
   return (
     <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
       {DAY_ABBREVIATIONS.map((label, day) => {
@@ -79,7 +93,7 @@ export default function WeekDayList({ slots, week, weekIndexWithinPhase, easyPac
                     <Icon className="w-3.5 h-3.5 text-white/40" />
                     {TYPE_LABEL[slot.type]} {formatSlotKm(km)}
                     <span className="text-white/40">({ROLE_LABEL[slot.role]})</span>
-                    <span className="text-white/30" title={zone.full}>
+                    <span className="text-white/30" title={thresholdZoneTitle(slot, week.phase, thresholdPaceHints)}>
                       {zone.short}
                     </span>
                     {paceLabel && <span className="text-white/40">· ~{paceLabel}</span>}

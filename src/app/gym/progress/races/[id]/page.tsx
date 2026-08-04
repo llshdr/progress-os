@@ -27,7 +27,7 @@ import {
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { deriveCurrentFormLevel, TIER_ORDER } from '@/lib/race-plan/current-form'
-import { slotsForWeek, ZONE_GUIDANCE, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
+import { slotsForWeek, ZONE_GUIDANCE, thresholdPaceHint, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import { PACKING_LISTS, FUELING_GUIDANCE, TRANSITION_GUIDANCE, RACE_DAY_CHECKPOINTS, summarizeSeasonMismatch, DISRUPTION_GUIDANCE } from '@/lib/race-plan/race-day-prep'
 import { suggestMilestoneSessions } from '@/lib/race-plan/milestone-sessions'
 import { TYPE_LABEL } from '@/components/races/day-slot-display'
@@ -637,6 +637,19 @@ export default function RaceDetailPage() {
       : { swim: null, bike: null, run: null }
   const easyPaceTargets = peakPaceTargets ? resolveEasyPaceTargets(peakPaceTargets, comfortableEffortByDiscipline, disciplineActivityFacts) : null
 
+  // Opportunistic threshold-pace proxy per discipline - reuses the
+  // athlete's own recentTimeTrial only when its duration fits a real
+  // threshold-test window (see thresholdPaceHint in day-template.ts),
+  // never a substitute for real protocol-based capture.
+  const thresholdPaceHints: Record<Discipline, number | null> | null =
+    category === 'multisport' && selfAssessment.kind === 'multisport'
+      ? {
+          swim: thresholdPaceHint('swim', selfAssessment.swim.recentTimeTrial),
+          bike: thresholdPaceHint('bike', selfAssessment.bike.recentTimeTrial),
+          run: thresholdPaceHint('run', selfAssessment.run.recentTimeTrial),
+        }
+      : null
+
   // Only computed when a stated goal is already flagged as unrealistic in
   // TIME terms (realismFlag) - reuses that same check as the trigger
   // rather than a second comparison, so the pace-terms note and the
@@ -1164,6 +1177,7 @@ export default function RaceDetailPage() {
                       onSaved={(updated) => handleTemplateSaved(group.phase, updated)}
                       easyPaceTargets={easyPaceTargets}
                       peakPaceTargets={peakPaceTargets}
+                      thresholdPaceHints={thresholdPaceHints}
                     />
                   )}
                 </div>
@@ -1242,6 +1256,7 @@ export default function RaceDetailPage() {
                                 weekIndexWithinPhase={weekIndex}
                                 easyPaceTargets={easyPaceTargets}
                                 peakPaceTargets={peakPaceTargets}
+                                thresholdPaceHints={thresholdPaceHints}
                               />
                             )}
                           </>

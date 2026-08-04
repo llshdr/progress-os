@@ -32,9 +32,20 @@ interface Props {
   onSaved: (updated: PhaseTemplate) => void
   easyPaceTargets: Record<Discipline, number> | null
   peakPaceTargets: Record<Discipline, number> | null
+  thresholdPaceHints: Record<Discipline, number | null> | null
 }
 
-export default function PhaseTemplateDialog({ raceId, phase, template, allTemplates, weeksInPhase, onSaved, easyPaceTargets, peakPaceTargets }: Props) {
+export default function PhaseTemplateDialog({
+  raceId,
+  phase,
+  template,
+  allTemplates,
+  weeksInPhase,
+  onSaved,
+  easyPaceTargets,
+  peakPaceTargets,
+  thresholdPaceHints,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [edited, setEdited] = useState<PhaseTemplate>(template)
   const [saving, setSaving] = useState(false)
@@ -75,8 +86,24 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
     return `~${formatPaceForDiscipline(startPace, slot.type)} → ${formatPaceForDiscipline(peakPace, slot.type)}`
   }
 
-  const hardDays = new Set<number>([...edited.enduranceSlots.filter((s) => s.role === 'key').map((s) => s.day), ...edited.brickDays])
+  // 'threshold' slots are hard days too - same extension as
+  // buildPhaseTemplate's own hardDays set (day-template.ts), kept in
+  // sync here since this operates on `edited`, not the stored template.
+  const hardDays = new Set<number>([
+    ...edited.enduranceSlots.filter((s) => s.role === 'key' || s.role === 'threshold').map((s) => s.day),
+    ...edited.brickDays,
+  ])
   const restrictedDays = computeRestrictedStrengthDays(hardDays)
+
+  // Mirrors WeekDayList's own thresholdZoneTitle - qualitative guidance
+  // is the baseline for 'threshold' slots, this layers in the optional
+  // opportunistic recentTimeTrial-based pace hint when honestly available.
+  const thresholdZoneTitle = (slot: EnduranceSlot): string => {
+    const base = ZONE_GUIDANCE[slot.role][phase].full
+    if (slot.role !== 'threshold' || slot.type === 'cardio') return base
+    const hint = thresholdPaceHints?.[slot.type]
+    return hint != null ? `${base} Your recent time trial suggests a threshold pace around ${formatPaceForDiscipline(hint, slot.type)}.` : base
+  }
 
   const updateEnduranceDay = (index: number, day: number) => {
     setEdited((prev) => ({ ...prev, enduranceSlots: prev.enduranceSlots.map((s, i) => (i === index ? { ...s, day } : s)) }))
@@ -168,7 +195,7 @@ export default function PhaseTemplateDialog({ raceId, phase, template, allTempla
                       <span className="flex items-center gap-1.5 text-white/80">
                         <Icon className="w-4 h-4 text-white/40" />
                         {TYPE_LABEL[slot.type]} <span className="text-white/40 text-xs">({ROLE_LABEL[slot.role]})</span>
-                        <span className="text-white/30 text-xs" title={zone.full}>
+                        <span className="text-white/30 text-xs" title={thresholdZoneTitle(slot)}>
                           {zone.short}
                         </span>
                       </span>
