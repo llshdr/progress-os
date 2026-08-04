@@ -2,7 +2,7 @@ import type { TrainingPhase, TrainingWeekSkeleton, RaceApproach } from '@/lib/ra
 import type { Discipline } from '@/lib/race-plan/self-assessment'
 
 export type EnduranceSlotType = 'swim' | 'bike' | 'run' | 'cardio' // 'cardio' only for single-discipline races
-export type SlotRole = 'key' | 'easy' | 'technique' | 'threshold'
+export type SlotRole = 'key' | 'easy' | 'technique' | 'threshold' | 'vo2max'
 
 export interface SlotProgression {
   startShareFraction: number // this slot's share at week 0 of the phase, as a fraction of its target shareOfWeeklyTotal (e.g. 0.65 = starts at 65% of eventual target)
@@ -100,6 +100,26 @@ export const ZONE_GUIDANCE: Record<SlotRole, Record<TrainingPhase, { short: stri
       short: 'Short and sharp',
       full: "If included at all, keep it brief - a short, sharp reminder of race intensity, not a real training stimulus this close to race day.",
     },
+  },
+  // Genuine Zone 5/VO2max work - distinct from (and stacked, never
+  // additional to, the existing ~1-2 quality-sessions/week ceiling
+  // already enforced via 'threshold') - "the tap determines the floor":
+  // a higher max sustainable effort makes race-pace Zone 2 feel easier.
+  // Bike/swim only, never run (running full race distance in training
+  // and high running intensity are both universally advised against for
+  // injury-risk reasons - research confirmed, no exception carved out
+  // here) - see effectiveSlotRole below, the only place this role is
+  // ever actually assigned (ZONE_GUIDANCE still needs every phase for
+  // its Record<SlotRole, Record<TrainingPhase,...>> shape, even though
+  // only 'peak' is ever reached in practice).
+  vo2max: {
+    base: { short: 'N/A', full: 'No VO2max work in Base - foundation first.' },
+    build: { short: 'N/A', full: 'No VO2max work in Build - threshold work only until Peak.' },
+    peak: {
+      short: 'Zone 5, sparingly',
+      full: 'A genuine all-out effort - Zone 5, short high-intensity intervals, full recovery between reps. Used sparingly (at most every 2-3 weeks) to raise your performance ceiling, not as a regular training stimulus.',
+    },
+    taper: { short: 'N/A', full: 'No VO2max work this close to race day.' },
   },
 }
 
@@ -303,8 +323,13 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, ap
   // 'threshold' slots are hard days too - without this, the existing
   // strength-sequencing interference protection (computeRestrictedStrengthDays/
   // STRENGTH_SEQUENCING_NOTES) would silently not apply to them.
+  // 'vo2max' is included defensively - today it's only ever assigned by
+  // effectiveSlotRole at DISPLAY time (the stored role here is always
+  // still 'threshold', already covered above), so this is currently a
+  // no-op, but a VO2max effort is at least as demanding as threshold and
+  // must never lose this protection if that representation ever changes.
   const hardDays = new Set<number>([
-    ...enduranceSlots.filter((s) => s.role === 'key' || s.role === 'threshold').map((s) => s.day),
+    ...enduranceSlots.filter((s) => s.role === 'key' || s.role === 'threshold' || s.role === 'vo2max').map((s) => s.day),
     ...brickDays,
   ])
   const restrictedDays = computeRestrictedStrengthDays(hardDays)
@@ -420,4 +445,45 @@ export function thresholdPaceHint(discipline: Discipline, recentTimeTrial: { dis
   const window = THRESHOLD_TEST_WINDOW_SECONDS[discipline]
   if (recentTimeTrial.timeSeconds < window.min || recentTimeTrial.timeSeconds > window.max) return null
   return recentTimeTrial.timeSeconds / recentTimeTrial.distanceKm
+}
+
+// ─── VO2max cadence (Part A extension) ─────────────────────────────────
+// A genuine 5th slot role would need its own generated slot, but
+// computeDayByDayTemplates builds exactly ONE static template per phase,
+// reused for every week in it (see slotsForWeek) - there's no existing
+// per-week variation mechanism to hang "every 2-3 weeks" off inside
+// generation, and building one would be a far bigger change than this
+// warrants. So this stays a DISPLAY-time relabeling: the underlying
+// stored slot role is always still 'threshold' (same session, same
+// hardDays protection, same 1-per-discipline-per-week cap via
+// thresholdDayIndex above - this never adds a session, only relabels an
+// existing one on qualifying weeks). Only ever called from the real
+// per-week view (WeekDayList), never PhaseTemplateDialog - that dialog's
+// own copy says "Repeats every week of this phase," and a week-varying
+// label there would contradict it.
+//
+// Cadence: `% 3 === 2` gives exactly one qualifying week per 3-week
+// block (weeks 2, 5, 8, ...) - safely within "at most every 2-3 weeks"
+// (never more frequent), never the very first Peak week. A reasonable,
+// clearly-labeled cadence choice, not independently sourced to a
+// specific weekly modulus - same honesty precedent as this file's other
+// synthesized constants (KEY_SHARE, PROGRESSION_BY_PHASE).
+const VO2MAX_CADENCE_WEEKS = 3
+const VO2MAX_CADENCE_OFFSET = 2
+
+// Gated to race_focused/race_leaning/race_balanced-style approaches only
+// (never muscle_leaning/muscle_focused, which already deliberately route
+// intensity away from anything competing further with strength recovery
+// capacity - see buildEnduranceSlots' own muscleFocusedApproach comment)
+// and bike/swim only, never run (running full race distance in training,
+// and high running intensity generally, are both universally advised
+// against for injury-risk reasons - confirmed via research, no exception
+// carved out here).
+const VO2MAX_ELIGIBLE_APPROACHES: RaceApproach[] = ['race_focused', 'race_leaning', 'balanced']
+
+export function effectiveSlotRole(slot: EnduranceSlot, phase: TrainingPhase, weekIndexWithinPhase: number, approach: RaceApproach): SlotRole {
+  if (slot.role !== 'threshold') return slot.role
+  if (phase !== 'peak' || slot.type === 'run' || slot.type === 'cardio') return slot.role
+  if (!VO2MAX_ELIGIBLE_APPROACHES.includes(approach)) return slot.role
+  return weekIndexWithinPhase % VO2MAX_CADENCE_WEEKS === VO2MAX_CADENCE_OFFSET ? 'vo2max' : slot.role
 }

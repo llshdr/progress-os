@@ -71,6 +71,7 @@ import {
 } from '@/lib/race-plan/discipline-weakness'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
 import { resolvePeakPaceTargets, resolveEasyPaceTargets } from '@/lib/race-plan/pace-targets'
+import { resolveRealZone2Pace, computePaceGaps, describePaceGap, type PaceGap } from '@/lib/race-plan/goal-achievability'
 import { assessBenchmarkCompliance, type BenchmarkFlag, type DisruptionRange } from '@/lib/race-plan/benchmark-verification'
 import DisruptionDeclaration, { formatDateRange, type TrainingDisruption } from '@/components/races/disruption-declaration'
 import {
@@ -667,6 +668,23 @@ export default function RaceDetailPage() {
     category === 'multisport' && targetFinishSeconds != null && realismFlag && courseRange
       ? resolvePeakPaceTargets(race.race_type, null, courseRange)
       : null
+
+  // Concrete, real-data-grounded companion to realismFlag's qualitative
+  // TIME-based check - whenever a goal is actually stated, compares the
+  // pace it requires against the athlete's own real logged Zone 2 pace
+  // (never a placeholder - see resolveRealZone2Pace), citing the actual
+  // gap rather than just flagging "ambitious." Shown regardless of
+  // whether realismFlag already fired, since even a modest gap is real
+  // information the athlete asked to see.
+  const weeksUntilRace = Math.max(0, Math.round(daysUntil / 7))
+  const paceGaps: PaceGap[] =
+    category === 'multisport' && targetFinishSeconds != null && peakPaceTargets
+      ? computePaceGaps(peakPaceTargets, {
+          swim: resolveRealZone2Pace(comfortableEffortByDiscipline.swim, disciplineActivityFacts?.swim ?? null),
+          bike: resolveRealZone2Pace(comfortableEffortByDiscipline.bike, disciplineActivityFacts?.bike ?? null),
+          run: resolveRealZone2Pace(comfortableEffortByDiscipline.run, disciplineActivityFacts?.run ?? null),
+        })
+      : []
 
   // Real logged activity vs. this plan's planned key sessions - purely
   // computed at render time from data already fetched, same "no cache
@@ -1279,6 +1297,10 @@ export default function RaceDetailPage() {
                                 easyPaceTargets={easyPaceTargets}
                                 peakPaceTargets={peakPaceTargets}
                                 thresholdPaceHints={thresholdPaceHints}
+                                approach={plan.approach}
+                                paceGaps={paceGaps}
+                                weeksUntilRace={weeksUntilRace}
+                                level={level}
                               />
                             )}
                           </>
@@ -1398,18 +1420,22 @@ export default function RaceDetailPage() {
                   <p className="text-white/70 text-sm">{ZONE_GUIDANCE.key.peak.full}</p>
                   {peakPaceTargets && (
                     <div className="mt-2 space-y-1">
-                      {(['swim', 'bike', 'run'] as Discipline[]).map((d) => (
-                        <p key={d} className="text-white/60 text-sm">
-                          {DISCIPLINE_LABELS[d]}: ~{formatPaceForDiscipline(peakPaceTargets[d], d)}
-                          {safeCutoffPaceTargets && (
-                            <span className="text-white/40 text-xs">
-                              {' '}
-                              (a safe-cutoff pace would be ~{formatPaceForDiscipline(safeCutoffPaceTargets[d], d)} - reaching your goal takes real
-                              improvement, not just showing up)
-                            </span>
-                          )}
-                        </p>
-                      ))}
+                      {(['swim', 'bike', 'run'] as Discipline[]).map((d) => {
+                        const gap = paceGaps.find((g) => g.discipline === d)
+                        return (
+                          <p key={d} className="text-white/60 text-sm">
+                            {DISCIPLINE_LABELS[d]}: ~{formatPaceForDiscipline(peakPaceTargets[d], d)}
+                            {gap && <span className="text-white/40 text-xs"> ({describePaceGap(gap, weeksUntilRace, level)})</span>}
+                            {!gap && safeCutoffPaceTargets && (
+                              <span className="text-white/40 text-xs">
+                                {' '}
+                                (a safe-cutoff pace would be ~{formatPaceForDiscipline(safeCutoffPaceTargets[d], d)} - reaching your goal takes real
+                                improvement, not just showing up; not enough logged data yet for a more precise comparison)
+                              </span>
+                            )}
+                          </p>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

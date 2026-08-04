@@ -1,11 +1,12 @@
 import { TrendingUp } from 'lucide-react'
-import { enduranceSlotKmForWeek, ZONE_GUIDANCE, type EnduranceSlot, type WeekSlots } from '@/lib/race-plan/day-template'
-import type { TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
-import type { Discipline } from '@/lib/race-plan/self-assessment'
+import { enduranceSlotKmForWeek, effectiveSlotRole, ZONE_GUIDANCE, type EnduranceSlot, type SlotRole, type WeekSlots } from '@/lib/race-plan/day-template'
+import type { TrainingWeekSkeleton, RaceApproach } from '@/lib/race-plan/periodization'
+import type { Discipline, ExperienceLevel } from '@/lib/race-plan/self-assessment'
 import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, ROLE_LABEL, formatSlotKm, DAY_ABBREVIATIONS } from '@/components/races/day-slot-display'
 import { TRANSITION_GUIDANCE } from '@/lib/race-plan/race-day-prep'
 import { paceTargetForWeek } from '@/lib/race-plan/pace-targets'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
+import { describePaceGap, type PaceGap } from '@/lib/race-plan/goal-achievability'
 
 interface Props {
   slots: WeekSlots
@@ -23,6 +24,17 @@ interface Props {
   // just an optional numeric hint layered on top when it's honestly
   // available.
   thresholdPaceHints: Record<Discipline, number | null> | null
+  // Drives the sparingly-used VO2max relabeling (see effectiveSlotRole
+  // in day-template.ts) - gated to race_focused/race_leaning/balanced
+  // only, never muscle_leaning/muscle_focused.
+  approach: RaceApproach
+  // Real-data-grounded goal-achievability gap per discipline (see
+  // goal-achievability.ts) - empty when no goal is stated or no real
+  // Zone 2 pace is logged yet. Only ever shown on the Peak-phase 'key'
+  // slot's pace tooltip, where a numeric pace target already appears.
+  paceGaps: PaceGap[]
+  weeksUntilRace: number
+  level: ExperienceLevel
 }
 
 function kmForSlot(slot: EnduranceSlot, sameTypeSlots: EnduranceSlot[], week: TrainingWeekSkeleton, weekIndexWithinPhase: number): number {
@@ -42,9 +54,28 @@ function paceLabelForSlot(
   return formatPaceForDiscipline(pace, slot.type)
 }
 
-function thresholdZoneTitle(slot: EnduranceSlot, phase: TrainingWeekSkeleton['phase'], thresholdPaceHints: Record<Discipline, number | null> | null): string {
-  const base = ZONE_GUIDANCE[slot.role][phase].full
-  if (slot.role !== 'threshold' || slot.type === 'cardio') return base
+// Only meaningful once race pace actually applies (Peak, 'key' slot) -
+// same real-data-only, no-fabrication precedent as thresholdZoneTitle's
+// hint (only shown when a real gap was computed for this discipline).
+function paceGapTitle(slot: EnduranceSlot, week: TrainingWeekSkeleton, paceGaps: PaceGap[], weeksUntilRace: number, level: ExperienceLevel): string | undefined {
+  if (slot.type === 'cardio' || slot.role !== 'key' || week.phase !== 'peak') return undefined
+  const gap = paceGaps.find((g) => g.discipline === slot.type)
+  return gap ? describePaceGap(gap, weeksUntilRace, level) : undefined
+}
+
+// `displayRole` is the effective role for THIS specific week (may be
+// 'vo2max' on a qualifying Peak week even though the slot is still
+// stored as 'threshold' - see effectiveSlotRole) - the threshold-pace
+// hint only ever applies to the real 'threshold' guidance, never to a
+// VO2max week (that's qualitative-only, Zone 5 has no numeric target).
+function thresholdZoneTitle(
+  slot: EnduranceSlot,
+  displayRole: SlotRole,
+  phase: TrainingWeekSkeleton['phase'],
+  thresholdPaceHints: Record<Discipline, number | null> | null
+): string {
+  const base = ZONE_GUIDANCE[displayRole][phase].full
+  if (displayRole !== 'threshold' || slot.type === 'cardio') return base
   const hint = thresholdPaceHints?.[slot.type]
   return hint != null ? `${base} Your recent time trial suggests a threshold pace around ${formatPaceForDiscipline(hint, slot.type)}.` : base
 }
@@ -53,7 +84,18 @@ function thresholdZoneTitle(slot: EnduranceSlot, phase: TrainingWeekSkeleton['ph
 // this week." A vertical list (Mon-Sun), matching the gym Schedule
 // page's list-of-days pattern rather than a 7-column grid, since that
 // fits this app's mobile-first, monochrome design language better.
-export default function WeekDayList({ slots, week, weekIndexWithinPhase, easyPaceTargets, peakPaceTargets, thresholdPaceHints }: Props) {
+export default function WeekDayList({
+  slots,
+  week,
+  weekIndexWithinPhase,
+  easyPaceTargets,
+  peakPaceTargets,
+  thresholdPaceHints,
+  approach,
+  paceGaps,
+  weeksUntilRace,
+  level,
+}: Props) {
   return (
     <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
       {DAY_ABBREVIATIONS.map((label, day) => {
@@ -86,17 +128,22 @@ export default function WeekDayList({ slots, week, weekIndexWithinPhase, easyPac
                 const sameTypeSlots = slots.enduranceSlots.filter((s) => s.type === slot.type)
                 const km = kmForSlot(slot, sameTypeSlots, week, weekIndexWithinPhase)
                 const Icon = SLOT_TYPE_ICON[slot.type]
-                const zone = ZONE_GUIDANCE[slot.role][week.phase]
+                const displayRole = effectiveSlotRole(slot, week.phase, weekIndexWithinPhase, approach)
+                const zone = ZONE_GUIDANCE[displayRole][week.phase]
                 const paceLabel = paceLabelForSlot(slot, week, weekIndexWithinPhase, easyPaceTargets, peakPaceTargets)
                 return (
                   <span key={`${slot.type}-${i}`} className="flex items-center gap-1 text-xs text-white/70">
                     <Icon className="w-3.5 h-3.5 text-white/40" />
                     {TYPE_LABEL[slot.type]} {formatSlotKm(km)}
-                    <span className="text-white/40">({ROLE_LABEL[slot.role]})</span>
-                    <span className="text-white/30" title={thresholdZoneTitle(slot, week.phase, thresholdPaceHints)}>
+                    <span className="text-white/40">({ROLE_LABEL[displayRole]})</span>
+                    <span className="text-white/30" title={thresholdZoneTitle(slot, displayRole, week.phase, thresholdPaceHints)}>
                       {zone.short}
                     </span>
-                    {paceLabel && <span className="text-white/40">· ~{paceLabel}</span>}
+                    {paceLabel && (
+                      <span className="text-white/40" title={paceGapTitle(slot, week, paceGaps, weeksUntilRace, level)}>
+                        · ~{paceLabel}
+                      </span>
+                    )}
                     {slot.progression && <TrendingUp className="w-3 h-3 text-white/40" />}
                   </span>
                 )

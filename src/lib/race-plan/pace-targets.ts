@@ -43,19 +43,46 @@ export function computePeakPaceTargets(raceType: RaceType, totalSeconds: number,
   }
 }
 
+// The swim-exit/bike-finish elapsed-time fractions (splitFractions
+// above) already reflect REAL race data, which means the interval
+// between checkpoints already has real T1/T2 baked into it - dividing
+// that whole interval by distance alone silently waters down the
+// bike/run pace targets rather than reserving separate clock time for
+// transitions. Left unaddressed, hitting every displayed pace exactly
+// still produces goal + real T1 + real T2, not the goal itself.
+//
+// Two independent, meaningfully divergent published estimates for
+// full-distance age-group transitions: ~17 min combined T1+T2
+// (bettertriathlete.com, age-group average) vs. ~6-12 min total for a
+// ~12h finisher (marathonhandbook.com, citing MyTriWorld's ~2%-of-total
+// framing). Given that spread, 10 minutes is a defensible midpoint, not
+// a precise constant - same heuristic-with-a-comment precedent as this
+// file's own FALLBACK_EASY_PACE_SLOWDOWN. One combined figure, not a
+// separate T1/T2 split, since neither source cleanly separates them for
+// full-distance racing.
+const TYPICAL_TRANSITION_SECONDS = 10 * 60
+
 // target_finish_seconds when the athlete has stated one; otherwise the
 // band's SLOW end, not the midpoint - same honest-margin precedent as
 // the rest of this feature (see finish-time.ts's cutoff-risk framing) -
 // "safely clear cutoff with real margin" undersells nothing by
 // defaulting to an average case.
+//
+// The transition-time subtraction only applies when a real goal is
+// stated - for the no-goal/cutoff-margin basis, real transition time
+// eating into the existing safety margin is an acceptable
+// simplification (untouched, exactly as before).
 export function resolvePeakPaceTargets(
   raceType: RaceType,
   targetFinishSeconds: number | null,
   range: ProjectedRaceTimeRange | null
 ): Record<Discipline, number> | null {
   if (!range) return null
-  const totalSeconds = targetFinishSeconds ?? range.totalSecondsHigh
-  return computePeakPaceTargets(raceType, totalSeconds, range)
+  if (targetFinishSeconds != null) {
+    const budgetSeconds = Math.max(0, targetFinishSeconds - TYPICAL_TRANSITION_SECONDS)
+    return computePeakPaceTargets(raceType, budgetSeconds, range)
+  }
+  return computePeakPaceTargets(raceType, range.totalSecondsHigh, range)
 }
 
 // A clearly-labeled placeholder only reached when neither real signal is
