@@ -16,7 +16,10 @@ export interface CurrentFormResult {
   reason: string | null
 }
 
-const TIER_ORDER: ExperienceLevel[] = ['beginner', 'intermediate', 'advanced']
+// Exported so other modules (e.g. the aspirational finish-time
+// projection) can find "the next tier up" without duplicating this
+// ordering.
+export const TIER_ORDER: ExperienceLevel[] = ['beginner', 'intermediate', 'advanced']
 const TIER_LABEL: Record<ExperienceLevel, string> = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }
 const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
 

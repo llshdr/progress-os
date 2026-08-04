@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { raceTypeLabel, RACE_TYPE_DISTANCE, type RaceType } from '@/lib/race-constants'
 import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
 import { daysBetween } from '@/lib/goals'
-import { fetchCardioActivity } from '@/lib/cardio-stats'
+import { fetchCardioActivity, type CardioActivity } from '@/lib/cardio-stats'
 import { analyzeCurrentFitness, type FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
 import {
   RACE_APPROACH_LABELS,
@@ -26,7 +26,7 @@ import {
 } from '@/lib/race-plan/periodization'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
-import { deriveCurrentFormLevel } from '@/lib/race-plan/current-form'
+import { deriveCurrentFormLevel, TIER_ORDER } from '@/lib/race-plan/current-form'
 import { slotsForWeek, ZONE_GUIDANCE, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import { PACKING_LISTS, FUELING_GUIDANCE, TRANSITION_GUIDANCE, RACE_DAY_CHECKPOINTS, summarizeSeasonMismatch } from '@/lib/race-plan/race-day-prep'
 import { suggestMilestoneSessions } from '@/lib/race-plan/milestone-sessions'
@@ -63,6 +63,7 @@ import {
 } from '@/lib/race-plan/discipline-weakness'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
 import { resolvePeakPaceTargets, resolveEasyPaceTargets } from '@/lib/race-plan/pace-targets'
+import { assessBenchmarkCompliance, type BenchmarkFlag } from '@/lib/race-plan/benchmark-verification'
 import {
   fetchCourseProfile,
   fetchCourseTimeBand,
@@ -126,6 +127,7 @@ const PHASE_LABELS: Record<TrainingPhase, string> = {
 }
 
 const DISCIPLINE_LABELS: Record<Discipline, string> = { swim: 'Swim', bike: 'Bike', run: 'Run' }
+const TIER_LABELS: Record<ExperienceLevel, string> = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }
 
 function formatWeekDate(dateString: string): string {
   return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -254,6 +256,28 @@ function CutoffRiskBanner({ flags }: { flags: CutoffRiskFlag[] }) {
   )
 }
 
+// One tier softer than CutoffRiskBanner (amber, not red) - a real,
+// actionable adherence issue, not a finish-risk emergency. Includes a
+// direct Regenerate action since that's the one corrective step this
+// feature ever recommends - never silent auto-replanning.
+function BenchmarkComplianceBanner({ flags, onRegenerate }: { flags: BenchmarkFlag[]; onRegenerate: () => void }) {
+  if (flags.length === 0) return null
+
+  return (
+    <div className="border border-amber-500/30 rounded-2xl bg-amber-500/[0.06] p-4">
+      <p className="text-amber-300 text-sm font-semibold mb-1">Falling behind plan</p>
+      {flags.map((f) => (
+        <p key={f.discipline} className="text-amber-200/80 text-xs mt-1">
+          {f.message}
+        </p>
+      ))}
+      <button onClick={onRegenerate} className="text-amber-200 text-xs font-medium underline underline-offset-2 mt-2 hover:text-amber-100 transition-colors">
+        Regenerate Plan
+      </button>
+    </div>
+  )
+}
+
 export default function RaceDetailPage() {
   const params = useParams()
   const raceId = params.id as string
@@ -263,6 +287,7 @@ export default function RaceDetailPage() {
   const [plan, setPlan] = useState<Plan | null>(null)
   const [snapshot, setSnapshot] = useState<FitnessSnapshot | null>(null)
   const [disciplineActivityFacts, setDisciplineActivityFacts] = useState<Record<Discipline, DisciplineActivityFacts> | null>(null)
+  const [cardioActivities, setCardioActivities] = useState<CardioActivity[]>([])
   const [courseProfile, setCourseProfile] = useState<RaceCourseProfile | null>(null)
   const [courseTimeBands, setCourseTimeBands] = useState<Partial<Record<ExperienceLevel, RaceCourseTimeBand | null>>>({})
   const [courseCutoffs, setCourseCutoffs] = useState<RaceCourseCutoff[]>([])
@@ -391,6 +416,7 @@ export default function RaceDetailPage() {
       setPlan({ approach: planRow.approach, overview: planRow.overview, weeks: planRow.weeks, phaseTemplates: planRow.phase_templates ?? {} })
       setApproach(planRow.approach)
       setStep('review')
+      setCardioActivities(await fetchCardioActivity(supabase))
     }
 
     const facts = await analyzeCurrentFitness(supabase, user.id, raceId)
@@ -555,6 +581,17 @@ export default function RaceDetailPage() {
     category === 'multisport' && snapshot
       ? estimateCourseFinishRange(race.race_type, level, snapshot.pastRaceResults, race.courseId, courseTimeBands[level] ?? null)
       : null
+
+  // Aspirational, clearly-secondary projection: reuses estimateCourseFinishRange
+  // verbatim with the NEXT tier up - zero new calculation. Gated on real
+  // evidence already existing (not shown before there's anything to
+  // project from) and undefined at the top tier (nothing further to show).
+  const nextTier = TIER_ORDER[TIER_ORDER.indexOf(currentForm.level) + 1] as ExperienceLevel | undefined
+  const aspirationalRange =
+    category === 'multisport' && nextTier && snapshot && currentForm.evidence !== 'insufficient'
+      ? estimateCourseFinishRange(race.race_type, nextTier, snapshot.pastRaceResults, race.courseId, courseTimeBands[nextTier] ?? null)
+      : null
+
   const cutoffRiskFlags: CutoffRiskFlag[] = courseRange ? assessCutoffRisk(courseRange, courseCutoffs) : []
   const hasCutoffRisk = cutoffRiskFlags.some((f) => f.risk === 'risk')
   const readinessFlags = category === 'multisport' && disciplineActivityFacts ? assessMultisportReadiness(disciplineActivityFacts, daysUntil) : []
@@ -564,8 +601,6 @@ export default function RaceDetailPage() {
       : category === 'multisport' && targetFinishSeconds != null && courseRange != null
         ? assessGoalRealismForRange(targetFinishSeconds, courseRange)
         : null
-  const allFlags = [...tensionFlags, ...readinessFlags, ...cutoffRiskFlags.map((f) => f.message), ...(realismFlag ? [realismFlag] : [])]
-
   // Peak-phase (= race-day) target pace per discipline, derived from the
   // stated goal time when set, else the course band's slow end (same
   // honest-margin basis the rest of this feature already uses) - and
@@ -587,6 +622,24 @@ export default function RaceDetailPage() {
     category === 'multisport' && targetFinishSeconds != null && realismFlag && courseRange
       ? resolvePeakPaceTargets(race.race_type, null, courseRange)
       : null
+
+  // Real logged activity vs. this plan's planned key sessions - purely
+  // computed at render time from data already fetched, same "no cache
+  // table, never silent auto-replanning" precedent as every other flag
+  // here. Only meaningful once a plan actually exists.
+  const benchmarkFlags = plan
+    ? assessBenchmarkCompliance(plan, cardioActivities, currentWeekStartDate, category, easyPaceTargets, peakPaceTargets)
+    : []
+  const behindBenchmarkFlags = benchmarkFlags.filter((f) => f.status === 'behind')
+  const watchBenchmarkFlags = benchmarkFlags.filter((f) => f.status === 'watch')
+
+  const allFlags = [
+    ...tensionFlags,
+    ...readinessFlags,
+    ...cutoffRiskFlags.map((f) => f.message),
+    ...(realismFlag ? [realismFlag] : []),
+    ...watchBenchmarkFlags.map((f) => f.message),
+  ]
 
   const disciplineInputs =
     category === 'multisport' && disciplineWeakness && disciplineActivityFacts
@@ -973,6 +1026,7 @@ export default function RaceDetailPage() {
         {step === 'review' && plan && snapshot && (
           <div className="space-y-8">
             <CutoffRiskBanner flags={cutoffRiskFlags} />
+            <BenchmarkComplianceBanner flags={behindBenchmarkFlags} onRegenerate={() => setStep('spectrum')} />
 
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
               <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
@@ -1282,6 +1336,19 @@ export default function RaceDetailPage() {
                       {courseRange
                         ? `${formatDuration(courseRange.totalSecondsLow)}–${formatDuration(courseRange.totalSecondsHigh)}`
                         : formatDuration(projectedFinishSeconds!)}
+                    </p>
+                  </div>
+                )}
+
+                {aspirationalRange && nextTier && (
+                  <div>
+                    <p className="text-xs text-white/40 mb-1">If You Progress Further</p>
+                    <p className="text-white/60 text-sm">
+                      {formatDuration(aspirationalRange.totalSecondsLow)}–{formatDuration(aspirationalRange.totalSecondsHigh)}
+                    </p>
+                    <p className="text-white/40 text-xs mt-1 max-w-sm">
+                      If your real training reaches {TIER_LABELS[nextTier]}-level fitness by race day - the same tracking already updating your
+                      projection above - your range could look more like this. Not a promise, just where the evidence would point.
                     </p>
                   </div>
                 )}
