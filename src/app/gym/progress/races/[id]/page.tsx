@@ -28,7 +28,15 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { deriveCurrentFormLevel, TIER_ORDER } from '@/lib/race-plan/current-form'
 import { slotsForWeek, ZONE_GUIDANCE, thresholdPaceHint, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
-import { PACKING_LISTS, FUELING_GUIDANCE, TRANSITION_GUIDANCE, RACE_DAY_CHECKPOINTS, summarizeSeasonMismatch, DISRUPTION_GUIDANCE } from '@/lib/race-plan/race-day-prep'
+import {
+  PACKING_LISTS,
+  FUELING_GUIDANCE,
+  TRANSITION_GUIDANCE,
+  RACE_DAY_CHECKPOINTS,
+  summarizeSeasonMismatch,
+  DISRUPTION_GUIDANCE,
+  ACCLIMATION_GUIDANCE,
+} from '@/lib/race-plan/race-day-prep'
 import { suggestMilestoneSessions } from '@/lib/race-plan/milestone-sessions'
 import { TYPE_LABEL } from '@/components/races/day-slot-display'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
@@ -96,6 +104,7 @@ type PlanWeek = {
   targetCardioSessions: number
   targetStrengthSessions: number
   focusNote: string
+  isAcclimation: boolean
 }
 
 type Plan = {
@@ -700,14 +709,19 @@ export default function RaceDetailPage() {
 
   const stepSequence: Step[] = category === 'multisport' ? ['confirm', 'assessment', 'weakness', 'snapshot', 'spectrum'] : ['confirm', 'assessment', 'snapshot', 'spectrum']
 
-  const weeksByPhase: { phase: TrainingPhase; weeks: PlanWeek[] }[] = []
+  // Acclimation weeks are phase: 'base' underneath (see periodization.ts's
+  // TrainingWeekSkeleton.isAcclimation) but grouped separately here so they
+  // get their own "Acclimation" heading instead of merging into "Base
+  // Phase" - the (phase, isAcclimation) composite key is what keeps them
+  // split even though both share the same phase value.
+  const weeksByPhase: { phase: TrainingPhase; isAcclimation: boolean; weeks: PlanWeek[] }[] = []
   if (plan) {
     for (const week of plan.weeks) {
-      const group = weeksByPhase.find((g) => g.phase === week.phase)
+      const group = weeksByPhase.find((g) => g.phase === week.phase && g.isAcclimation === week.isAcclimation)
       if (group) {
         group.weeks.push(week)
       } else {
-        weeksByPhase.push({ phase: week.phase, weeks: [week] })
+        weeksByPhase.push({ phase: week.phase, isAcclimation: week.isAcclimation, weeks: [week] })
       }
     }
   }
@@ -716,16 +730,20 @@ export default function RaceDetailPage() {
   // session worth flagging for intra-workout fueling - reuses the
   // already-computed phase templates rather than estimating session
   // duration from scratch (see race-day-prep.ts's FUELING_GUIDANCE).
+  // Deduped by phase (not by weeksByPhase group) since acclimation and
+  // real Base share the same underlying phase template - showing "Base:"
+  // twice would be a duplicate, not new information.
+  const fuelingPhases = Array.from(new Set(weeksByPhase.map((g) => g.phase)))
   const fuelingPhaseSummaries: { phase: TrainingPhase; summary: string }[] = plan
-    ? weeksByPhase
-        .map((group) => {
-          const template = plan.phaseTemplates[group.phase]
+    ? fuelingPhases
+        .map((phase) => {
+          const template = plan.phaseTemplates[phase]
           if (!template) return null
           const keySlots = template.enduranceSlots.filter((s) => s.role === 'key')
           if (keySlots.length === 0 && template.brickDays.length === 0) return null
           const parts: string[] = keySlots.map((s) => `${TYPE_LABEL[s.type]} key session`)
           if (template.brickDays.length > 0) parts.push(`${template.brickDays.length} brick session(s)`)
-          return { phase: group.phase, summary: parts.join(', ') }
+          return { phase, summary: parts.join(', ') }
         })
         .filter((s): s is { phase: TrainingPhase; summary: string } => s != null)
     : []
@@ -1164,10 +1182,13 @@ export default function RaceDetailPage() {
             </div>
 
             {weeksByPhase.map((group) => (
-              <div key={group.phase}>
+              <div key={`${group.phase}-${group.isAcclimation}`}>
                 <div className="flex items-center gap-3 mb-1">
-                  <h3 className="text-sm font-medium text-white/60">{PHASE_LABELS[group.phase]} Phase</h3>
-                  {plan.phaseTemplates[group.phase] && (
+                  <h3 className="text-sm font-medium text-white/60">{group.isAcclimation ? 'Acclimation' : `${PHASE_LABELS[group.phase]} Phase`}</h3>
+                  {/* Editing here reuses the shared Base template, which also governs
+                      real Base weeks - hidden for the acclimation group so "edit" isn't
+                      offered from a heading it wouldn't be scoped to. */}
+                  {!group.isAcclimation && plan.phaseTemplates[group.phase] && (
                     <PhaseTemplateDialog
                       raceId={raceId}
                       phase={group.phase}
@@ -1181,6 +1202,7 @@ export default function RaceDetailPage() {
                     />
                   )}
                 </div>
+                {group.isAcclimation && <p className="text-white/40 text-xs mb-1">{ACCLIMATION_GUIDANCE}</p>}
                 <p className="text-white/40 text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
                 <p className="text-white/40 text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
                 <div className="grid gap-3">

@@ -157,3 +157,12 @@ export const DISRUPTION_GUIDANCE: Record<'travel' | 'illness' | 'other', string>
   other:
     "Take the time you need. When you're ready, resume the plan as normal, or Regenerate if your real training has shifted meaningfully from where the plan assumed you'd be.",
 }
+
+// ─── Acclimation guidance (Part B) ─────────────────────────────────────
+// Shown once per acclimation block, not per week - these weeks are
+// still phase: 'base' underneath (see TrainingWeekSkeleton.isAcclimation
+// in periodization.ts), so ZONE_GUIDANCE/STRENGTH_SEQUENCING_NOTES for
+// 'base' already apply accurately; this is the one extra sentence
+// explaining why this block is being shown before "Base Phase" at all.
+export const ACCLIMATION_GUIDANCE =
+  "This block isn't about building fitness yet - it's about getting your body and schedule used to training across three disciplines plus strength. Keep everything easy; the real ramp starts once this block ends."

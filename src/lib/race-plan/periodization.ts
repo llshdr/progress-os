@@ -35,6 +35,13 @@ export interface TrainingWeekSkeleton {
   targetCardioKm: number
   targetCardioSessions: number
   targetStrengthSessions: number
+  // True for a prepended Acclimation block (see computeAcclimationWeeks) -
+  // still phase: 'base' underneath (reuses Base's own generation rules
+  // for free: technique-only swim, no threshold work), this flag is only
+  // for distinguishing DISPLAY - a different heading/guidance text, never
+  // a different TrainingPhase value. Always false for every existing
+  // week/plan (purely additive).
+  isAcclimation: boolean
 }
 
 const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
@@ -173,6 +180,107 @@ function disciplineBaselineKm(discipline: Discipline, level: ExperienceLevel, ac
   // targeted), but never understates a real, already-established habit.
   const levelFloor = LEVEL_PEAK_KM[level][discipline] * BASE_START_FRACTION_OF_PEAK
   return Math.max(activityFacts.recentAvgWeeklyKm, levelFloor)
+}
+
+// ─── Acclimation (pre-Base) ───────────────────────────────────────────
+// Real 1-year Ironman guides for genuine beginners include a dedicated
+// block before Base even starts - very light volume, zero intensity,
+// purely about the body/schedule adapting to training across three
+// disciplines plus strength, not building fitness yet (that's what
+// Base itself already does - see ZONE_GUIDANCE.key.base in
+// day-template.ts). Deliberately kept as phase: 'base' under the hood
+// (see TrainingWeekSkeleton.isAcclimation) rather than a new
+// TrainingPhase value - reuses Base's own generation rules (technique-
+// only swim, no threshold work per buildEnduranceSlots' phase !== 'base'
+// exclusion) for free, instead of requiring a considered entry in every
+// existing Record<TrainingPhase, X> table across this feature.
+
+// A reasonable two-tier mapping from the commonly-cited ~2.5-4.5 month
+// range - not a precise continuous formula, same honesty precedent as
+// MIN_WEEKS_FOR_MILESTONE/WATCH_RATIO_THRESHOLD elsewhere in this
+// feature.
+const NO_CARDIO_BASE_WEAK_STRENGTH_WEEKS = 18 // ~4.5 months - true couch-to-Ironman
+const NO_CARDIO_BASE_STRONG_STRENGTH_WEEKS = 10 // ~2.5 months - strong general fitness, no endurance base
+const STRONG_STRENGTH_HABIT_SESSIONS_PER_WEEK = 3
+
+// Same "long enough runway" bar MIN_WEEKS_FOR_MILESTONE already
+// established (milestone-sessions.ts) - kept as its own local constant
+// rather than an import, since periodization.ts is the more
+// foundational module (milestone-sessions.ts already depends on it,
+// not the other way around) - same small-local-duplication precedent
+// as TIER_LABEL existing independently in multiple files already.
+const MIN_WEEKS_AFTER_ACCLIMATION = 24
+
+// Zero real signal here means "never invent a capability" doesn't apply
+// the usual way - real recent cardio activity (any discipline) means
+// acclimation isn't needed at all, regardless of how long the runway
+// is; only genuine zero cardio history triggers it.
+export function acclimationWeeksNeeded(activityFacts: Record<Discipline, DisciplineActivityFacts>, recentStrengthSessionsPerWeek: number): number {
+  const hasAnyCardioBase = DISCIPLINES.some((d) => activityFacts[d].weeksActiveOf8 > 0)
+  if (hasAnyCardioBase) return 0
+
+  return recentStrengthSessionsPerWeek >= STRONG_STRENGTH_HABIT_SESSIONS_PER_WEEK
+    ? NO_CARDIO_BASE_STRONG_STRENGTH_WEEKS
+    : NO_CARDIO_BASE_WEAK_STRENGTH_WEEKS
+}
+
+// Ramps gently from a non-trivial starting point up to exactly meet the
+// real first Base week's own km (passed in as `endKm` - see its caller)
+// by its last week, so the transition into real Base is continuous, not
+// a jump. 0.7 (not a rounder 0.5) is chosen specifically because it
+// keeps every week-over-week increase within the commonly-cited "never
+// increase weekly volume by more than 10%" rule across this function's
+// actual weeksNeeded range (10-18) - verified via trace, not just
+// asserted (a linear ramp starting lower, e.g. 0.5, breaks 10% in its
+// very first transition).
+const ACCLIMATION_START_FRACTION_OF_BASE_FLOOR = 0.7
+
+function computeAcclimationWeeks(
+  startMonday: Date,
+  weeksNeeded: number,
+  approach: RaceApproach,
+  currentStrengthSessionsPerWeek: number,
+  endKm: Record<Discipline, number>
+): TrainingWeekSkeleton[] {
+  const startKm = {} as Record<Discipline, number>
+  for (const d of DISCIPLINES) {
+    startKm[d] = endKm[d] * ACCLIMATION_START_FRACTION_OF_BASE_FLOOR
+  }
+
+  // Reuses the existing Base-phase strength cap directly (acclimation
+  // weeks are phase: 'base' underneath) - flat throughout, same as
+  // every other non-key-role concept here; the point is establishing
+  // the habit, not progressing it yet.
+  const targetStrengthSessions = strengthSessionsForWeek('base', approach, currentStrengthSessionsPerWeek)
+
+  return Array.from({ length: weeksNeeded }, (_, i) => {
+    const weekStart = new Date(startMonday)
+    weekStart.setDate(weekStart.getDate() + i * 7)
+    const weekStartDate = getLocalDateString(weekStart)
+
+    const progress = weeksNeeded <= 1 ? 1 : i / (weeksNeeded - 1)
+    const disciplines = {} as { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget }
+    let totalKm = 0
+    let totalSessions = 0
+    for (const d of DISCIPLINES) {
+      const km = Math.round((startKm[d] + (endKm[d] - startKm[d]) * progress) * 10) / 10
+      const sessions = km > 0 ? Math.max(1, Math.min(DISCIPLINE_MAX_SESSIONS[d], Math.round(km / TYPICAL_SESSION_KM[d]))) : 0
+      disciplines[d] = { km, sessions }
+      totalKm += km
+      totalSessions += sessions
+    }
+
+    return {
+      weekStartDate,
+      phase: 'base' as const,
+      disciplines,
+      brickSessions: 0, // no bricks yet - too early for multi-discipline race simulation
+      targetCardioKm: Math.round(totalKm * 10) / 10,
+      targetCardioSessions: totalSessions,
+      targetStrengthSessions,
+      isAcclimation: true,
+    }
+  })
 }
 
 interface PhaseAllocation {
@@ -479,8 +587,37 @@ export function computeTrainingWeeks(
 ): TrainingWeekSkeleton[] {
   // null/undefined means "start now" - preserves existing behavior for
   // every race with no explicit chosen training start.
-  const startMonday = startDate ? getLocalWeekStart(new Date(startDate + 'T00:00:00')) : getLocalWeekStart()
+  const requestedStartMonday = startDate ? getLocalWeekStart(new Date(startDate + 'T00:00:00')) : getLocalWeekStart()
   const raceMonday = getLocalWeekStart(new Date(raceDate + 'T00:00:00'))
+  const requestedDiffWeeks = Math.round((raceMonday.getTime() - requestedStartMonday.getTime()) / (7 * 86400000))
+  const requestedTotalWeeks = Math.max(1, requestedDiffWeeks + 1)
+
+  // Acclimation - how many weeks are needed (if any) is decided BEFORE
+  // any of the ramp/phase math below runs, purely to shift the start
+  // date, so allocatePhases/rampValue/the recovery-week cadence are
+  // completely unaffected by its existence, by construction. Only
+  // offered when there's still a real runway left for Base/Build/Peak/
+  // Taper afterward (MIN_WEEKS_AFTER_ACCLIMATION - the same "long enough
+  // runway" bar MIN_WEEKS_FOR_MILESTONE already established for
+  // milestone sessions). The actual per-week content is generated later
+  // in this function (see acclimationWeeks below), once the real Base
+  // ramp's own week-0 values are known - needed so acclimation's last
+  // week can target that exact value, not just Base's starting floor,
+  // for a genuinely continuous transition (see computeAcclimationWeeks).
+  let weeksNeeded = 0
+  if (disciplineInputs) {
+    const candidate = acclimationWeeksNeeded(disciplineInputs.activityFacts, currentStrengthSessionsPerWeek)
+    if (candidate > 0 && requestedTotalWeeks >= candidate + MIN_WEEKS_AFTER_ACCLIMATION) {
+      weeksNeeded = candidate
+    }
+  }
+
+  // Everything below this point through disciplineBaselines/disciplinePeaks
+  // is the existing Base/Build/Peak/Taper computation, entirely
+  // unmodified - just anchored at a start date shifted later by however
+  // many acclimation weeks will be prepended (zero shift, i.e. identical
+  // to today, when acclimation doesn't apply).
+  const startMonday = new Date(requestedStartMonday.getTime() + weeksNeeded * 7 * 86400000)
   const diffWeeks = Math.round((raceMonday.getTime() - startMonday.getTime()) / (7 * 86400000))
   const totalWeeks = Math.max(1, diffWeeks + 1)
 
@@ -514,9 +651,28 @@ export function computeTrainingWeeks(
     }
   }
 
+  // Acclimation's actual per-week content, generated now that the real
+  // Base ramp's own week-0 values are known - each discipline's
+  // acclimation end-target is set to EXACTLY what rampValue computes for
+  // phase 'base', weekIndex 0 (the first real week after acclimation),
+  // not the bare disciplineBaselineKm floor. Those two numbers differ by
+  // rampValue's own week-0 step (baseline + one ramp increment), and
+  // using the floor directly produced a real jump (~5-13% in testing) at
+  // the acclimation-to-Base boundary - using the real week-0 value
+  // instead closes that gap, matching the "continuous, not a jump"
+  // requirement this block was designed around.
+  let acclimationWeeks: TrainingWeekSkeleton[] = []
+  if (weeksNeeded > 0 && disciplineInputs && disciplineBaselines && disciplinePeaks) {
+    const firstRealWeekKm = {} as Record<Discipline, number>
+    for (const d of DISCIPLINES) {
+      firstRealWeekKm[d] = rampValue(disciplineBaselines[d], disciplinePeaks[d], 'base', 0, rampWeeks, allocation, 0)
+    }
+    acclimationWeeks = computeAcclimationWeeks(requestedStartMonday, weeksNeeded, approach, currentStrengthSessionsPerWeek, firstRealWeekKm)
+  }
+
   let taperIndex = 0
 
-  return phases.map((phase, i) => {
+  return [...acclimationWeeks, ...phases.map((phase, i) => {
     const weekStart = new Date(startMonday)
     weekStart.setDate(weekStart.getDate() + i * 7)
     const weekStartDate = getLocalDateString(weekStart)
@@ -554,6 +710,6 @@ export function computeTrainingWeeks(
 
     if (phase === 'taper') taperIndex += 1
 
-    return { weekStartDate, phase, disciplines, brickSessions, targetCardioKm, targetCardioSessions, targetStrengthSessions }
-  })
+    return { weekStartDate, phase, disciplines, brickSessions, targetCardioKm, targetCardioSessions, targetStrengthSessions, isAcclimation: false }
+  })]
 }
