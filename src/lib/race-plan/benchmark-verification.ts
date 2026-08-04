@@ -1,5 +1,5 @@
 import type { Discipline, RaceCategory } from '@/lib/race-plan/self-assessment'
-import type { TrainingWeekSkeleton, TrainingPhase } from '@/lib/race-plan/periodization'
+import type { TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
 import { slotsForWeek, enduranceSlotKmForWeek, type EnduranceSlotType, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import { classifyDiscipline } from '@/lib/race-plan/discipline-weakness'
 import type { CardioActivity } from '@/lib/cardio-stats'
@@ -85,12 +85,21 @@ export function assessBenchmarkCompliance(
 
   // Grouped once, self-contained rather than depending on a caller's own
   // phase grouping - lets weekIndexWithinPhase be computed the same way
-  // every other consumer of SlotProgression already does.
-  const weeksByPhase = new Map<TrainingPhase, TrainingWeekSkeleton[]>()
+  // every other consumer of SlotProgression already does. Keyed by
+  // (phase, isAcclimation), not phase alone - acclimation weeks are
+  // phase: 'base' underneath (see periodization.ts's
+  // TrainingWeekSkeleton.isAcclimation) but are a separate block, same
+  // composite-key precedent page.tsx's own weeksByPhase grouping already
+  // uses. Currently a no-op either way (Base has no within-phase
+  // progression to index into), but keeps this file from silently
+  // drifting from that precedent if Base ever gains one.
+  const phaseGroupKey = (week: TrainingWeekSkeleton) => `${week.phase}:${week.isAcclimation}`
+  const weeksByPhase = new Map<string, TrainingWeekSkeleton[]>()
   for (const week of plan.weeks) {
-    const list = weeksByPhase.get(week.phase) ?? []
+    const key = phaseGroupKey(week)
+    const list = weeksByPhase.get(key) ?? []
     list.push(week)
-    weeksByPhase.set(week.phase, list)
+    weeksByPhase.set(key, list)
   }
 
   const flags: BenchmarkFlag[] = []
@@ -105,7 +114,7 @@ export function assessBenchmarkCompliance(
 
       const template = plan.phaseTemplates[week.phase]
       if (!template) continue
-      const phaseWeeks = weeksByPhase.get(week.phase)!
+      const phaseWeeks = weeksByPhase.get(phaseGroupKey(week))!
       const weekIndexWithinPhase = phaseWeeks.indexOf(week)
 
       const slots = slotsForWeek(template, week)

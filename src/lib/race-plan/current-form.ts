@@ -1,5 +1,6 @@
 import type { Discipline, ExperienceLevel } from '@/lib/race-plan/self-assessment'
 import type { DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
+import type { FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
 import { LEVEL_PEAK_KM, BASE_START_FRACTION_OF_PEAK } from '@/lib/race-plan/periodization'
 
 export interface CurrentFormResult {
@@ -75,4 +76,27 @@ export function deriveCurrentFormLevel(
     evidence: 'updated',
     reason: `Your logged swim/bike/run volume over the last 4 weeks is ${direction} ${TIER_LABEL[derivedLevel]} than your original ${TIER_LABEL[baselineLevel]} self-assessment - so the projection below reflects ${TIER_LABEL[derivedLevel]}-level training outcomes for this course.`,
   }
+}
+
+// Run-race counterpart to deriveCurrentFormLevel above. There's no
+// ExperienceLevel volume banding for standalone single-discipline
+// running the way LEVEL_PEAK_KM provides for multisport (those bands
+// are calibrated to full-Ironman discipline splits, not marathon/10k
+// training), and `level` has no numeric consumer for run races today
+// (Riegel's projection and the realism checks don't take a tier) - so
+// this deliberately doesn't derive a tier, only whether there's real
+// recent evidence at all. Uses snapshot.cardio (already fetched and
+// already used elsewhere for run races - estimateProjectedFinishSeconds,
+// computeTensionFlags) instead of the swim/bike/run-specific
+// disciplineActivityFacts that's multisport-only, so a run racer's real
+// logged running finally counts instead of always reading as
+// "insufficient" with a message that mentions swim/bike it never had.
+export function deriveRunFormEvidence(cardio: FitnessSnapshot['cardio']): { evidence: 'insufficient' | 'confirmed'; reason: string | null } {
+  if (cardio.weeksActive === 0) {
+    return {
+      evidence: 'insufficient',
+      reason: "This projection isn't personalized to your real training yet since there's no logged running activity in the last 8 weeks. Log some runs and it'll better reflect your real trajectory.",
+    }
+  }
+  return { evidence: 'confirmed', reason: null }
 }

@@ -26,7 +26,7 @@ import {
 } from '@/lib/race-plan/periodization'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
-import { deriveCurrentFormLevel, TIER_ORDER } from '@/lib/race-plan/current-form'
+import { deriveCurrentFormLevel, deriveRunFormEvidence, TIER_ORDER } from '@/lib/race-plan/current-form'
 import { slotsForWeek, ZONE_GUIDANCE, thresholdPaceHint, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import {
   PACKING_LISTS,
@@ -70,7 +70,7 @@ import {
   type DisciplineActivityFacts,
 } from '@/lib/race-plan/discipline-weakness'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
-import { resolvePeakPaceTargets, resolveEasyPaceTargets } from '@/lib/race-plan/pace-targets'
+import { resolvePeakPaceTargets, resolveEasyPaceTargets, TYPICAL_TRANSITION_SECONDS } from '@/lib/race-plan/pace-targets'
 import { resolveRealZone2Pace, computePaceGaps, describePaceGap, type PaceGap } from '@/lib/race-plan/goal-achievability'
 import { assessBenchmarkCompliance, type BenchmarkFlag, type DisruptionRange } from '@/lib/race-plan/benchmark-verification'
 import DisruptionDeclaration, { formatDateRange, type TrainingDisruption } from '@/components/races/disruption-declaration'
@@ -78,6 +78,7 @@ import {
   fetchCourseProfile,
   fetchCourseTimeBand,
   fetchCourseCutoffs,
+  describeCourseDifficulty,
   type RaceCourseProfile,
   type RaceCourseTimeBand,
   type RaceCourseCutoff,
@@ -608,6 +609,14 @@ export default function RaceDetailPage() {
   // numbers.
   const currentForm = deriveCurrentFormLevel(baselineLevel, disciplineActivityFacts)
   const level = currentForm.level
+  // deriveCurrentFormLevel's tier logic is inherently multisport (LEVEL_PEAK_KM
+  // has no single-discipline-running equivalent, and `level` has no numeric
+  // consumer for run races) - currentForm.reason for a run race is always
+  // its permanent "insufficient... no logged swim/bike/run activity"
+  // message, which is both wrong (real logged running is never checked)
+  // and nonsensical (mentions disciplines a runner never had). Use the
+  // run-specific evidence check instead for that category.
+  const currentFormReason = category === 'run' ? (snapshot ? deriveRunFormEvidence(snapshot.cardio).reason : null) : currentForm.reason
   const tensionFlags = snapshot ? computeTensionFlags(selfAssessment, snapshot) : []
   const projectedFinishSeconds = snapshot ? estimateProjectedFinishSeconds(race.race_type, snapshot) : null
   const courseRange =
@@ -932,7 +941,7 @@ export default function RaceDetailPage() {
                   targetFinishSeconds={targetFinishSeconds}
                   projectedFinishSeconds={projectedFinishSeconds}
                   courseRange={courseRange}
-                  reason={currentForm.reason}
+                  reason={currentFormReason}
                 />
               </div>
             )}
@@ -1020,6 +1029,10 @@ export default function RaceDetailPage() {
                 <h2 className="text-lg font-medium text-white mb-3">About This Course</h2>
                 {courseProfile && (
                   <div className="space-y-1">
+                    {describeCourseDifficulty(courseProfile.difficultyFactor) && (
+                      <p className="text-white/70 text-sm">{describeCourseDifficulty(courseProfile.difficultyFactor)}</p>
+                    )}
+                    {courseProfile.elevationGainM != null && <p className="text-white/70 text-sm">Elevation gain: ~{courseProfile.elevationGainM}m</p>}
                     {courseProfile.swimNotes && <p className="text-white/70 text-sm">Swim: {courseProfile.swimNotes}</p>}
                     {courseProfile.bikeNotes && <p className="text-white/70 text-sm">Bike: {courseProfile.bikeNotes}</p>}
                     {courseProfile.runNotes && <p className="text-white/70 text-sm">Run: {courseProfile.runNotes}</p>}
@@ -1074,7 +1087,7 @@ export default function RaceDetailPage() {
                 onTargetFinishSecondsChange={setTargetFinishSeconds}
                 disciplineInputs={disciplineInputs}
                 muscleVolume={snapshot.muscleVolume}
-                currentFormReason={currentForm.reason}
+                currentFormReason={currentFormReason}
               />
 
               <Button
@@ -1161,7 +1174,7 @@ export default function RaceDetailPage() {
                   targetFinishSeconds={targetFinishSeconds}
                   projectedFinishSeconds={projectedFinishSeconds}
                   courseRange={courseRange}
-                  reason={currentForm.reason}
+                  reason={currentFormReason}
                 />
               </div>
 
@@ -1437,6 +1450,12 @@ export default function RaceDetailPage() {
                         )
                       })}
                     </div>
+                  )}
+                  {targetFinishSeconds != null && peakPaceTargets && (
+                    <p className="text-white/40 text-xs mt-2 max-w-sm">
+                      These paces reserve ~{Math.round(TYPICAL_TRANSITION_SECONDS / 60)} minutes for T1/T2 transitions, so multiplying them out by
+                      distance won't quite reach your goal time on its own - that's expected, not a shortfall.
+                    </p>
                   )}
                 </div>
 

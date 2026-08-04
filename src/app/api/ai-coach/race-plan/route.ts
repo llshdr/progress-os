@@ -17,7 +17,7 @@ import {
 import { raceCategoryFor, experienceLevelFor, type SelfAssessment, type Discipline } from '@/lib/race-plan/self-assessment'
 import { computeDisciplineActivityFacts, assessMultisportReadiness, describePaceTrend } from '@/lib/race-plan/discipline-weakness'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
-import { fetchCourseProfile, fetchCourseTimeBand, fetchCourseCutoffs } from '@/lib/race-plan/course-data'
+import { fetchCourseProfile, fetchCourseTimeBand, fetchCourseCutoffs, describeCourseDifficulty } from '@/lib/race-plan/course-data'
 import { assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
 import { computeDayByDayTemplates } from '@/lib/race-plan/day-template'
 import { deriveCurrentFormLevel } from '@/lib/race-plan/current-form'
@@ -30,6 +30,17 @@ const PHASE_FALLBACK_NOTES: Record<TrainingPhase, string> = {
   peak: 'Peak phase: hold near your highest volume this cycle, dial in race-pace effort.',
   taper: 'Taper: cut volume back and arrive fresh and ready.',
 }
+
+// Acclimation weeks are phase: 'base' underneath (see periodization.ts's
+// TrainingWeekSkeleton.isAcclimation) but are NOT about building fitness -
+// PHASE_FALLBACK_NOTES.base's "build your aerobic foundation" framing
+// directly contradicts ACCLIMATION_GUIDANCE (race-day-prep.ts), which the
+// UI already shows once per acclimation block. Used unconditionally for
+// every isAcclimation week below - never the model's own note for these
+// specific weeks - so this can't drift from that framing regardless of
+// what the model writes, the same "never trust the model with a fact it
+// could get wrong" discipline as the rest of this route.
+const ACCLIMATION_FALLBACK_NOTE = "Acclimation, not fitness-building yet - keep everything easy and focus on making training across three disciplines plus strength feel routine."
 
 function formatPace(secondsPerKm: number): string {
   const minutes = Math.floor(secondsPerKm / 60)
@@ -314,7 +325,15 @@ export async function POST(request: NextRequest) {
           : ''
 
   const courseContextSummary = courseProfile
-    ? `\n\nCourse context (informational, not factored into the numeric plan): ${[courseProfile.swimNotes, courseProfile.bikeNotes, courseProfile.runNotes].filter(Boolean).join(' ')}`
+    ? `\n\nCourse context (informational, not factored into the numeric plan): ${[
+        describeCourseDifficulty(courseProfile.difficultyFactor),
+        courseProfile.elevationGainM != null ? `~${courseProfile.elevationGainM}m of elevation gain.` : null,
+        courseProfile.swimNotes,
+        courseProfile.bikeNotes,
+        courseProfile.runNotes,
+      ]
+        .filter(Boolean)
+        .join(' ')}`
     : ''
 
   const cutoffSummary = cutoffFlags.length > 0 ? `\n\nCutoff check: ${cutoffFlags.map((f) => f.message).join(' ')}` : ''
@@ -339,15 +358,27 @@ export async function POST(request: NextRequest) {
     ? `\n\n${currentForm.reason}`
     : ''
 
+  // Labeled distinctly from real Base weeks (never just "(base)") so the
+  // model has a real signal that these are different, even though its
+  // per-week note for them is discarded anyway (see ACCLIMATION_FALLBACK_NOTE)
+  // - this still matters for the model's OVERVIEW paragraph, which
+  // shouldn't imply fitness-building starts on day one when it doesn't.
   const weeksTable = skeleton
     .map((w) => {
+      const phaseLabel = w.isAcclimation ? 'acclimation' : w.phase
       if (w.disciplines) {
         const brick = w.brickSessions ? `, ${w.brickSessions} brick (bike-run) session(s)` : ''
-        return `${w.weekStartDate} (${w.phase}): swim ${w.disciplines.swim.km}km/${w.disciplines.swim.sessions} session(s), bike ${w.disciplines.bike.km}km/${w.disciplines.bike.sessions} session(s), run ${w.disciplines.run.km}km/${w.disciplines.run.sessions} session(s), ${w.targetStrengthSessions} strength session(s)${brick}`
+        return `${w.weekStartDate} (${phaseLabel}): swim ${w.disciplines.swim.km}km/${w.disciplines.swim.sessions} session(s), bike ${w.disciplines.bike.km}km/${w.disciplines.bike.sessions} session(s), run ${w.disciplines.run.km}km/${w.disciplines.run.sessions} session(s), ${w.targetStrengthSessions} strength session(s)${brick}`
       }
-      return `${w.weekStartDate} (${w.phase}): ${w.targetCardioKm}km cardio across ${w.targetCardioSessions} session(s), ${w.targetStrengthSessions} strength session(s)`
+      return `${w.weekStartDate} (${phaseLabel}): ${w.targetCardioKm}km cardio across ${w.targetCardioSessions} session(s), ${w.targetStrengthSessions} strength session(s)`
     })
     .join('\n')
+
+  const acclimationWeeksCount = skeleton.filter((w) => w.isAcclimation).length
+  const acclimationSummary =
+    acclimationWeeksCount > 0
+      ? `\n\nThis plan opens with a ${acclimationWeeksCount}-week Acclimation block (weeks labeled "(acclimation)" below) - light volume, zero intensity, purely about adapting to training across three disciplines plus strength before real Base training begins. If your overview paragraph mentions the plan's early stages, reflect this honestly rather than implying fitness-building starts immediately.`
+      : ''
 
   const approachLabel = RACE_APPROACH_LABELS[approach]
 
@@ -361,12 +392,16 @@ ${strengthSummary}
 ${volumeSummary}
 ${consistencySummary}
 ${phaseSummary}
-${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${weightTrendSummary}${currentFormSummary}${finishTimeSummary}${courseContextSummary}${cutoffSummary}${weaknessSummary}${readinessSummary}${nutritionTensionSummary}
+${goalsSummary}${selfAssessmentSummary}${tensionSummary}${pastResultsSummary}${weightTrendSummary}${currentFormSummary}${finishTimeSummary}${courseContextSummary}${cutoffSummary}${weaknessSummary}${readinessSummary}${nutritionTensionSummary}${acclimationSummary}
 
 Here is the week-by-week schedule already computed for this athlete (the numbers are fixed - do not change or restate them numerically, just write about them):
 ${weeksTable}
 
-For each week listed above, write ONE short, specific sentence (its "focus_note") explaining what to prioritize that week and why - ground it in the numbers already given, especially early weeks where you should reference the athlete's actual current fitness. When a week includes brick (bike-run) session(s), mention what they're for (practicing race-day transitions and running on tired legs), not just that they exist. Also write one short overview paragraph (2-4 sentences) summarizing the plan's overall shape and how it reconciles the athlete's current situation (training phase, consistency, any competing goals) with the chosen approach.${
+For each week listed above, write ONE short, specific sentence (its "focus_note") explaining what to prioritize that week and why - ground it in the numbers already given, especially early weeks where you should reference the athlete's actual current fitness. When a week includes brick (bike-run) session(s), mention what they're for (practicing race-day transitions and running on tired legs), not just that they exist.${
+      acclimationWeeksCount > 0
+        ? ' Weeks labeled "(acclimation)" get a fixed explanation instead of your note (see above for why) - write something brief for them if you like, or skip them, but never describe them as building fitness or aerobic base.'
+        : ''
+    } Also write one short overview paragraph (2-4 sentences) summarizing the plan's overall shape and how it reconciles the athlete's current situation (training phase, consistency, any competing goals) with the chosen approach.${
       hasCutoffRisk
         ? ' The athlete has a real risk of missing a course cutoff at their current projected pace (see the cutoff check above) - open the overview by naming this plainly, then explain whether the chosen approach actually pushes hard enough to close that gap or whether it does not.'
         : ''
@@ -415,7 +450,7 @@ For each week listed above, write ONE short, specific sentence (its "focus_note"
 
     const mergedWeeks = skeleton.map((week) => ({
       ...week,
-      focusNote: focusNoteByWeek.get(week.weekStartDate) ?? PHASE_FALLBACK_NOTES[week.phase],
+      focusNote: week.isAcclimation ? ACCLIMATION_FALLBACK_NOTE : (focusNoteByWeek.get(week.weekStartDate) ?? PHASE_FALLBACK_NOTES[week.phase]),
     }))
 
     const { error: upsertError } = await supabase.from('race_training_plans').upsert(

@@ -59,8 +59,10 @@ export function computePeakPaceTargets(raceType: RaceType, totalSeconds: number,
 // a precise constant - same heuristic-with-a-comment precedent as this
 // file's own FALLBACK_EASY_PACE_SLOWDOWN. One combined figure, not a
 // separate T1/T2 split, since neither source cleanly separates them for
-// full-distance racing.
-const TYPICAL_TRANSITION_SECONDS = 10 * 60
+// full-distance racing. Exported so the Race Day Plan UI can explain the
+// ~10 minutes it reserves using this same number, rather than a second
+// hardcoded copy of it drifting out of sync.
+export const TYPICAL_TRANSITION_SECONDS = 10 * 60
 
 // target_finish_seconds when the athlete has stated one; otherwise the
 // band's SLOW end, not the midpoint - same honest-margin precedent as

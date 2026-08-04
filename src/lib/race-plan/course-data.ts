@@ -32,6 +32,17 @@ export interface RaceCourseCutoff {
 // courses start with only a generic tier band available - see
 // estimateCourseFinishRange in finish-time.ts).
 
+// Qualitative-only, never the raw decimal (would read as fabricated
+// precision this app doesn't have) - only speaks up when there's
+// something worth saying, same "only flag a real mismatch" precedent as
+// summarizeSeasonMismatch (race-day-prep.ts). Shared by the AI prompt
+// (route.ts) and the course-notes UI card (page.tsx) so the two can't
+// describe the same course's difficulty differently.
+export function describeCourseDifficulty(difficultyFactor: number): string | null {
+  if (difficultyFactor <= 1.0) return null
+  return 'Notably harder than a standard course of this type - factor that into your pacing and finish-time expectations.'
+}
+
 export async function fetchCourseProfile(supabase: SupabaseClient, courseId: string): Promise<RaceCourseProfile | null> {
   const { data, error } = await supabase
     .from('race_course_profiles')
