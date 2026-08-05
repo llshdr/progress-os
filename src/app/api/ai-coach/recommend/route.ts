@@ -7,6 +7,7 @@ import { computeMuscleVolume } from '@/lib/volume-analysis'
 import { getLocalDateString } from '@/lib/date'
 import { raceTypeLabel } from '@/lib/race-constants'
 import { daysBetween } from '@/lib/goals'
+import { selectActiveMesocycle, describeMesocycleContext } from '@/lib/mesocycle'
 
 const MIN_SESSIONS_FOR_RECOMMENDATION = 2
 const MAX_SETS_IN_PROMPT = 20
@@ -98,7 +99,34 @@ export async function POST(request: NextRequest) {
     cacheRaceSuffix = `race=${activeRace.id}:${currentWeek.weekStartDate}`
   }
 
-  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}::nutrition=${includeNutrition}::${cacheRaceSuffix}`
+  // Mesocycle-aware context - same "code derives the fact, model reasons
+  // about it" pattern as raceContext above, using the athlete's own
+  // planned strength-training block (if any) rather than a generated
+  // schedule (see src/lib/mesocycle.ts for why).
+  const { data: mesocycleRows } = await supabase
+    .from('training_mesocycles')
+    .select('id, start_date, length_weeks, deload_week_number, label')
+    .eq('user_id', user.id)
+
+  const activeMesocycleStatus = mesocycleRows
+    ? selectActiveMesocycle(
+        mesocycleRows.map((r) => ({
+          id: r.id,
+          startDate: r.start_date,
+          lengthWeeks: r.length_weeks,
+          deloadWeekNumber: r.deload_week_number,
+          label: r.label,
+        })),
+        today
+      )
+    : null
+
+  const mesocycleContext = activeMesocycleStatus ? `\n\n${describeMesocycleContext(activeMesocycleStatus)}` : ''
+  const cacheMesocycleSuffix = activeMesocycleStatus
+    ? `meso=${activeMesocycleStatus.mesocycle.id}:${activeMesocycleStatus.currentWeek}`
+    : 'meso=none'
+
+  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}::nutrition=${includeNutrition}::${cacheRaceSuffix}::${cacheMesocycleSuffix}`
 
   const { data: cachedRow } = await supabase
     .from('ai_coach_recommendations')
@@ -237,7 +265,7 @@ export async function POST(request: NextRequest) {
 
 Below is their recent set history for one exercise, most recent session first (weight in kg):
 
-${historyText}${variantContext}${muscleGroupContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${sleepContext}
+${historyText}${variantContext}${muscleGroupContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${mesocycleContext}${sleepContext}
 
 Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale — if multiple factors above are relevant, mention at most the one or two most decision-relevant ones rather than trying to reference everything.`
 

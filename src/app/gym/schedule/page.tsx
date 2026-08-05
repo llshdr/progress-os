@@ -20,6 +20,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import VolumeInsightCard from '@/components/gym/volume-insight-card'
 import ScheduleWizard from '@/components/gym/schedule-wizard'
 import ScheduledVolumeCard from '@/components/gym/scheduled-volume-card'
+import MesocycleCard from '@/components/gym/mesocycle-card'
 import {
   fetchScheduleSlots,
   computeNextSlot,
@@ -394,6 +395,12 @@ export default function SchedulePage() {
             Calendar
           </button>
         </div>
+
+        {userId && (
+          <div className="mb-6">
+            <MesocycleCard userId={userId} />
+          </div>
+        )}
 
         {scheduleMode === 'calendar' && catchUpSlot && (
           <div className="border border-white/20 rounded-2xl bg-white/[0.04] p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
