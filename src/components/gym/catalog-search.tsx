@@ -16,6 +16,7 @@ export interface CatalogEntry {
   exercise_type: string
   aliases: string[] | null
   muscle_targets: string[] | null
+  is_unilateral: boolean
 }
 
 interface CatalogSearchProps {
@@ -34,7 +35,7 @@ export default function CatalogSearch({ onSelect }: CatalogSearchProps) {
   useEffect(() => {
     supabase
       .from('exercise_catalog')
-      .select('id, name, muscle_group, equipment_type, category, exercise_type, aliases, muscle_targets')
+      .select('id, name, muscle_group, equipment_type, category, exercise_type, aliases, muscle_targets, is_unilateral')
       .then(({ data, error }) => {
         if (error) {
           console.error('Error fetching exercise catalog:', error)

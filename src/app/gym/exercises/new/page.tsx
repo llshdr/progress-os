@@ -11,6 +11,7 @@ import CatalogSearch, { type CatalogEntry } from '@/components/gym/catalog-searc
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import type { ExerciseType } from '@/lib/exercise-constants'
 import { inferMuscleTargets } from '@/lib/muscle-targets'
+import { suggestIsUnilateral } from '@/lib/unilateral'
 
 export default function NewExercisePage() {
   const router = useRouter()
@@ -22,9 +23,28 @@ export default function NewExercisePage() {
   const [equipmentType, setEquipmentType] = useState('')
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
+  const [isUnilateral, setIsUnilateral] = useState(false)
+  // Tracks whether the user has explicitly decided this one way or
+  // another (via the checkbox itself, or by picking a catalog entry
+  // that already carries a real answer) - once true, typing in the name
+  // field never silently overrides their choice again.
+  const [unilateralTouched, setUnilateralTouched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const supabase = createClient()
+
+  // Suggest-only: pre-fills the toggle from the name as the user types,
+  // but only until they've made an explicit choice of their own - same
+  // "suggest, never silently decide" precedent as classifyDiscipline.
+  const handleNameChange = (value: string) => {
+    setName(value)
+    if (!unilateralTouched) setIsUnilateral(suggestIsUnilateral(value))
+  }
+
+  const handleIsUnilateralChange = (value: boolean) => {
+    setIsUnilateral(value)
+    setUnilateralTouched(true)
+  }
 
   const toggleSecondaryMuscle = (muscle: string) => {
     setSecondaryMuscleGroups((prev) =>
@@ -55,6 +75,12 @@ export default function NewExercisePage() {
     setMuscleTargets(entry.muscle_targets ?? [])
     setEquipmentType(entry.equipment_type)
     setCategory(entry.category)
+    // The catalog's own is_unilateral is a real, curated answer - a
+    // stronger signal than the name-pattern guess, so treat it the same
+    // as an explicit user choice (still fully overridable via the
+    // checkbox afterward).
+    setIsUnilateral(entry.is_unilateral)
+    setUnilateralTouched(true)
   }
 
   const createExercise = async (userId: string) => {
@@ -76,6 +102,7 @@ export default function NewExercisePage() {
       equipment_type: equipmentType,
       category,
       notes: notes || null,
+      is_unilateral: isUnilateral,
     })
 
     if (error) {
@@ -143,7 +170,7 @@ export default function NewExercisePage() {
           <div className="border-t border-white/10 pt-6 space-y-6">
             <ExerciseFormFields
               name={name}
-              onNameChange={setName}
+              onNameChange={handleNameChange}
               exerciseType={exerciseType}
               onExerciseTypeChange={setExerciseType}
               primaryMuscleGroup={primaryMuscleGroup}
@@ -158,6 +185,8 @@ export default function NewExercisePage() {
               onCategoryChange={setCategory}
               notes={notes}
               onNotesChange={setNotes}
+              isUnilateral={isUnilateral}
+              onIsUnilateralChange={handleIsUnilateralChange}
             />
           </div>
 

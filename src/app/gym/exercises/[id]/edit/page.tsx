@@ -21,6 +21,7 @@ export default function EditExercisePage() {
   const [equipmentType, setEquipmentType] = useState('')
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
+  const [isUnilateral, setIsUnilateral] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
@@ -50,6 +51,7 @@ export default function EditExercisePage() {
     setEquipmentType(data.equipment_type)
     setCategory(data.category)
     setNotes(data.notes || '')
+    setIsUnilateral(data.is_unilateral ?? false)
     setLoading(false)
   }
 
@@ -88,6 +90,7 @@ export default function EditExercisePage() {
         equipment_type: equipmentType,
         category,
         notes: notes || null,
+        is_unilateral: isUnilateral,
       })
       .eq('id', params.id)
 
@@ -141,6 +144,8 @@ export default function EditExercisePage() {
             onCategoryChange={setCategory}
             notes={notes}
             onNotesChange={setNotes}
+            isUnilateral={isUnilateral}
+            onIsUnilateralChange={setIsUnilateral}
           />
 
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">

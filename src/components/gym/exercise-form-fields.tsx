@@ -23,6 +23,8 @@ interface ExerciseFormFieldsProps {
   onCategoryChange: (value: string) => void
   notes: string
   onNotesChange: (value: string) => void
+  isUnilateral: boolean
+  onIsUnilateralChange: (value: boolean) => void
 }
 
 // Shared by exercises/new and exercises/[id]/edit — same fields, same
@@ -44,6 +46,8 @@ export default function ExerciseFormFields({
   onCategoryChange,
   notes,
   onNotesChange,
+  isUnilateral,
+  onIsUnilateralChange,
 }: ExerciseFormFieldsProps) {
   const refineOptions = MUSCLE_TARGETS_BY_GROUP[primaryMuscleGroup] ?? []
 
@@ -148,6 +152,17 @@ export default function ExerciseFormFields({
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm text-white/70">
+          <input type="checkbox" checked={isUnilateral} onChange={(e) => onIsUnilateralChange(e.target.checked)} />
+          Unilateral (one side at a time)
+        </label>
+        <p className="text-white/40 text-xs">
+          e.g. single-arm rows, Bulgarian split squats, walking lunges - helps the AI Coach reason about progression more
+          carefully for this exercise.
+        </p>
       </div>
 
       <div>

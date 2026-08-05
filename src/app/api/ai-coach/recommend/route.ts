@@ -155,14 +155,16 @@ export async function POST(request: NextRequest) {
 
   let primaryMuscleGroup: string | null = null
   let muscleTargets: string[] | null = null
+  let isUnilateral = false
   if (exerciseLibraryId) {
     const { data } = await supabase
       .from('exercise_library')
-      .select('primary_muscle_group, muscle_targets')
+      .select('primary_muscle_group, muscle_targets, is_unilateral')
       .eq('id', exerciseLibraryId)
       .maybeSingle()
     primaryMuscleGroup = data?.primary_muscle_group ?? null
     muscleTargets = data?.muscle_targets ?? null
+    isUnilateral = data?.is_unilateral ?? false
   }
 
   const { data: settingsData } = await supabase
@@ -203,6 +205,16 @@ export async function POST(request: NextRequest) {
   let techniqueContext = ''
   if (hasTechniqueInfo) {
     techniqueContext = `\n\nLines tagged [drop set] or [myo-rep] are follow-on/burnout sets, not independent top sets - a drop set continues at reduced weight after reaching near-failure, and a myo-rep is a rest-pause mini-set at the same weight. Don't undervalue this lifter's progression because one of these shows a lighter weight or fewer reps than a normal set - base your recommendation on the untagged (normal) sets as the real top-set signal.`
+  }
+
+  // Same "code derives the fact, model reasons about it" pattern as
+  // raceContext/mesocycleContext - no ratio math (there's no clean,
+  // universal "unilateral load as % of bilateral load" formula, it
+  // varies by exercise and person), just qualitative framing plus the
+  // one real, citable piece of evidence available.
+  let unilateralContext = ''
+  if (isUnilateral) {
+    unilateralContext = `\n\nThis is a unilateral (one side at a time) exercise. Do not assume its load is simply half of an equivalent bilateral exercise's load, or calculate any such ratio - that relationship varies too much by exercise and by individual to estimate reliably. Progress the weight more conservatively than you would for a comparable bilateral exercise: real evidence shows unilateral strength gains tend to accumulate more slowly than bilateral ones (one study found ~8.4% 1RM growth for bilateral training vs. ~5.15% for unilateral training over the same period). Let that inform a generally more measured pace of increase here, not a fixed percentage-per-week rule.`
   }
 
   let muscleGroupContext = ''
@@ -279,7 +291,7 @@ export async function POST(request: NextRequest) {
 
 Below is their recent set history for one exercise, most recent session first (weight in kg):
 
-${historyText}${variantContext}${techniqueContext}${muscleGroupContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${mesocycleContext}${sleepContext}
+${historyText}${variantContext}${techniqueContext}${muscleGroupContext}${unilateralContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${mesocycleContext}${sleepContext}
 
 Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale — if multiple factors above are relevant, mention at most the one or two most decision-relevant ones rather than trying to reference everything.`
 
