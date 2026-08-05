@@ -28,7 +28,13 @@ interface SavedSet {
   weight: number
   reps: number
   set_order: number
+  set_type: 'drop' | 'myo' | null
 }
+
+type SetType = 'normal' | 'drop' | 'myo'
+
+const SET_TYPE_LABEL: Record<SetType, string> = { normal: 'Normal', drop: 'Drop', myo: 'Myo' }
+const SET_TYPE_TAG: Record<'drop' | 'myo', string> = { drop: 'drop', myo: 'myo' }
 
 interface Variant {
   id: string
@@ -50,6 +56,10 @@ export default function SetLogger({
 }: SetLoggerProps) {
   const [weight, setWeight] = useState('')
   const [reps, setReps] = useState('')
+  // UI-only until save time - 'normal' maps to a null set_type in the DB
+  // (see handleSaveSet), so the vast majority of sets that never touch
+  // this stay indistinguishable from before this feature existed.
+  const [setType, setSetType] = useState<SetType>('normal')
   const [currentSetNumber, setCurrentSetNumber] = useState(1)
   const [previousSet, setPreviousSet] = useState<PreviousSet | null>(null)
   const [savedSets, setSavedSets] = useState<SavedSet[]>([])
@@ -244,12 +254,16 @@ export default function SetLogger({
     } = await supabase.auth.getUser()
     if (!user) return
 
-    // Get the most recent completed set for this exercise
+    // Get the most recent completed NORMAL set for this exercise - a
+    // drop/myo follow-on is a reduced-weight/rest-pause bonus set, not a
+    // real top-set data point, so it should never become the "Last: X × Y"
+    // basis for next session's prefill.
     const { data, error } = await supabase
       .from('sets')
       .select('weight, reps, created_at')
       .eq('exercise_id', exerciseId)
       .eq('completed', true)
+      .is('set_type', null)
       .order('created_at', { ascending: false })
       .limit(1)
       .single()
@@ -268,7 +282,7 @@ export default function SetLogger({
   const fetchSavedSets = async () => {
     const { data, error } = await supabase
       .from('sets')
-      .select('id, weight, reps, set_order')
+      .select('id, weight, reps, set_order, set_type')
       .eq('exercise_id', exerciseId)
       .order('set_order', { ascending: true })
 
@@ -298,6 +312,7 @@ export default function SetLogger({
       completed: true,
       set_order: currentSetNumber,
       rest_time_seconds: restTimeSeconds,
+      set_type: setType === 'normal' ? null : setType,
     })
 
     if (error) {
@@ -310,6 +325,7 @@ export default function SetLogger({
     // Prepare for next set
     setCurrentSetNumber(prev => prev + 1)
     setReps('')
+    setSetType('normal')
     // Keep the same weight for next set (common pattern)
     setLoading(false)
     setRestStartedAt(Date.now())
@@ -526,6 +542,11 @@ export default function SetLogger({
                   <div className="flex items-center gap-4">
                     <span className="text-white/40 text-sm">Set {set.set_order}</span>
                     <span className="text-white font-medium">{set.weight} × {set.reps}</span>
+                    {set.set_type && (
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                        {SET_TYPE_TAG[set.set_type]}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -559,7 +580,10 @@ export default function SetLogger({
             <div className="text-white/30 text-xs mt-1">Target: {formatRestTime(restTarget)}</div>
           </div>
           <div className="flex items-center gap-2">
-            {[60, 90, 120].map((preset) => (
+            {/* Myo-reps use very short rest-pause intervals (~10-20s) between
+                mini-sets, well under the normal presets - only shown while
+                the CURRENT set being logged is tagged myo. */}
+            {(setType === 'myo' ? [15, 60, 90, 120] : [60, 90, 120]).map((preset) => (
               <button
                 key={preset}
                 type="button"
@@ -613,6 +637,26 @@ export default function SetLogger({
               placeholder="8"
               className="bg-white/5 border-white/10 text-white text-2xl font-semibold h-16 text-center placeholder:text-white/20"
             />
+          </div>
+
+          {/* Technique - always visible, defaults to Normal. Mirrors the
+              Equipment Variant picker's pill-button style above. */}
+          <div className="space-y-2">
+            <label className="text-white/60 text-sm">Technique</label>
+            <div className="flex flex-wrap gap-2">
+              {(['normal', 'drop', 'myo'] as SetType[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setSetType(t)}
+                  className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                    setType === t ? 'bg-white text-black' : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  {SET_TYPE_LABEL[t]}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Action Buttons */}

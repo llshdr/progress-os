@@ -175,12 +175,15 @@ export async function POST(request: NextRequest) {
   const maintenanceCalories: number | null = settingsData?.maintenance_calories ?? null
 
   const hasVariantInfo = history.some((h) => h.variantLabel !== null)
+  const promptHistory = history.slice(0, MAX_SETS_IN_PROMPT)
+  const hasTechniqueInfo = promptHistory.some((h) => h.technique !== null)
+  const TECHNIQUE_TAG: Record<'drop' | 'myo', string> = { drop: 'drop set', myo: 'myo-rep' }
 
-  const historyText = history
-    .slice(0, MAX_SETS_IN_PROMPT)
+  const historyText = promptHistory
     .map((set) => {
       const variantSuffix = hasVariantInfo ? ` [${set.variantLabel ?? 'no variant specified'}]` : ''
-      return `${set.workoutDate}: ${set.weight}kg x ${set.reps}${set.rpe ? ` @RPE ${set.rpe}` : ''}${variantSuffix}`
+      const techniqueSuffix = set.technique ? ` [${TECHNIQUE_TAG[set.technique]}]` : ''
+      return `${set.workoutDate}: ${set.weight}kg x ${set.reps}${set.rpe ? ` @RPE ${set.rpe}` : ''}${variantSuffix}${techniqueSuffix}`
     })
     .join('\n')
 
@@ -189,6 +192,17 @@ export async function POST(request: NextRequest) {
     variantContext = `\n\nThe currently selected equipment variant for this session is "${
       variantLabel ?? 'none specified'
     }". Some of the history above may be on different equipment variants (different machine brands or cable/pulley ratios). If you can reasonably estimate a numeric conversion between variants (e.g. cable ratios like 1:1 vs 2:1), use it to inform your recommendation and briefly mention the conversion. If you cannot reasonably estimate a conversion (e.g. different machine brands with unknown leverage/ROM differences), rely primarily on same-variant history and note in your reasoning that you're hedging due to limited directly-comparable data.`
+  }
+
+  // Lines tagged [drop set]/[myo-rep] are follow-on/burnout sets at
+  // reduced weight (drop set) or rest-pause mini-sets (myo-rep) - extra
+  // stimulus after a real top set, not a sign the lifter's top-set
+  // strength has changed. Only added when the shown history actually
+  // contains a tagged row, same "only speak up when relevant" precedent
+  // as the other optional context blocks here.
+  let techniqueContext = ''
+  if (hasTechniqueInfo) {
+    techniqueContext = `\n\nLines tagged [drop set] or [myo-rep] are follow-on/burnout sets, not independent top sets - a drop set continues at reduced weight after reaching near-failure, and a myo-rep is a rest-pause mini-set at the same weight. Don't undervalue this lifter's progression because one of these shows a lighter weight or fewer reps than a normal set - base your recommendation on the untagged (normal) sets as the real top-set signal.`
   }
 
   let muscleGroupContext = ''
@@ -265,7 +279,7 @@ export async function POST(request: NextRequest) {
 
 Below is their recent set history for one exercise, most recent session first (weight in kg):
 
-${historyText}${variantContext}${muscleGroupContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${mesocycleContext}${sleepContext}
+${historyText}${variantContext}${techniqueContext}${muscleGroupContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${mesocycleContext}${sleepContext}
 
 Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale — if multiple factors above are relevant, mention at most the one or two most decision-relevant ones rather than trying to reference everything.`
 

@@ -11,6 +11,11 @@ export interface HistoricalSet {
   // (e.g. "Hammer Strength", "1:1") — null when the exercise has no variants
   // defined, or none was selected for that session.
   variantLabel: string | null
+  // Drop-set/myo-rep annotation, if the athlete tagged it at logging time -
+  // null for a normal top set. Follow-on/burnout volume at a lighter
+  // number, not a real top-set strength signal - see the recommend
+  // route's own handling of this.
+  technique: 'drop' | 'myo' | null
 }
 
 const MAX_WORKOUTS = 6
@@ -28,7 +33,7 @@ export async function getExerciseHistory(
   // built via string interpolation — an exercise name containing a comma or
   // other PostgREST-significant character would otherwise break or misbehave.
   const select =
-    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(id, weight, reps, rpe, completed, created_at)'
+    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(id, weight, reps, rpe, completed, created_at, set_type)'
   const queries: PromiseLike<any>[] = []
 
   if (exerciseLibraryId) {
@@ -83,6 +88,7 @@ export async function getExerciseHistory(
         workoutDate,
         createdAt: set.created_at,
         variantLabel,
+        technique: set.set_type ?? null,
       })
     }
   }
