@@ -5,7 +5,7 @@ import AppLayout from '@/components/app-layout'
 import { User } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Calendar, Clock } from 'lucide-react'
+import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Calendar, CalendarDays, Clock } from 'lucide-react'
 import Link from 'next/link'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
@@ -547,6 +547,13 @@ export default function DashboardClient({ user }: DashboardClientProps) {
             >
               <LayoutTemplate className="w-6 h-6 text-white/60" />
               <span className="text-sm text-white/80">Templates</span>
+            </Link>
+            <Link
+              href="/calendar"
+              className="flex flex-col items-center gap-2 p-4 border border-white/10 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-200"
+            >
+              <CalendarDays className="w-6 h-6 text-white/60" />
+              <span className="text-sm text-white/80">Calendar</span>
             </Link>
           </div>
         </div>

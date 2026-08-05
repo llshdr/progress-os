@@ -34,3 +34,21 @@ export function getLocalWeekStartString(date: Date = new Date()): string {
 export function getLocalWeekdayIndex(date: Date = new Date()): number {
   return (date.getDay() + 6) % 7
 }
+
+// "Today"/"Tomorrow"/short date - the same relative-date labeling
+// dashboard-client.tsx's own local formatDate already does, extracted
+// here as the canonical version so new code (the calendar module) has
+// one to import rather than writing a third local copy. Parses
+// dateString as local midnight (not UTC) - the same discipline as every
+// other helper in this file.
+export function formatRelativeDateLabel(dateString: string): string {
+  const date = new Date(dateString + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  if (date.getTime() === today.getTime()) return 'Today'
+  if (date.getTime() === tomorrow.getTime()) return 'Tomorrow'
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
