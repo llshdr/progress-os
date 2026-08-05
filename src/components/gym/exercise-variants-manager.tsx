@@ -16,7 +16,22 @@ interface Variant {
 // Saves immediately on add/remove (like the Favorite/Archive toggles
 // elsewhere) rather than being bundled into the exercise's own save button —
 // this list is independent metadata, not part of the exercise form itself.
-export default function ExerciseVariantsManager({ exerciseLibraryId }: { exerciseLibraryId: string }) {
+//
+// Adding a variant is hidden for Dumbbell exercises specifically - a
+// dumbbell's weight is already directly comparable across brands/gyms,
+// unlike a machine/cable's stack or a cable's pulley ratio, so there's
+// nothing meaningful to record here. Existing variants (from before this
+// restriction, or a since-changed equipment type) still display and stay
+// removable - this only hides the ability to add MORE, never destroys
+// data that already exists.
+export default function ExerciseVariantsManager({
+  exerciseLibraryId,
+  equipmentType,
+}: {
+  exerciseLibraryId: string
+  equipmentType: string
+}) {
+  const canAddVariant = equipmentType !== 'Dumbbell'
   const [variants, setVariants] = useState<Variant[]>([])
   const [newLabel, setNewLabel] = useState('')
   const [loading, setLoading] = useState(true)
@@ -75,15 +90,24 @@ export default function ExerciseVariantsManager({ exerciseLibraryId }: { exercis
   }
 
   if (loading) return null
+  // Nothing to add and nothing existing to manage - render nothing at all
+  // rather than an empty, pointless card.
+  if (!canAddVariant && variants.length === 0) return null
 
   return (
     <div className="space-y-3">
       <div>
         <Label className="text-white/80">Equipment Variants (optional)</Label>
-        <p className="text-white/40 text-xs mt-1">
-          For machines/cables where the same weight number isn&apos;t directly comparable across
-          brands or ratios — e.g. &quot;Hammer Strength&quot;, &quot;Life Fitness&quot;, &quot;1:1&quot;, &quot;2:1&quot;.
-        </p>
+        {canAddVariant ? (
+          <p className="text-white/40 text-xs mt-1">
+            For machines/cables where the same weight number isn&apos;t directly comparable across
+            brands or ratios — e.g. &quot;Hammer Strength&quot;, &quot;Life Fitness&quot;, &quot;1:1&quot;, &quot;2:1&quot;.
+          </p>
+        ) : (
+          <p className="text-white/40 text-xs mt-1">
+            Not applicable for dumbbells — the weight is already directly comparable across gyms.
+          </p>
+        )}
       </div>
 
       {variants.length > 0 && (
@@ -106,30 +130,32 @@ export default function ExerciseVariantsManager({ exerciseLibraryId }: { exercis
         </div>
       )}
 
-      <div className="flex gap-2">
-        <Input
-          type="text"
-          value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              handleAddVariant()
-            }
-          }}
-          placeholder="e.g. Hammer Strength"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-        />
-        <Button
-          type="button"
-          onClick={handleAddVariant}
-          disabled={saving || !newLabel.trim()}
-          variant="outline"
-          className="border-white/10 text-white hover:bg-white/5 shrink-0"
-        >
-          Add
-        </Button>
-      </div>
+      {canAddVariant && (
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleAddVariant()
+              }
+            }}
+            placeholder="e.g. Hammer Strength"
+            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+          />
+          <Button
+            type="button"
+            onClick={handleAddVariant}
+            disabled={saving || !newLabel.trim()}
+            variant="outline"
+            className="border-white/10 text-white hover:bg-white/5 shrink-0"
+          >
+            Add
+          </Button>
+        </div>
+      )}
 
       <ConfirmationModal
         open={variantToRemove !== null}

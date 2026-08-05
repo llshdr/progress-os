@@ -149,7 +149,7 @@ export default function EditExercisePage() {
           />
 
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-            <ExerciseVariantsManager exerciseLibraryId={params.id as string} />
+            <ExerciseVariantsManager exerciseLibraryId={params.id as string} equipmentType={equipmentType} />
           </div>
 
           <Button

@@ -8,7 +8,8 @@ import { useRouter } from 'next/navigation'
 import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Calendar, Clock } from 'lucide-react'
 import Link from 'next/link'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
-import { getLocalWeekStartString } from '@/lib/date'
+import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
+import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
 
 interface DashboardClientProps {
   user: User
@@ -58,6 +59,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
   const [recentWorkouts, setRecentWorkouts] = useState<RecentWorkout[]>([])
   const [userName, setUserName] = useState<string>('')
+  const [mesocycleStatus, setMesocycleStatus] = useState<CurrentMesocycleStatus | null>(null)
 
   const motivationalQuotes = [
     "Let's make today count.",
@@ -139,6 +141,25 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         // Settings table might not exist yet, use default
         setWeeklyGoal(5)
         setShowTodaySuggestions(true)
+      }
+
+      // Active training block, if any - reuses the exact same derivation
+      // the gym Schedule page's MesocycleCard already uses, just a
+      // different render location (see mesocycle.ts).
+      const { data: mesocycleRows } = await supabase
+        .from('training_mesocycles')
+        .select('id, start_date, length_weeks, deload_week_number, label')
+        .eq('user_id', user.id)
+
+      if (mesocycleRows) {
+        const mesocycles: Mesocycle[] = mesocycleRows.map((r) => ({
+          id: r.id,
+          startDate: r.start_date,
+          lengthWeeks: r.length_weeks,
+          deloadWeekNumber: r.deload_week_number,
+          label: r.label,
+        }))
+        setMesocycleStatus(selectActiveMesocycle(mesocycles, getLocalDateString()))
       }
 
       // Fetch latest weight entries
@@ -321,6 +342,12 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           </h1>
           <p className="text-white/40 text-lg mb-1">{getCurrentDate()}</p>
           <p className="text-white/50 text-sm">{getRandomQuote()}</p>
+          {mesocycleStatus && (
+            <p className="text-white/40 text-sm mt-1">
+              {mesocycleStatus.mesocycle.label ? `${mesocycleStatus.mesocycle.label} — ` : ''}
+              {mesocycleStatus.isDeloadWeek ? 'Deload week' : `Week ${mesocycleStatus.currentWeek} of ${mesocycleStatus.mesocycle.lengthWeeks}`}
+            </p>
+          )}
         </div>
 
         {/* Today's Focus */}
