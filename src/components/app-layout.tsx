@@ -7,8 +7,7 @@ import {
   Dumbbell,
   Apple,
   Target,
-  Sparkles,
-  BarChart3,
+  CalendarDays,
   Settings,
 } from 'lucide-react'
 
@@ -17,8 +16,7 @@ const navItems = [
   { name: 'Gym', href: '/gym', icon: Dumbbell },
   { name: 'Nutrition', href: '/nutrition', icon: Apple },
   { name: 'Goals', href: '/goals', icon: Target },
-  { name: 'AI Coach', href: '/ai-coach', icon: Sparkles },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Calendar', href: '/calendar', icon: CalendarDays },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
