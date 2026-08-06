@@ -5,7 +5,7 @@ import AppLayout from '@/components/app-layout'
 import { User } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Flame, Clock } from 'lucide-react'
+import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Flame } from 'lucide-react'
 import Link from 'next/link'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
@@ -37,15 +37,6 @@ interface PersonalRecord {
   date: string
 }
 
-interface RecentWorkout {
-  id: string
-  date: string
-  workout_type: string | null
-  template_name: string | null
-  exercise_count: number
-  duration_minutes: number | null
-}
-
 export default function DashboardClient({ user }: DashboardClientProps) {
   const supabase = createClient()
   const router = useRouter()
@@ -57,7 +48,6 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const [latestWeight, setLatestWeight] = useState<WeightEntry | null>(null)
   const [previousWeight, setPreviousWeight] = useState<WeightEntry | null>(null)
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
-  const [recentWorkouts, setRecentWorkouts] = useState<RecentWorkout[]>([])
   const [userName, setUserName] = useState<string>('')
   const [mesocycleStatus, setMesocycleStatus] = useState<CurrentMesocycleStatus | null>(null)
 
@@ -234,39 +224,6 @@ export default function DashboardClient({ user }: DashboardClientProps) {
 
         setPersonalRecords(sortedPRs)
       }
-
-      // Fetch recent completed workouts
-      const { data: recentData } = await supabase
-        .from('workouts')
-        .select(`
-          id,
-          date,
-          workout_type,
-          workout_templates(name),
-          exercises(id)
-        `)
-        .eq('user_id', user.id)
-        .not('completed_at', 'is', null)
-        .order('date', { ascending: false })
-        .limit(5)
-
-      if (recentData) {
-        const recentWorkoutList: RecentWorkout[] = recentData.map((workout: any) => {
-          const duration = workout.started_at && workout.completed_at
-            ? Math.round((new Date(workout.completed_at).getTime() - new Date(workout.started_at).getTime()) / 60000)
-            : null
-
-          return {
-            id: workout.id,
-            date: workout.date,
-            workout_type: workout.workout_type,
-            template_name: workout.workout_templates?.name || null,
-            exercise_count: workout.exercises?.length || 0,
-            duration_minutes: duration,
-          }
-        })
-        setRecentWorkouts(recentWorkoutList)
-      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
@@ -292,14 +249,6 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     if (!latestWeight || !previousWeight) return null
     const diff = latestWeight.weight - previousWeight.weight
     return diff
-  }
-
-  const formatDuration = (minutes: number | null) => {
-    if (!minutes) return null
-    if (minutes < 60) return `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
   }
 
   const formatDate = (dateString: string) => {
@@ -472,49 +421,6 @@ export default function DashboardClient({ user }: DashboardClientProps) {
               <p className="text-white/40 text-sm">No PRs yet</p>
             )}
           </div>
-        </div>
-
-        {/* Recent Activity - one shared card with divider rows, same
-            compact-list pattern as Personal Records above, instead of a
-            separate full bordered card per workout. Same information,
-            meaningfully less vertical space. */}
-        <div className="mb-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Recent Activity</h3>
-          {recentWorkouts.length > 0 ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <div className="space-y-3">
-                {recentWorkouts.map((workout) => (
-                  <Link
-                    key={workout.id}
-                    href={`/gym/workouts/${workout.id}`}
-                    className="block border-b border-white/5 pb-3 last:border-0 last:pb-0 hover:opacity-80 transition-opacity"
-                  >
-                    <p className="text-white font-medium mb-0.5">
-                      {workout.template_name || workout.workout_type || 'Workout'}
-                    </p>
-                    <div className="flex items-center gap-3 text-white/40 text-xs">
-                      <span>{formatDate(workout.date)}</span>
-                      <span>•</span>
-                      <span>{workout.exercise_count} exercises</span>
-                      {workout.duration_minutes && (
-                        <>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatDuration(workout.duration_minutes)}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-8 text-center">
-              <p className="text-white/40">No recent workouts</p>
-            </div>
-          )}
         </div>
 
         {/* Quick Actions - only shortcuts that aren't already one tap away
