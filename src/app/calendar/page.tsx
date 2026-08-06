@@ -28,6 +28,9 @@ import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } fr
 import { slotsForWeek, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import type { TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
 import { raceTypeLabel } from '@/lib/race-constants'
+import { daysBetween } from '@/lib/goals'
+import DisruptionDeclaration, { type TrainingDisruption } from '@/components/disruption-declaration'
+import TravelPrepDialog from '@/components/calendar/travel-prep-dialog'
 
 // Every source below is fetched once per page load via the exact
 // function/query each feature already ships with - this page only
@@ -72,8 +75,11 @@ export default function CalendarPage() {
   const [mesocycles, setMesocycles] = useState<Mesocycle[]>([])
   const [goalItems, setGoalItems] = useState<ActionItem[]>([])
   const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>([])
+  const [disruptions, setDisruptions] = useState<TrainingDisruption[]>([])
   const [wakeTime, setWakeTime] = useState('06:00:00')
   const [sleepTime, setSleepTime] = useState('23:00:00')
+  const [travelPrepEntryId, setTravelPrepEntryId] = useState<string | null>(null)
+  const [welcomeBackDismissed, setWelcomeBackDismissed] = useState(false)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -122,7 +128,7 @@ export default function CalendarPage() {
 
     const today = getLocalDateString()
 
-    const [settingsResult, slots, raceResult, mesoResult, activeGoalItems, entriesResult] = await Promise.all([
+    const [settingsResult, slots, raceResult, mesoResult, activeGoalItems, entriesResult, disruptionsResult] = await Promise.all([
       supabase.from('user_settings').select('schedule_mode, wake_time, sleep_time').eq('user_id', user.id).maybeSingle(),
       fetchScheduleSlots(supabase, user.id),
       supabase
@@ -139,6 +145,13 @@ export default function CalendarPage() {
         .from('calendar_entries')
         .select('id, title, start_date, end_date, start_time, end_time, note, recurrence_weekdays, recurrence_end_date')
         .eq('user_id', user.id),
+      // User-level, not race-specific - shared across every race the
+      // athlete is training for. See migration 057.
+      supabase
+        .from('training_disruptions')
+        .select('id, start_date, end_date, reason, note')
+        .eq('user_id', user.id)
+        .order('start_date', { ascending: false }),
     ])
 
     setScheduleMode(settingsResult.data?.schedule_mode === 'calendar' ? 'calendar' : 'rotation')
@@ -183,8 +196,22 @@ export default function CalendarPage() {
         recurrenceEndDate: r.recurrence_end_date,
       }))
     )
+    setDisruptions(disruptionsResult.data ?? [])
 
     setLoading(false)
+  }
+
+  const refetchDisruptions = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase
+      .from('training_disruptions')
+      .select('id, start_date, end_date, reason, note')
+      .eq('user_id', user.id)
+      .order('start_date', { ascending: false })
+    setDisruptions(data ?? [])
   }
 
   const resetForm = () => {
@@ -301,6 +328,17 @@ export default function CalendarPage() {
 
   const mesocycleStatus: CurrentMesocycleStatus | null = selectActiveMesocycle(mesocycles, date)
 
+  // A short, naturally-expiring window (not a stored "dismissed" flag) -
+  // shows a soft nudge for a few days after a declared disruption ends,
+  // then just stops applying on its own. No migration needed.
+  const today = getLocalDateString()
+  const recentlyEndedDisruption = disruptions.find((d) => {
+    const daysSinceEnd = daysBetween(today, d.end_date)
+    return daysSinceEnd >= 0 && daysSinceEnd <= 3
+  })
+
+  const editingEntry = editingId ? calendarEntries.find((e) => e.id === editingId) ?? null : null
+
   const timedItems: TimedItem[] = buildTimedItemsForDate({
     date,
     calendarEntries,
@@ -344,6 +382,20 @@ export default function CalendarPage() {
             <span className="text-sm font-medium">Add Entry</span>
           </button>
         </div>
+
+        {recentlyEndedDisruption && !welcomeBackDismissed && (
+          <div className="flex items-center justify-between gap-3 border border-white/10 rounded-2xl bg-white/[0.02] p-4 mb-6">
+            <p className="text-white/60 text-sm">
+              Welcome back - pick up your plan where you left off{activeRace ? ', or Regenerate if things shifted while you were away' : ''}.
+            </p>
+            <button
+              onClick={() => setWelcomeBackDismissed(true)}
+              className="text-white/30 hover:text-white/60 text-xs shrink-0 transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center justify-between mb-6">
           <button
@@ -463,6 +515,10 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
+
+        <div className="mt-6">
+          <DisruptionDeclaration disruptions={disruptions} onChanged={refetchDisruptions} mesocycles={mesocycles} />
+        </div>
       </div>
 
       <Dialog
@@ -527,6 +583,16 @@ export default function CalendarPage() {
                   className="bg-white/5 border-white/10 text-white"
                 />
               </div>
+            )}
+
+            {isMultiDay && editingEntry && (
+              <button
+                type="button"
+                onClick={() => setTravelPrepEntryId(editingEntry.id)}
+                className="text-xs text-white/40 hover:text-white/60 transition-colors underline underline-offset-2"
+              >
+                Travel Prep
+              </button>
             )}
 
             <label className="flex items-center gap-2 text-sm text-white/70">
@@ -639,6 +705,21 @@ export default function CalendarPage() {
         onConfirm={handleDelete}
         destructive
       />
+
+      {travelPrepEntryId &&
+        (() => {
+          const travelPrepEntry = calendarEntries.find((e) => e.id === travelPrepEntryId)
+          if (!travelPrepEntry) return null
+          return (
+            <TravelPrepDialog
+              entry={travelPrepEntry}
+              mesocycles={mesocycles}
+              open={travelPrepEntryId !== null}
+              onOpenChange={(open) => !open && setTravelPrepEntryId(null)}
+              onDisruptionDeclared={refetchDisruptions}
+            />
+          )
+        })()}
     </AppLayout>
   )
 }

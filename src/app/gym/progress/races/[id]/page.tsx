@@ -34,9 +34,9 @@ import {
   TRANSITION_GUIDANCE,
   RACE_DAY_CHECKPOINTS,
   summarizeSeasonMismatch,
-  DISRUPTION_GUIDANCE,
   ACCLIMATION_GUIDANCE,
 } from '@/lib/race-plan/race-day-prep'
+import { DISRUPTION_GUIDANCE } from '@/lib/disruptions'
 import { suggestMilestoneSessions } from '@/lib/race-plan/milestone-sessions'
 import { TYPE_LABEL } from '@/components/races/day-slot-display'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
@@ -73,7 +73,7 @@ import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
 import { resolvePeakPaceTargets, resolveEasyPaceTargets, TYPICAL_TRANSITION_SECONDS } from '@/lib/race-plan/pace-targets'
 import { resolveRealZone2Pace, computePaceGaps, describePaceGap, type PaceGap } from '@/lib/race-plan/goal-achievability'
 import { assessBenchmarkCompliance, type BenchmarkFlag, type DisruptionRange } from '@/lib/race-plan/benchmark-verification'
-import DisruptionDeclaration, { formatDateRange, type TrainingDisruption } from '@/components/races/disruption-declaration'
+import DisruptionDeclaration, { formatDateRange, type TrainingDisruption } from '@/components/disruption-declaration'
 import {
   fetchCourseProfile,
   fetchCourseTimeBand,

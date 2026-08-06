@@ -74,3 +74,25 @@ export function describeMesocycleContext(status: CurrentMesocycleStatus): string
       : ''
   return `This lifter is in week ${currentWeek} of ${mesocycle.lengthWeeks} of ${label}${deloadNote}. Normal progression applies${fatigueNote}.`
 }
+
+// A one-line, honest note for a proposed date range (a declared trip/
+// disruption) against whichever mesocycle is active as of startDate -
+// "good timing" if any week the range touches is the deload week,
+// otherwise an honest "this lands in a working week" flag. Returns null
+// when no mesocycle is active over the range at all (nothing to say).
+// Same "flag, don't inflate" boundary as DISRUPTION_GUIDANCE.
+export function describeMesocycleOverlap(mesocycles: Mesocycle[], startDate: string, endDate: string): string | null {
+  const startStatus = selectActiveMesocycle(mesocycles, startDate)
+  if (!startStatus) return null
+
+  const { mesocycle, currentWeek: startWeek } = startStatus
+  const endStatus = deriveMesocycleStatus(mesocycle, endDate)
+  const endWeek = endStatus?.currentWeek ?? startWeek
+  const label = mesocycle.label ? ` of "${mesocycle.label}"` : ''
+
+  const touchesDeload = mesocycle.deloadWeekNumber != null && mesocycle.deloadWeekNumber >= startWeek && mesocycle.deloadWeekNumber <= endWeek
+  if (touchesDeload) return `Good timing - this overlaps your deload week${label}.`
+
+  const weekLabel = startWeek === endWeek ? `week ${startWeek}` : `weeks ${startWeek}-${endWeek}`
+  return `Heads up - this overlaps ${weekLabel} of ${mesocycle.lengthWeeks}${label}, a working week.`
+}
