@@ -1,11 +1,10 @@
-// First layer of a future Calendar/Schedule module - see migration
-// 061_add_calendar_entries.sql for the schema and design rationale.
-// Deliberately just events/commitments for now: no recurrence, no
-// non-negotiable/type distinction, no link to Races' training_disruptions
-// yet - all left as ordinary additive changes for whenever that layer
-// actually gets built, not reserved here.
+// Time-block calendar - see migration 062_add_calendar_time_blocks.sql
+// for the schema and design rationale. Every item shown (manual entries,
+// gym schedule slots, Races training sessions) renders as a real,
+// positioned/sized time-block when it has a time, and as an all-day
+// banner item when it doesn't - never a fabricated time.
 
-import { formatRelativeDateLabel, getLocalDateString } from '@/lib/date'
+import { getLocalWeekdayIndex } from '@/lib/date'
 import { computeSlotForWeekday, slotDisplayName, type ScheduleSlot } from '@/lib/gym-schedule'
 import type { ActionItem } from '@/lib/goals'
 import type { WeekSlots } from '@/lib/race-plan/day-template'
@@ -16,12 +15,40 @@ export interface CalendarEntry {
   startDate: string // YYYY-MM-DD
   endDate: string // YYYY-MM-DD, always >= startDate (= startDate for a single-day entry)
   startTime: string | null // HH:MM:SS, null = all-day/untimed
+  endTime: string | null // HH:MM:SS, paired with startTime - both set or both null
   note: string | null
+  // The smallest possible recurrence model: a single row, expanded at
+  // READ time (see entryAppliesToDate below), never materialized into
+  // multiple rows and never editable per-occurrence. null = a normal
+  // one-off entry. When set, startDate is the date recurrence BEGINS
+  // (not "the one day"), and recurrenceEndDate (if set) is when it stops.
+  recurrenceWeekdays: number[] | null // 0=Mon..6=Sun
+  recurrenceEndDate: string | null
+}
+
+export function entryOverlapsDate(entry: CalendarEntry, date: string): boolean {
+  return entry.startDate <= date && date <= entry.endDate
+}
+
+// The membership test for "does this entry show up on this date" -
+// handles both the plain overlap case and the recurring case. Pure
+// boolean, no synthesized per-occurrence object: a single day can only
+// ever contain at most one instance of a given recurring entry, so
+// there's nothing to construct beyond "yes/no."
+export function entryAppliesToDate(entry: CalendarEntry, date: string): boolean {
+  if (entry.recurrenceWeekdays && entry.recurrenceWeekdays.length > 0) {
+    const weekday = getLocalWeekdayIndex(new Date(date + 'T00:00:00'))
+    if (!entry.recurrenceWeekdays.includes(weekday)) return false
+    if (date < entry.startDate) return false
+    if (entry.recurrenceEndDate && date > entry.recurrenceEndDate) return false
+    return true
+  }
+  return entryOverlapsDate(entry, date)
 }
 
 // Soonest start first. Same-day entries with a time sort ahead of
-// untimed (all-day) ones on that day - a time is more specific,
-// actionable information than "sometime today."
+// untimed (all-day) ones - a time is more specific, actionable
+// information than "sometime today."
 export function sortUpcomingEntries(entries: CalendarEntry[]): CalendarEntry[] {
   return [...entries].sort((a, b) => {
     if (a.startDate !== b.startDate) return a.startDate < b.startDate ? -1 : 1
@@ -32,114 +59,216 @@ export function sortUpcomingEntries(entries: CalendarEntry[]): CalendarEntry[] {
   })
 }
 
-// A short, human date/time label for one entry - "Today", "Today at
-// 14:00", "Jan 5 – Jan 8". Reuses formatRelativeDateLabel for the actual
-// date labeling rather than a second date-formatting scheme.
-export function formatEntryWhen(entry: CalendarEntry): string {
-  const startLabel = formatRelativeDateLabel(entry.startDate)
-  const timeLabel = entry.startTime ? ` at ${entry.startTime.slice(0, 5)}` : ''
-  if (entry.endDate === entry.startDate) return `${startLabel}${timeLabel}`
-  return `${startLabel} – ${formatRelativeDateLabel(entry.endDate)}${timeLabel}`
+export function timeStringToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + m
 }
 
-// ─── Week grid aggregation ──────────────────────────────────────────────
+export function minutesToTimeString(minutes: number): string {
+  const h = Math.floor(minutes / 60) % 24
+  const m = minutes % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+// ─── Per-day timed-item aggregation ─────────────────────────────────────
 // Pure, read-only aggregation of data already computed elsewhere - no new
-// business logic. Callers (the /calendar page) fetch each source with its
-// own already-established query/function, then hand the raw results here
-// once per displayed week; this only groups/formats them per day.
+// business logic. Callers (the /calendar page) fetch each source with
+// its own already-established query/function, then hand the raw results
+// here for exactly one displayed date.
 
-export function entryOverlapsDate(entry: CalendarEntry, date: string): boolean {
-  return entry.startDate <= date && date <= entry.endDate
+export type TimedItemSource = 'entry' | 'gym' | 'races' | 'race_day' | 'goal'
+
+export interface TimedItem {
+  id: string
+  source: TimedItemSource
+  title: string
+  startMinutes: number | null // null = all-day/untimed
+  endMinutes: number | null
+  href?: string // 'goal' source only
+  entry?: CalendarEntry // 'entry' source only - for edit/delete
 }
 
-// Terse per-discipline tags for a compact one-line summary - not the full
-// zone/pace detail WeekDayList (Races) already shows elsewhere; this is a
-// calendar-cell footprint, so only the roles worth calling out (key/
-// threshold/vo2max) get a suffix, matching the "everything else is just
-// easy/technique volume" framing ZONE_GUIDANCE itself already uses.
+// Terse per-discipline tags, matching the style ZONE_GUIDANCE's own
+// "everything else is just easy/technique volume" framing already uses -
+// only the roles worth calling out get a suffix.
 const RACE_DISCIPLINE_LABEL: Record<string, string> = { swim: 'Swim', bike: 'Bike', run: 'Run', cardio: 'Cardio' }
 const RACE_ROLE_SUFFIX: Record<string, string> = { key: ' (Key)', threshold: ' (Threshold)', vo2max: ' (VO2max)' }
 
-// One consolidated line for a day's Races training content (however many
-// discipline slots land on it - e.g. a brick day has 2+), so this source
-// never contributes more than one line to a day's item count/cap.
-function summarizeRaceSessionsForDay(weekSlots: WeekSlots | null, weekdayIndex: number): string | null {
-  if (!weekSlots) return null
-  const parts: string[] = []
-  for (const slot of weekSlots.enduranceSlots) {
-    if (slot.day !== weekdayIndex) continue
-    parts.push(`${RACE_DISCIPLINE_LABEL[slot.type] ?? slot.type}${RACE_ROLE_SUFFIX[slot.role] ?? ''}`)
-  }
-  if (weekSlots.strengthSlots.some((s) => s.day === weekdayIndex)) parts.push('Strength')
-  if (weekSlots.brickDays.includes(weekdayIndex)) parts.push('Brick')
-  return parts.length > 0 ? parts.join(', ') : null
-}
+// Gym/Races slots only ever carry a single usual-time (a start), never a
+// separate duration - unlike calendar_entries, which has a real,
+// user-set end_time. These fixed durations are a reasonable DISPLAY
+// estimate for sizing the block, not a claim about real session length -
+// flagged here explicitly rather than silently assumed.
+const DEFAULT_GYM_BLOCK_MINUTES = 60
+const DEFAULT_RACES_BLOCK_MINUTES = 75
 
-export interface DayAggregate {
-  date: string // YYYY-MM-DD
-  weekdayIndex: number // 0=Monday...6=Sunday, matches gym-schedule.ts's own convention
-  raceDayLabel: string | null
-  goalItems: ActionItem[] // due today
-  entries: CalendarEntry[] // manual entries overlapping today
-  gymSlotLabel: string | null // only ever set in schedule_mode 'calendar' - see buildDayAggregates
-  racesSummary: string | null
-  itemCount: number // for a day-density indicator
-}
-
-// Assembles one week's worth of per-day content from already-fetched raw
-// data - the caller does every real query/derivation (active race +
-// its plan, schedule slots + mode, mesocycles, active goals, calendar
-// entries) using the exact functions those features already ship with;
-// this only groups the results by day and applies the display cap
-// hierarchy's raw ingredients (callers still do the actual capping/
-// rendering, since that's presentation, not aggregation).
-export function buildDayAggregates(params: {
-  weekStart: Date
+export function buildTimedItemsForDate(params: {
+  date: string
   calendarEntries: CalendarEntry[]
   goalItems: ActionItem[]
   activeRace: { raceDate: string; raceTypeLabel: string } | null
   scheduleMode: 'rotation' | 'calendar'
   scheduleSlots: ScheduleSlot[]
   raceWeekSlots: WeekSlots | null
-}): DayAggregate[] {
-  const { weekStart, calendarEntries, goalItems, activeRace, scheduleMode, scheduleSlots, raceWeekSlots } = params
+}): TimedItem[] {
+  const { date, calendarEntries, goalItems, activeRace, scheduleMode, scheduleSlots, raceWeekSlots } = params
+  const items: TimedItem[] = []
 
-  const days: DayAggregate[] = []
-  for (let weekdayIndex = 0; weekdayIndex < 7; weekdayIndex++) {
-    const date = new Date(weekStart)
-    date.setDate(date.getDate() + weekdayIndex)
-    const dateStr = getLocalDateString(date)
+  if (activeRace && activeRace.raceDate === date) {
+    items.push({ id: 'race-day', source: 'race_day', title: `${activeRace.raceTypeLabel} race day`, startMinutes: null, endMinutes: null })
+  }
 
-    const raceDayLabel = activeRace && activeRace.raceDate === dateStr ? `${activeRace.raceTypeLabel} race day` : null
-    const goalItemsToday = goalItems.filter((item) => item.targetDate === dateStr)
-    const entriesToday = sortUpcomingEntries(calendarEntries.filter((entry) => entryOverlapsDate(entry, dateStr)))
-
-    // Gym slots only mean anything calendar-true in schedule_mode
-    // 'calendar' - 'rotation' mode is deliberately not calendar-locked
-    // (see workout_schedule_slots' own design comment), so there is no
-    // real fact about what's scheduled on a future weekday to show.
-    let gymSlotLabel: string | null = null
-    if (scheduleMode === 'calendar') {
-      const slot = computeSlotForWeekday(scheduleSlots, weekdayIndex)
-      if (slot) gymSlotLabel = slotDisplayName(slot)
+  for (const item of goalItems) {
+    if (item.targetDate === date) {
+      items.push({ id: `goal-${item.id}`, source: 'goal', title: item.title, startMinutes: null, endMinutes: null, href: item.editHref })
     }
+  }
 
-    const racesSummary = summarizeRaceSessionsForDay(raceWeekSlots, weekdayIndex)
-
-    const itemCount =
-      (raceDayLabel ? 1 : 0) + goalItemsToday.length + entriesToday.length + (gymSlotLabel ? 1 : 0) + (racesSummary ? 1 : 0)
-
-    days.push({
-      date: dateStr,
-      weekdayIndex,
-      raceDayLabel,
-      goalItems: goalItemsToday,
-      entries: entriesToday,
-      gymSlotLabel,
-      racesSummary,
-      itemCount,
+  for (const entry of calendarEntries) {
+    if (!entryAppliesToDate(entry, date)) continue
+    const isRecurringOccurrence = entry.recurrenceWeekdays != null && entry.recurrenceWeekdays.length > 0
+    // A multi-day (non-recurring) entry only renders as a real timed
+    // block on its actual start_date - every other day it spans shows
+    // as an all-day "still ongoing" item, since the time only really
+    // means something on the day it begins. Recurring occurrences are
+    // never a multi-day span, so they're always eligible to be timed.
+    const showAsTimed = entry.startTime != null && entry.endTime != null && (isRecurringOccurrence || entry.startDate === date)
+    items.push({
+      id: `entry-${entry.id}`,
+      source: 'entry',
+      title: entry.title,
+      startMinutes: showAsTimed ? timeStringToMinutes(entry.startTime!) : null,
+      endMinutes: showAsTimed ? timeStringToMinutes(entry.endTime!) : null,
+      entry,
     })
   }
 
-  return days
+  // Gym slots only mean anything calendar-true in schedule_mode
+  // 'calendar' - 'rotation' mode is deliberately not calendar-locked
+  // (see workout_schedule_slots' own design comment), so there is no
+  // real fact about what's scheduled on a future weekday to show.
+  if (scheduleMode === 'calendar') {
+    const weekdayIndex = getLocalWeekdayIndex(new Date(date + 'T00:00:00'))
+    const slot = computeSlotForWeekday(scheduleSlots, weekdayIndex)
+    if (slot) {
+      const startMinutes = slot.usualTime ? timeStringToMinutes(slot.usualTime) : null
+      items.push({
+        id: `gym-${slot.id}`,
+        source: 'gym',
+        title: slotDisplayName(slot),
+        startMinutes,
+        endMinutes: startMinutes != null ? startMinutes + DEFAULT_GYM_BLOCK_MINUTES : null,
+      })
+    }
+  }
+
+  if (raceWeekSlots) {
+    const weekdayIndex = getLocalWeekdayIndex(new Date(date + 'T00:00:00'))
+    const isBrickDay = raceWeekSlots.brickDays.includes(weekdayIndex)
+
+    for (const slot of raceWeekSlots.enduranceSlots) {
+      if (slot.day !== weekdayIndex) continue
+      const label = `${RACE_DISCIPLINE_LABEL[slot.type] ?? slot.type}${RACE_ROLE_SUFFIX[slot.role] ?? ''}${isBrickDay ? ' · Brick' : ''}`
+      const startMinutes = slot.time ? timeStringToMinutes(slot.time) : null
+      items.push({
+        id: `races-${slot.type}-${weekdayIndex}`,
+        source: 'races',
+        title: label,
+        startMinutes,
+        endMinutes: startMinutes != null ? startMinutes + DEFAULT_RACES_BLOCK_MINUTES : null,
+      })
+    }
+
+    for (const slot of raceWeekSlots.strengthSlots) {
+      if (slot.day !== weekdayIndex) continue
+      const startMinutes = slot.time ? timeStringToMinutes(slot.time) : null
+      items.push({
+        id: `races-strength-${weekdayIndex}`,
+        source: 'races',
+        title: 'Strength',
+        startMinutes,
+        endMinutes: startMinutes != null ? startMinutes + DEFAULT_RACES_BLOCK_MINUTES : null,
+      })
+    }
+  }
+
+  return items
+}
+
+// ─── Overlap layout ──────────────────────────────────────────────────────
+// The standard calendar-app approach: cluster transitively-overlapping
+// items, then greedily assign each a column within its cluster so
+// overlapping items render side-by-side instead of stacked on top of
+// each other. Only ever called with items that already have both
+// startMinutes/endMinutes set - all-day items are a separate rendering
+// concern (the banner row), never passed through here.
+
+// Overrides startMinutes/endMinutes to non-nullable - every PositionedItem
+// came from the already-filtered TimedOnly set below, so callers never
+// need a null-check on them the way a plain TimedItem would require.
+export interface PositionedItem extends Omit<TimedItem, 'startMinutes' | 'endMinutes'> {
+  startMinutes: number
+  endMinutes: number
+  column: number
+  columnsInCluster: number
+}
+
+type TimedOnly = TimedItem & { startMinutes: number; endMinutes: number }
+
+export function layoutTimedItems(items: TimedItem[]): PositionedItem[] {
+  const timed = items.filter((i): i is TimedOnly => i.startMinutes != null && i.endMinutes != null)
+  const sorted = [...timed].sort((a, b) => a.startMinutes - b.startMinutes)
+
+  // Connected-component clustering via a running "cluster end"
+  // watermark: as long as the next item (in start-time order) starts
+  // before the cluster's max end-time so far, it joins the same
+  // cluster - this correctly chains A-overlaps-B-overlaps-C even when A
+  // and C don't directly overlap each other.
+  const clusters: TimedOnly[][] = []
+  let currentCluster: TimedOnly[] = []
+  let clusterEnd = -Infinity
+
+  for (const item of sorted) {
+    if (currentCluster.length > 0 && item.startMinutes >= clusterEnd) {
+      clusters.push(currentCluster)
+      currentCluster = []
+      clusterEnd = -Infinity
+    }
+    currentCluster.push(item)
+    clusterEnd = Math.max(clusterEnd, item.endMinutes)
+  }
+  if (currentCluster.length > 0) clusters.push(currentCluster)
+
+  const positioned: PositionedItem[] = []
+  for (const cluster of clusters) {
+    // Greedy column assignment: place each item (in start-time order) in
+    // the leftmost column whose last-placed item already ended by this
+    // item's start time; open a new column only when none qualifies.
+    const columnEnds: number[] = []
+    const columnOf = new Map<TimedOnly, number>()
+
+    for (const item of cluster) {
+      let placedColumn = -1
+      for (let c = 0; c < columnEnds.length; c++) {
+        if (columnEnds[c] <= item.startMinutes) {
+          placedColumn = c
+          break
+        }
+      }
+      if (placedColumn === -1) {
+        placedColumn = columnEnds.length
+        columnEnds.push(item.endMinutes)
+      } else {
+        columnEnds[placedColumn] = item.endMinutes
+      }
+      columnOf.set(item, placedColumn)
+    }
+
+    const columnsInCluster = columnEnds.length
+    for (const item of cluster) {
+      positioned.push({ ...item, column: columnOf.get(item)!, columnsInCluster })
+    }
+  }
+
+  return positioned
 }

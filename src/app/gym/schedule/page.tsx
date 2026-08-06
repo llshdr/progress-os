@@ -228,6 +228,23 @@ export default function SchedulePage() {
     fetchAll()
   }
 
+  // Saves immediately, independent of any page-level Save action - same
+  // precedent as the Favorite/Archive toggles and ExerciseVariantsManager
+  // elsewhere. Optimistic local update so the input doesn't visibly jump
+  // on every keystroke while typing a time; a failed save still logs and
+  // the next fetchAll() (e.g. on reorder/add) would correct it.
+  const updateUsualTime = async (slotId: string, usualTime: string) => {
+    setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, usualTime: usualTime || null } : s)))
+    const { error } = await supabase
+      .from('workout_schedule_slots')
+      .update({ usual_time: usualTime || null })
+      .eq('id', slotId)
+
+    if (error) {
+      console.error('Error saving usual time:', error)
+    }
+  }
+
   if (loading) {
     return (
       <AppLayout>
@@ -469,6 +486,18 @@ export default function SchedulePage() {
                           ))}
                         </div>
                       )}
+                      <div className="flex items-center gap-2 mt-2">
+                        <Label htmlFor={`usual-time-${slot.id}`} className="text-white/40 text-xs">
+                          Usual time
+                        </Label>
+                        <Input
+                          id={`usual-time-${slot.id}`}
+                          type="time"
+                          value={slot.usualTime ?? ''}
+                          onChange={(e) => updateUsualTime(slot.id, e.target.value)}
+                          className="bg-white/5 border-white/10 text-white w-28 h-7 text-xs"
+                        />
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {slot.templateId && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
@@ -12,7 +12,16 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
-import { buildDayAggregates, type CalendarEntry, type DayAggregate } from '@/lib/calendar'
+import {
+  buildTimedItemsForDate,
+  layoutTimedItems,
+  timeStringToMinutes,
+  minutesToTimeString,
+  type CalendarEntry,
+  type TimedItem,
+  type TimedItemSource,
+  type PositionedItem,
+} from '@/lib/calendar'
 import { fetchScheduleSlots, WEEKDAY_NAMES, type ScheduleSlot } from '@/lib/gym-schedule'
 import { fetchActiveActionItems, type ActionItem } from '@/lib/goals'
 import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
@@ -22,53 +31,39 @@ import { raceTypeLabel } from '@/lib/race-constants'
 
 // Every source below is fetched once per page load via the exact
 // function/query each feature already ships with - this page only
-// groups the results per day (buildDayAggregates, calendar.ts) and caps
-// what's shown. Not a new source of truth for any of it.
+// groups the results per displayed day (buildTimedItemsForDate,
+// calendar.ts) and lays out overlapping blocks (layoutTimedItems). Not a
+// new source of truth for any of it.
 
 type ScheduleMode = 'rotation' | 'calendar'
 
-type DayLine =
-  | { kind: 'race'; text: string }
-  | { kind: 'goal'; text: string; href: string }
-  | { kind: 'entry'; entry: CalendarEntry }
-  | { kind: 'gym'; text: string }
-  | { kind: 'races'; text: string }
+const PIXELS_PER_MINUTE = 1 // 60px per hour
+const MIN_BLOCK_HEIGHT = 28
+const DAY_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE
 
-// At most this many lines shown per day before a "+N more" - the one
-// source capable of multiplying (Races sessions) is already consolidated
-// into a single line upstream (buildDayAggregates), so this cap mostly
-// protects against a day genuinely stacking several independent things
-// (a manual entry + a goal due date + a gym slot, etc.).
-const MAX_LINES_PER_DAY = 4
-
-function buildDayLines(day: DayAggregate): { lines: DayLine[]; hiddenCount: number } {
-  const lines: DayLine[] = []
-  if (day.raceDayLabel) lines.push({ kind: 'race', text: day.raceDayLabel })
-  for (const item of day.goalItems) lines.push({ kind: 'goal', text: item.title, href: item.editHref })
-  for (const entry of day.entries) lines.push({ kind: 'entry', entry })
-  if (day.gymSlotLabel) lines.push({ kind: 'gym', text: day.gymSlotLabel })
-  if (day.racesSummary) lines.push({ kind: 'races', text: day.racesSummary })
-
-  return { lines: lines.slice(0, MAX_LINES_PER_DAY), hiddenCount: Math.max(0, lines.length - MAX_LINES_PER_DAY) }
+const SOURCE_STYLE: Record<TimedItemSource, string> = {
+  entry: 'bg-white/10 border-white/25 text-white',
+  gym: 'bg-blue-500/10 border-blue-400/30 text-blue-100',
+  races: 'bg-orange-500/10 border-orange-400/30 text-orange-100',
+  race_day: 'bg-white/10 border-white/25 text-white',
+  goal: 'bg-white/5 border-white/10 text-white/70',
 }
 
-function shiftWeek(date: Date, deltaWeeks: number): Date {
-  const next = new Date(date)
-  next.setDate(next.getDate() + deltaWeeks * 7)
-  return next
+function shiftDay(date: string, deltaDays: number): string {
+  const d = new Date(date + 'T00:00:00')
+  d.setDate(d.getDate() + deltaDays)
+  return getLocalDateString(d)
 }
 
-function formatWeekRange(weekStart: Date): string {
-  const end = new Date(weekStart)
-  end.setDate(end.getDate() + 6)
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-  return `${weekStart.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}, ${end.getFullYear()}`
+function formatDayHeading(date: string): string {
+  const d = new Date(date + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 export default function CalendarPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [weekStart, setWeekStart] = useState(getLocalWeekStart())
+  const [date, setDate] = useState(getLocalDateString())
 
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('rotation')
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>([])
@@ -77,6 +72,8 @@ export default function CalendarPage() {
   const [mesocycles, setMesocycles] = useState<Mesocycle[]>([])
   const [goalItems, setGoalItems] = useState<ActionItem[]>([])
   const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>([])
+  const [wakeTime, setWakeTime] = useState('06:00:00')
+  const [sleepTime, setSleepTime] = useState('23:00:00')
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -84,17 +81,33 @@ export default function CalendarPage() {
   const [startDate, setStartDate] = useState(getLocalDateString())
   const [isMultiDay, setIsMultiDay] = useState(false)
   const [endDate, setEndDate] = useState(getLocalDateString())
+  const [hasTime, setHasTime] = useState(false)
   const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [recurrenceWeekdays, setRecurrenceWeekdays] = useState<number[]>([])
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
 
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null)
 
+  const axisRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
     fetchAll()
   }, [])
+
+  // Re-scroll to the wake-time position whenever the displayed day
+  // changes (or once loading finishes) - a fresh day view should always
+  // open at the same sensible default, not wherever the user happened
+  // to scroll to on the previous day.
+  useEffect(() => {
+    if (!axisRef.current) return
+    const wakeMinutes = timeStringToMinutes(wakeTime)
+    axisRef.current.scrollTop = Math.max(0, (wakeMinutes - 30) * PIXELS_PER_MINUTE)
+  }, [date, loading, wakeTime])
 
   const fetchAll = async () => {
     setLoading(true)
@@ -110,7 +123,7 @@ export default function CalendarPage() {
     const today = getLocalDateString()
 
     const [settingsResult, slots, raceResult, mesoResult, activeGoalItems, entriesResult] = await Promise.all([
-      supabase.from('user_settings').select('schedule_mode').eq('user_id', user.id).maybeSingle(),
+      supabase.from('user_settings').select('schedule_mode, wake_time, sleep_time').eq('user_id', user.id).maybeSingle(),
       fetchScheduleSlots(supabase, user.id),
       supabase
         .from('races')
@@ -122,10 +135,15 @@ export default function CalendarPage() {
         .maybeSingle(),
       supabase.from('training_mesocycles').select('id, start_date, length_weeks, deload_week_number, label').eq('user_id', user.id),
       fetchActiveActionItems(supabase, user.id),
-      supabase.from('calendar_entries').select('id, title, start_date, end_date, start_time, note').eq('user_id', user.id),
+      supabase
+        .from('calendar_entries')
+        .select('id, title, start_date, end_date, start_time, end_time, note, recurrence_weekdays, recurrence_end_date')
+        .eq('user_id', user.id),
     ])
 
     setScheduleMode(settingsResult.data?.schedule_mode === 'calendar' ? 'calendar' : 'rotation')
+    if (settingsResult.data?.wake_time) setWakeTime(settingsResult.data.wake_time)
+    if (settingsResult.data?.sleep_time) setSleepTime(settingsResult.data.sleep_time)
     setScheduleSlots(slots)
 
     const raceRow = raceResult.data
@@ -159,7 +177,10 @@ export default function CalendarPage() {
         startDate: r.start_date,
         endDate: r.end_date,
         startTime: r.start_time,
+        endTime: r.end_time,
         note: r.note,
+        recurrenceWeekdays: r.recurrence_weekdays,
+        recurrenceEndDate: r.recurrence_end_date,
       }))
     )
 
@@ -169,19 +190,23 @@ export default function CalendarPage() {
   const resetForm = () => {
     setEditingId(null)
     setTitle('')
-    setStartDate(getLocalDateString())
+    setStartDate(date)
     setIsMultiDay(false)
-    setEndDate(getLocalDateString())
+    setEndDate(date)
+    setHasTime(false)
     setStartTime('')
+    setEndTime('')
+    setIsRecurring(false)
+    setRecurrenceWeekdays([])
+    setRecurrenceEndDate('')
     setNote('')
   }
 
   const openAddDialog = (prefillDate?: string) => {
     resetForm()
-    if (prefillDate) {
-      setStartDate(prefillDate)
-      setEndDate(prefillDate)
-    }
+    const d = prefillDate ?? date
+    setStartDate(d)
+    setEndDate(d)
     setDialogOpen(true)
   }
 
@@ -191,12 +216,26 @@ export default function CalendarPage() {
     setStartDate(entry.startDate)
     setIsMultiDay(entry.endDate !== entry.startDate)
     setEndDate(entry.endDate)
+    setHasTime(entry.startTime != null)
     setStartTime(entry.startTime ? entry.startTime.slice(0, 5) : '')
+    setEndTime(entry.endTime ? entry.endTime.slice(0, 5) : '')
+    setIsRecurring(entry.recurrenceWeekdays != null && entry.recurrenceWeekdays.length > 0)
+    setRecurrenceWeekdays(entry.recurrenceWeekdays ?? [])
+    setRecurrenceEndDate(entry.recurrenceEndDate ?? '')
     setNote(entry.note ?? '')
     setDialogOpen(true)
   }
 
-  const canSave = title.trim().length > 0 && startDate.length > 0 && (!isMultiDay || endDate >= startDate)
+  const toggleRecurrenceWeekday = (weekday: number) => {
+    setRecurrenceWeekdays((prev) => (prev.includes(weekday) ? prev.filter((d) => d !== weekday) : [...prev, weekday].sort()))
+  }
+
+  const canSave =
+    title.trim().length > 0 &&
+    startDate.length > 0 &&
+    (!isMultiDay || endDate >= startDate) &&
+    (!hasTime || (startTime.length > 0 && endTime.length > 0 && endTime > startTime)) &&
+    (!isRecurring || recurrenceWeekdays.length > 0)
 
   const handleSave = async () => {
     if (!canSave || !userId) return
@@ -207,8 +246,11 @@ export default function CalendarPage() {
       title: title.trim(),
       start_date: startDate,
       end_date: isMultiDay ? endDate : startDate,
-      start_time: startTime || null,
+      start_time: hasTime ? startTime : null,
+      end_time: hasTime ? endTime : null,
       note: note.trim() || null,
+      recurrence_weekdays: isRecurring ? recurrenceWeekdays : null,
+      recurrence_end_date: isRecurring && recurrenceEndDate ? recurrenceEndDate : null,
     }
 
     const { error } = editingId
@@ -247,26 +289,20 @@ export default function CalendarPage() {
     )
   }
 
-  const weekStartStr = getLocalDateString(weekStart)
-  const todayStr = getLocalDateString()
-
-  // The plan week matching the currently-displayed grid week, if any -
+  // The plan week containing the currently-displayed day, if any -
   // reuses slotsForWeek (day-template.ts) exactly as WeekDayList
-  // (Races) does, just with this week's skeleton instead of "today's."
-  const matchedPlanWeek = racePlan?.weeks.find((w) => w.weekStartDate === weekStartStr) ?? null
+  // (Races) does, just for this day's week instead of "today's."
+  const displayedWeekStart = getLocalDateString(getLocalWeekStart(new Date(date + 'T00:00:00')))
+  const matchedPlanWeek = racePlan?.weeks.find((w) => w.weekStartDate === displayedWeekStart) ?? null
   const raceWeekSlots =
     matchedPlanWeek && racePlan?.phaseTemplates[matchedPlanWeek.phase]
       ? slotsForWeek(racePlan.phaseTemplates[matchedPlanWeek.phase]!, matchedPlanWeek)
       : null
 
-  // Mesocycle status is a whole-week fact, not per-day - shown once above
-  // the grid rather than repeated on all 7 cards. deriveMesocycleStatus
-  // already takes an arbitrary date, so this is just evaluating it at the
-  // grid's displayed week instead of literally today.
-  const weekMesocycleStatus: CurrentMesocycleStatus | null = selectActiveMesocycle(mesocycles, weekStartStr)
+  const mesocycleStatus: CurrentMesocycleStatus | null = selectActiveMesocycle(mesocycles, date)
 
-  const days = buildDayAggregates({
-    weekStart,
+  const timedItems: TimedItem[] = buildTimedItemsForDate({
+    date,
     calendarEntries,
     goalItems,
     activeRace,
@@ -275,9 +311,15 @@ export default function CalendarPage() {
     raceWeekSlots,
   })
 
+  const allDayItems = timedItems.filter((i) => i.startMinutes == null)
+  const positioned: PositionedItem[] = layoutTimedItems(timedItems)
+
+  const wakeMinutes = timeStringToMinutes(wakeTime)
+  const sleepMinutes = timeStringToMinutes(sleepTime)
+
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link href="/dashboard" className="text-white/40 hover:text-white/60 transition-colors mb-6 inline-flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
@@ -290,7 +332,7 @@ export default function CalendarPage() {
             </div>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">Calendar</h1>
-              <p className="text-white/50 text-sm">Your week, plus what your training already has planned</p>
+              <p className="text-white/50 text-sm">Your day, plus what your training already has planned</p>
             </div>
           </div>
 
@@ -305,31 +347,31 @@ export default function CalendarPage() {
 
         <div className="flex items-center justify-between mb-6">
           <button
-            onClick={() => setWeekStart(shiftWeek(weekStart, -1))}
+            onClick={() => setDate(shiftDay(date, -1))}
             className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="text-center">
-            <p className="text-white font-medium">{formatWeekRange(weekStart)}</p>
-            {weekMesocycleStatus && (
+            <p className="text-white font-medium">{formatDayHeading(date)}</p>
+            {mesocycleStatus && (
               <p className="text-white/40 text-xs mt-1">
-                {weekMesocycleStatus.mesocycle.label ? `${weekMesocycleStatus.mesocycle.label} — ` : ''}
-                {weekMesocycleStatus.isDeloadWeek
+                {mesocycleStatus.mesocycle.label ? `${mesocycleStatus.mesocycle.label} — ` : ''}
+                {mesocycleStatus.isDeloadWeek
                   ? 'Deload week'
-                  : `Week ${weekMesocycleStatus.currentWeek} of ${weekMesocycleStatus.mesocycle.lengthWeeks}`}
+                  : `Week ${mesocycleStatus.currentWeek} of ${mesocycleStatus.mesocycle.lengthWeeks}`}
               </p>
             )}
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setWeekStart(getLocalWeekStart())}
+              onClick={() => setDate(getLocalDateString())}
               className="text-xs text-white/50 hover:text-white px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
             >
               Today
             </button>
             <button
-              onClick={() => setWeekStart(shiftWeek(weekStart, 1))}
+              onClick={() => setDate(shiftDay(date, 1))}
               className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
             >
               <ChevronRight className="w-5 h-5" />
@@ -337,91 +379,89 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-          {days.map((day) => {
-            const { lines, hiddenCount } = buildDayLines(day)
-            const isToday = day.date === todayStr
-            const dayNumber = new Date(day.date + 'T00:00:00').getDate()
-
-            return (
-              <div
-                key={day.date}
-                className={`border rounded-2xl p-4 ${isToday ? 'border-white/30 bg-white/[0.04]' : 'border-white/10 bg-white/[0.02]'}`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-white/40 text-xs uppercase tracking-wide">{WEEKDAY_NAMES[day.weekdayIndex].slice(0, 3)}</p>
-                    <p className={`text-lg font-medium ${isToday ? 'text-white' : 'text-white/80'}`}>{dayNumber}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {day.itemCount > 0 && (
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${day.itemCount >= 3 ? 'bg-white' : 'bg-white/40'}`}
-                        title={`${day.itemCount} item(s)`}
-                      />
-                    )}
-                    <button
-                      onClick={() => openAddDialog(day.date)}
-                      className="p-1 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+        {allDayItems.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {allDayItems.map((item) => {
+              const content = (
+                <span
+                  className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border ${SOURCE_STYLE[item.source]}`}
+                >
+                  {item.source === 'goal' ? `Due: ${item.title}` : item.title}
+                </span>
+              )
+              return item.href ? (
+                <Link key={item.id} href={item.href} className="hover:opacity-80 transition-opacity">
+                  {content}
+                </Link>
+              ) : (
+                <div key={item.id} className="group relative inline-flex items-center">
+                  {content}
+                  {item.entry && (
+                    <span className="hidden group-hover:inline-flex items-center gap-0.5 ml-1">
+                      <button
+                        onClick={() => openEditDialog(item.entry!)}
+                        className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => setEntryToDelete(item.entry!.id)}
+                        className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
                 </div>
+              )
+            })}
+          </div>
+        )}
 
-                <div className="space-y-1.5">
-                  {lines.length === 0 && <p className="text-white/20 text-xs">—</p>}
-                  {lines.map((line, i) => {
-                    if (line.kind === 'race') {
-                      return (
-                        <p key={i} className="text-white text-sm font-medium">
-                          {line.text}
-                        </p>
-                      )
-                    }
-                    if (line.kind === 'goal') {
-                      return (
-                        <Link key={i} href={line.href} className="block text-sm text-white/70 hover:text-white transition-colors truncate">
-                          Due: {line.text}
-                        </Link>
-                      )
-                    }
-                    if (line.kind === 'entry') {
-                      return (
-                        <div key={i} className="flex items-center justify-between gap-1">
-                          <span className="text-sm text-white/80 truncate">
-                            {line.entry.title}
-                            {line.entry.startTime && <span className="text-white/40"> · {line.entry.startTime.slice(0, 5)}</span>}
-                          </span>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <button
-                              onClick={() => openEditDialog(line.entry)}
-                              className="p-1 rounded hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={() => setEntryToDelete(line.entry.id)}
-                              className="p-1 rounded hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    }
-                    // 'gym' and 'races'
-                    return (
-                      <p key={i} className="text-sm text-white/50 truncate">
-                        {line.text}
-                      </p>
-                    )
-                  })}
-                  {hiddenCount > 0 && <p className="text-white/30 text-xs">+{hiddenCount} more</p>}
-                </div>
+        <div ref={axisRef} className="relative border border-white/10 rounded-2xl overflow-y-auto" style={{ maxHeight: '65vh' }}>
+          <div className="relative" style={{ height: DAY_HEIGHT }}>
+            {/* Dimmed regions outside wake/sleep - a default emphasis, never a hard cutoff; anything scheduled here still shows in full. */}
+            <div
+              className="absolute left-0 right-0 top-0 bg-black/30 pointer-events-none"
+              style={{ height: wakeMinutes * PIXELS_PER_MINUTE }}
+            />
+            <div
+              className="absolute left-0 right-0 bottom-0 bg-black/30 pointer-events-none"
+              style={{ height: (24 * 60 - sleepMinutes) * PIXELS_PER_MINUTE }}
+            />
+
+            {Array.from({ length: 24 }, (_, hour) => (
+              <div key={hour} className="absolute left-0 right-0 border-t border-white/5" style={{ top: hour * 60 * PIXELS_PER_MINUTE }}>
+                <span className="absolute -top-2 left-2 text-white/25 text-xs bg-black px-1">{String(hour).padStart(2, '0')}:00</span>
               </div>
-            )
-          })}
+            ))}
+
+            <div className="absolute left-14 right-2 top-0 bottom-0">
+              {positioned.map((item) => {
+                const top = item.startMinutes * PIXELS_PER_MINUTE
+                const height = Math.max(MIN_BLOCK_HEIGHT, (item.endMinutes - item.startMinutes) * PIXELS_PER_MINUTE)
+                const widthPct = 100 / item.columnsInCluster
+                const leftPct = item.column * widthPct
+                const clickable = item.source === 'entry' && item.entry
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={clickable ? () => openEditDialog(item.entry!) : undefined}
+                    className={`absolute rounded-lg border px-2 py-1 overflow-hidden text-xs ${SOURCE_STYLE[item.source]} ${
+                      clickable ? 'cursor-pointer hover:brightness-125' : ''
+                    }`}
+                    style={{ top, height, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)` }}
+                  >
+                    <p className="font-medium truncate">{item.title}</p>
+                    <p className="text-[10px] opacity-70 truncate">
+                      {minutesToTimeString(item.startMinutes)}–{minutesToTimeString(item.endMinutes)}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -432,12 +472,10 @@ export default function CalendarPage() {
           if (!open) resetForm()
         }}
       >
-        <DialogContent className="bg-black border-white/10 text-white">
+        <DialogContent className="bg-black border-white/10 text-white max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Edit Entry' : 'Add Entry'}</DialogTitle>
-            <DialogDescription className="text-white/40">
-              A title and a date is all you need - time and notes are optional.
-            </DialogDescription>
+            <DialogDescription className="text-white/40">A title and a date is all you need - everything else is optional.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -468,10 +506,12 @@ export default function CalendarPage() {
               />
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-white/70">
-              <input type="checkbox" checked={isMultiDay} onChange={(e) => setIsMultiDay(e.target.checked)} />
-              Spans multiple days
-            </label>
+            {!isRecurring && (
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input type="checkbox" checked={isMultiDay} onChange={(e) => setIsMultiDay(e.target.checked)} />
+                Spans multiple days
+              </label>
+            )}
 
             {isMultiDay && (
               <div className="space-y-2">
@@ -489,18 +529,84 @@ export default function CalendarPage() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="entry-time" className="text-white/80">
-                Time (optional)
-              </Label>
-              <Input
-                id="entry-time"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="bg-white/5 border-white/10 text-white w-40"
-              />
-            </div>
+            <label className="flex items-center gap-2 text-sm text-white/70">
+              <input type="checkbox" checked={hasTime} onChange={(e) => setHasTime(e.target.checked)} />
+              Has a specific time
+            </label>
+
+            {hasTime && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="entry-start-time" className="text-white/80">
+                    Start time
+                  </Label>
+                  <Input
+                    id="entry-start-time"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="entry-end-time" className="text-white/80">
+                    End time
+                  </Label>
+                  <Input
+                    id="entry-end-time"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+              </div>
+            )}
+
+            {!isMultiDay && (
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
+                Repeats weekly
+              </label>
+            )}
+
+            {isRecurring && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-white/80">Repeats on</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {WEEKDAY_NAMES.map((name, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => toggleRecurrenceWeekday(i)}
+                        className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+                          recurrenceWeekdays.includes(i) ? 'bg-white text-black' : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                        }`}
+                      >
+                        {name.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="entry-recurrence-end" className="text-white/80">
+                    Until (optional)
+                  </Label>
+                  <Input
+                    id="entry-recurrence-end"
+                    type="date"
+                    value={recurrenceEndDate}
+                    min={startDate}
+                    onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+                <p className="text-white/30 text-xs">
+                  Editing or deleting this entry affects every occurrence - there&apos;s no way to change just one week.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="entry-note" className="text-white/80">
@@ -527,7 +633,7 @@ export default function CalendarPage() {
         open={entryToDelete !== null}
         onOpenChange={(open) => !open && setEntryToDelete(null)}
         title="Remove Entry"
-        description="Are you sure you want to remove this calendar entry?"
+        description="Are you sure you want to remove this calendar entry? If it repeats weekly, this removes every occurrence."
         confirmText="Remove"
         cancelText="Cancel"
         onConfirm={handleDelete}

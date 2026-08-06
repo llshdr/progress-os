@@ -25,6 +25,8 @@ export default function TrainingSettingsPage() {
   const [trainingIntensity, setTrainingIntensity] = useState<TrainingIntensity>('mild')
   const [openWaterSeasonStart, setOpenWaterSeasonStart] = useState('')
   const [openWaterSeasonEnd, setOpenWaterSeasonEnd] = useState('')
+  const [wakeTime, setWakeTime] = useState('06:00')
+  const [sleepTime, setSleepTime] = useState('23:00')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -45,7 +47,9 @@ export default function TrainingSettingsPage() {
 
     const { data } = await supabase
       .from('user_settings')
-      .select('weekly_workout_goal, weight_unit, goal_weight, training_phase, training_intensity, open_water_season_start_month, open_water_season_end_month')
+      .select(
+        'weekly_workout_goal, weight_unit, goal_weight, training_phase, training_intensity, open_water_season_start_month, open_water_season_end_month, wake_time, sleep_time'
+      )
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -65,6 +69,8 @@ export default function TrainingSettingsPage() {
     }
     if (data?.open_water_season_start_month) setOpenWaterSeasonStart(String(data.open_water_season_start_month))
     if (data?.open_water_season_end_month) setOpenWaterSeasonEnd(String(data.open_water_season_end_month))
+    if (data?.wake_time) setWakeTime(data.wake_time.slice(0, 5))
+    if (data?.sleep_time) setSleepTime(data.sleep_time.slice(0, 5))
     setLoading(false)
   }
 
@@ -107,6 +113,8 @@ export default function TrainingSettingsPage() {
         training_intensity: trainingIntensity,
         open_water_season_start_month: openWaterSeasonStart ? parseInt(openWaterSeasonStart, 10) : null,
         open_water_season_end_month: openWaterSeasonEnd ? parseInt(openWaterSeasonEnd, 10) : null,
+        wake_time: wakeTime || '06:00',
+        sleep_time: sleepTime || '23:00',
       },
       { onConflict: 'user_id' }
     )
@@ -317,6 +325,46 @@ export default function TrainingSettingsPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+                <h2 className="text-lg font-medium text-white mb-1">Day Schedule</h2>
+                <p className="text-white/40 text-sm mb-4">
+                  Bounds where the Calendar&apos;s day view opens by default - it never hides anything scheduled
+                  outside this range, it just decides the default scroll position.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="wake-time" className="text-white/80">
+                      Wake time
+                    </Label>
+                    <Input
+                      id="wake-time"
+                      type="time"
+                      value={wakeTime}
+                      onChange={(e) => {
+                        setWakeTime(e.target.value)
+                        setSaved(false)
+                      }}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sleep-time" className="text-white/80">
+                      Sleep time
+                    </Label>
+                    <Input
+                      id="sleep-time"
+                      type="time"
+                      value={sleepTime}
+                      onChange={(e) => {
+                        setSleepTime(e.target.value)
+                        setSaved(false)
+                      }}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
                   </div>
                 </div>
               </div>

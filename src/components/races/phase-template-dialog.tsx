@@ -113,6 +113,16 @@ export default function PhaseTemplateDialog({
     setEdited((prev) => ({ ...prev, strengthSlots: prev.strengthSlots.map((s, i) => (i === index ? { ...s, day } : s)) }))
   }
 
+  // Blank input -> null, never a fabricated default - the calendar's day
+  // view shows this slot as all-day/untimed until the athlete sets one.
+  const updateEnduranceTime = (index: number, time: string) => {
+    setEdited((prev) => ({ ...prev, enduranceSlots: prev.enduranceSlots.map((s, i) => (i === index ? { ...s, time: time || null } : s)) }))
+  }
+
+  const updateStrengthTime = (index: number, time: string) => {
+    setEdited((prev) => ({ ...prev, strengthSlots: prev.strengthSlots.map((s, i) => (i === index ? { ...s, time: time || null } : s)) }))
+  }
+
   const toggleProgression = (index: number, enabled: boolean) => {
     setEdited((prev) => ({
       ...prev,
@@ -212,6 +222,12 @@ export default function PhaseTemplateDialog({
                           </option>
                         ))}
                       </select>
+                      <Input
+                        type="time"
+                        value={slot.time ?? ''}
+                        onChange={(e) => updateEnduranceTime(slot.index, e.target.value)}
+                        className="bg-white/5 border-white/10 text-white w-28 h-7 text-xs"
+                      />
                       {slot.role === 'key' && (
                         <label className="flex items-center gap-1 text-xs text-white/50">
                           <input type="checkbox" checked={slot.progression != null} onChange={(e) => toggleProgression(slot.index, e.target.checked)} />
@@ -257,6 +273,12 @@ export default function PhaseTemplateDialog({
                           </option>
                         ))}
                       </select>
+                      <Input
+                        type="time"
+                        value={slot.time ?? ''}
+                        onChange={(e) => updateStrengthTime(slot.index, e.target.value)}
+                        className="bg-white/5 border-white/10 text-white w-28 h-7 text-xs"
+                      />
                       {restrictedDays.has(slot.day) && <span className="text-yellow-200/60 text-xs">Right after a key/brick session - consider a different day.</span>}
                     </div>
                   ))}

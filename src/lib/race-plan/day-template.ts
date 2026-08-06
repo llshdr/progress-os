@@ -15,10 +15,21 @@ export interface EnduranceSlot {
   role: SlotRole
   shareOfWeeklyTotal: number // this slot's fraction of the discipline's weekly km AT PHASE START
   progression: SlotProgression | null // null = flat - the "some slots ramp, some don't" mechanism
+  // A usual time for this slot, e.g. "06:30" - optional and never
+  // generated/guessed (see buildEnduranceSlots), only ever set by the
+  // athlete via PhaseTemplateDialog. Undefined/null for every slot
+  // generated before this field existed - the calendar's day view shows
+  // those as all-day/untimed until a time is explicitly set. Phase-level,
+  // same as day/role/progression - one time applies to every week that
+  // reuses this phase's template, not a specific week.
+  time?: string | null
 }
 
 export interface StrengthSlot {
   day: number
+  // See EnduranceSlot.time above - same optional, never-guessed, phase-
+  // level convention.
+  time?: string | null
 }
 
 export interface PhaseTemplate {

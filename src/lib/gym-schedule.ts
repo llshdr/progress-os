@@ -9,6 +9,10 @@ export interface ScheduleSlot {
   templateName: string | null
   label: string | null
   slotOrder: number
+  // A usual time for this slot, e.g. "06:30" - set once at the source
+  // (this page's own slot rows) and read by the calendar's day view.
+  // Never guessed: null until the user explicitly sets one.
+  usualTime: string | null
 }
 
 export function slotDisplayName(slot: ScheduleSlot): string {
@@ -21,7 +25,7 @@ export function slotDisplayName(slot: ScheduleSlot): string {
 export async function fetchScheduleSlots(supabase: SupabaseClient, userId: string): Promise<ScheduleSlot[]> {
   const { data, error } = await supabase
     .from('workout_schedule_slots')
-    .select('id, template_id, label, slot_order, workout_templates(name)')
+    .select('id, template_id, label, slot_order, usual_time, workout_templates(name)')
     .eq('user_id', userId)
     .order('slot_order', { ascending: true })
 
@@ -36,6 +40,7 @@ export async function fetchScheduleSlots(supabase: SupabaseClient, userId: strin
     templateName: row.workout_templates?.name ?? null,
     label: row.label,
     slotOrder: row.slot_order,
+    usualTime: row.usual_time,
   }))
 }
 
