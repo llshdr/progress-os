@@ -5,7 +5,7 @@ import AppLayout from '@/components/app-layout'
 import { User } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Calendar, CalendarDays, Clock } from 'lucide-react'
+import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Flame, Clock } from 'lucide-react'
 import Link from 'next/link'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
@@ -391,7 +391,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           {/* Weekly Progress */}
           <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Calendar className="w-5 h-5 text-white/60" />
+              <Flame className="w-5 h-5 text-white/60" />
               <h3 className="text-lg font-medium text-white">Weekly Progress</h3>
             </div>
             <div className="mb-3">
@@ -474,40 +474,41 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Activity - one shared card with divider rows, same
+            compact-list pattern as Personal Records above, instead of a
+            separate full bordered card per workout. Same information,
+            meaningfully less vertical space. */}
         <div className="mb-6">
           <h3 className="text-xl font-semibold text-white mb-4">Recent Activity</h3>
           {recentWorkouts.length > 0 ? (
-            <div className="space-y-3">
-              {recentWorkouts.map((workout) => (
-                <Link
-                  key={workout.id}
-                  href={`/gym/workouts/${workout.id}`}
-                  className="block border border-white/10 rounded-2xl bg-white/[0.02] p-5 hover:bg-white/[0.04] transition-all duration-200"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-white font-medium mb-1">
-                        {workout.template_name || workout.workout_type || 'Workout'}
-                      </p>
-                      <div className="flex items-center gap-3 text-white/40 text-sm">
-                        <span>{formatDate(workout.date)}</span>
-                        <span>•</span>
-                        <span>{workout.exercise_count} exercises</span>
-                        {workout.duration_minutes && (
-                          <>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {formatDuration(workout.duration_minutes)}
-                            </span>
-                          </>
-                        )}
-                      </div>
+            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <div className="space-y-3">
+                {recentWorkouts.map((workout) => (
+                  <Link
+                    key={workout.id}
+                    href={`/gym/workouts/${workout.id}`}
+                    className="block border-b border-white/5 pb-3 last:border-0 last:pb-0 hover:opacity-80 transition-opacity"
+                  >
+                    <p className="text-white font-medium mb-0.5">
+                      {workout.template_name || workout.workout_type || 'Workout'}
+                    </p>
+                    <div className="flex items-center gap-3 text-white/40 text-xs">
+                      <span>{formatDate(workout.date)}</span>
+                      <span>•</span>
+                      <span>{workout.exercise_count} exercises</span>
+                      {workout.duration_minutes && (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDuration(workout.duration_minutes)}
+                          </span>
+                        </>
+                      )}
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-8 text-center">
@@ -516,17 +517,14 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           )}
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick Actions - only shortcuts that aren't already one tap away
+            elsewhere on this page or in the persistent nav (Start Workout
+            duplicates Today's Focus's own CTA, Weight Tracking duplicates
+            the Current Weight card's action, Calendar is now a top-level
+            nav item). */}
         <div>
           <h3 className="text-xl font-semibold text-white mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button
-              onClick={handleStartWorkout}
-              className="flex flex-col items-center gap-2 p-4 border border-white/10 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-200"
-            >
-              <Dumbbell className="w-6 h-6 text-white/60" />
-              <span className="text-sm text-white/80">Start Workout</span>
-            </button>
+          <div className="grid grid-cols-2 gap-3">
             <Link
               href="/gym/exercises"
               className="flex flex-col items-center gap-2 p-4 border border-white/10 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-200"
@@ -534,26 +532,12 @@ export default function DashboardClient({ user }: DashboardClientProps) {
               <BookOpen className="w-6 h-6 text-white/60" />
               <span className="text-sm text-white/80">Exercise Library</span>
             </Link>
-            <button
-              onClick={handleUpdateWeight}
-              className="flex flex-col items-center gap-2 p-4 border border-white/10 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-200"
-            >
-              <Scale className="w-6 h-6 text-white/60" />
-              <span className="text-sm text-white/80">Weight Tracking</span>
-            </button>
             <Link
               href="/gym/templates"
               className="flex flex-col items-center gap-2 p-4 border border-white/10 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-200"
             >
               <LayoutTemplate className="w-6 h-6 text-white/60" />
               <span className="text-sm text-white/80">Templates</span>
-            </Link>
-            <Link
-              href="/calendar"
-              className="flex flex-col items-center gap-2 p-4 border border-white/10 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-200"
-            >
-              <CalendarDays className="w-6 h-6 text-white/60" />
-              <span className="text-sm text-white/80">Calendar</span>
             </Link>
           </div>
         </div>
