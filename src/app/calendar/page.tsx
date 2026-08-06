@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
@@ -33,6 +34,7 @@ import DisruptionDeclaration, { type TrainingDisruption } from '@/components/dis
 import TravelPrepDialog from '@/components/calendar/travel-prep-dialog'
 import HabitsCard from '@/components/calendar/habits-card'
 import type { Habit, HabitLog } from '@/lib/habits'
+import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 
 // Every source below is fetched once per page load via the exact
 // function/query each feature already ships with - this page only
@@ -89,6 +91,8 @@ export default function CalendarPage() {
   const [sleepTime, setSleepTime] = useState('23:00:00')
   const [travelPrepEntryId, setTravelPrepEntryId] = useState<string | null>(null)
   const [welcomeBackDismissed, setWelcomeBackDismissed] = useState(false)
+  const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(null)
+  const [showTodaySuggestions, setShowTodaySuggestions] = useState(true)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -109,6 +113,7 @@ export default function CalendarPage() {
 
   const axisRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
+  const router = useRouter()
 
   useEffect(() => {
     fetchAll()
@@ -147,8 +152,9 @@ export default function CalendarPage() {
       disruptionsResult,
       habitsResult,
       habitLogsResult,
+      activeWorkoutResult,
     ] = await Promise.all([
-      supabase.from('user_settings').select('schedule_mode, wake_time, sleep_time').eq('user_id', user.id).maybeSingle(),
+      supabase.from('user_settings').select('schedule_mode, wake_time, sleep_time, show_today_suggestions').eq('user_id', user.id).maybeSingle(),
       fetchScheduleSlots(supabase, user.id),
       supabase
         .from('races')
@@ -176,11 +182,17 @@ export default function CalendarPage() {
       // migration 063's own reasoning), same "fetch it all, filter
       // per-day client-side" treatment calendarEntries already gets.
       supabase.from('habit_logs').select('id, habit_id, date').eq('user_id', user.id),
+      // Same "one active (uncompleted) workout" query Dashboard uses -
+      // powers the day timeline's gym block acting as a real Start/
+      // Continue Workout trigger, not just a read-only label.
+      supabase.from('workouts').select('id').eq('user_id', user.id).is('completed_at', null).order('started_at', { ascending: false }).limit(1).maybeSingle(),
     ])
 
     setScheduleMode(settingsResult.data?.schedule_mode === 'calendar' ? 'calendar' : 'rotation')
     if (settingsResult.data?.wake_time) setWakeTime(settingsResult.data.wake_time)
     if (settingsResult.data?.sleep_time) setSleepTime(settingsResult.data.sleep_time)
+    setShowTodaySuggestions(settingsResult.data?.show_today_suggestions ?? true)
+    setActiveWorkoutId(activeWorkoutResult.data?.id ?? null)
     setScheduleSlots(slots)
 
     const raceRow = raceResult.data
@@ -287,6 +299,14 @@ export default function CalendarPage() {
       return
     }
     refetchHabits()
+  }
+
+  // Same handlers as Dashboard's Today's Focus - lets today's gym block
+  // in the timeline act as a real Start/Continue Workout trigger instead
+  // of a read-only label, in place, at its actual scheduled time.
+  const handleGymBlockClick = () => {
+    if (activeWorkoutId) router.push(`/gym/workouts/${activeWorkoutId}`)
+    else router.push('/gym/workouts/new')
   }
 
   const resetForm = () => {
@@ -460,6 +480,12 @@ export default function CalendarPage() {
           </button>
         </div>
 
+        {date === today && showTodaySuggestions && (
+          <div className="mb-6">
+            <TodaySuggestionsSection />
+          </div>
+        )}
+
         {recentlyEndedDisruption && !welcomeBackDismissed && (
           <div className="flex items-center justify-between gap-3 border border-white/10 rounded-2xl bg-white/[0.02] p-4 mb-6">
             <p className="text-white/60 text-sm">
@@ -527,6 +553,18 @@ export default function CalendarPage() {
                 )
               }
 
+              if (item.source === 'gym' && date === today) {
+                return (
+                  <button
+                    key={item.id}
+                    onClick={handleGymBlockClick}
+                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border transition-colors hover:brightness-125 ${SOURCE_STYLE.gym}`}
+                  >
+                    {item.title} · {activeWorkoutId ? 'Continue' : 'Start'}
+                  </button>
+                )
+              }
+
               const content = (
                 <span
                   className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border ${SOURCE_STYLE[item.source]}`}
@@ -589,11 +627,18 @@ export default function CalendarPage() {
                 const leftPct = item.column * widthPct
                 const isHabit = item.source === 'habit' && item.habit
                 const canToggleHabit = isHabit && date <= getLocalDateString()
-                const clickable = (item.source === 'entry' && item.entry) || canToggleHabit
+                // Today's gym block is the same Start/Continue Workout
+                // action as Dashboard's Today's Focus hero, just in place
+                // at its actual scheduled time - only for today, since
+                // starting a workout "for" a past/future day makes no
+                // sense (same date gate habits use).
+                const canStartGymBlock = item.source === 'gym' && date === today
+                const clickable = (item.source === 'entry' && item.entry) || canToggleHabit || canStartGymBlock
 
                 const handleClick = () => {
                   if (item.source === 'entry' && item.entry) openEditDialog(item.entry)
                   else if (canToggleHabit) handleToggleHabit(item.habit!)
+                  else if (canStartGymBlock) handleGymBlockClick()
                 }
 
                 return (
@@ -611,6 +656,7 @@ export default function CalendarPage() {
                     </p>
                     <p className="text-[10px] opacity-70 truncate">
                       {minutesToTimeString(item.startMinutes)}–{minutesToTimeString(item.endMinutes)}
+                      {canStartGymBlock && (activeWorkoutId ? ' · Continue' : ' · Start')}
                     </p>
                   </div>
                 )

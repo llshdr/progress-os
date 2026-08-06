@@ -1,6 +1,6 @@
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Settings, User, Dumbbell, Apple, Bell, Info, KeyRound } from 'lucide-react'
+import { Settings, User, Dumbbell, Apple, Bell, Info, KeyRound, CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 
 const SECTIONS = [
@@ -21,6 +21,12 @@ const SECTIONS = [
     description: 'Maintenance calories',
     href: '/settings/nutrition',
     icon: Apple,
+  },
+  {
+    title: 'Calendar',
+    description: 'Day schedule, temperature unit',
+    href: '/settings/calendar',
+    icon: CalendarDays,
   },
   {
     title: 'Notifications',
