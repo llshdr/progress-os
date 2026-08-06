@@ -8,6 +8,7 @@ import { getLocalWeekdayIndex } from '@/lib/date'
 import { computeSlotForWeekday, slotDisplayName, type ScheduleSlot } from '@/lib/gym-schedule'
 import type { ActionItem } from '@/lib/goals'
 import type { WeekSlots } from '@/lib/race-plan/day-template'
+import { habitAppliesToDate, isHabitLoggedOnDate, type Habit, type HabitLog } from '@/lib/habits'
 
 export interface CalendarEntry {
   id: string
@@ -76,7 +77,7 @@ export function minutesToTimeString(minutes: number): string {
 // its own already-established query/function, then hand the raw results
 // here for exactly one displayed date.
 
-export type TimedItemSource = 'entry' | 'gym' | 'races' | 'race_day' | 'goal'
+export type TimedItemSource = 'entry' | 'gym' | 'races' | 'race_day' | 'goal' | 'habit'
 
 export interface TimedItem {
   id: string
@@ -86,6 +87,8 @@ export interface TimedItem {
   endMinutes: number | null
   href?: string // 'goal' source only
   entry?: CalendarEntry // 'entry' source only - for edit/delete
+  habit?: Habit // 'habit' source only - clicking toggles today's log directly
+  habitDoneToday?: boolean // 'habit' source only
 }
 
 // Terse per-discipline tags, matching the style ZONE_GUIDANCE's own
@@ -101,6 +104,10 @@ const RACE_ROLE_SUFFIX: Record<string, string> = { key: ' (Key)', threshold: ' (
 // flagged here explicitly rather than silently assumed.
 const DEFAULT_GYM_BLOCK_MINUTES = 60
 const DEFAULT_RACES_BLOCK_MINUTES = 75
+// Habits are quick, not session-length - a much smaller display estimate
+// than a workout/race block, same "estimate for sizing, not a claim"
+// caveat as the constants above.
+const DEFAULT_HABIT_BLOCK_MINUTES = 15
 
 export function buildTimedItemsForDate(params: {
   date: string
@@ -110,9 +117,25 @@ export function buildTimedItemsForDate(params: {
   scheduleMode: 'rotation' | 'calendar'
   scheduleSlots: ScheduleSlot[]
   raceWeekSlots: WeekSlots | null
+  habits: Habit[]
+  habitLogs: HabitLog[]
 }): TimedItem[] {
-  const { date, calendarEntries, goalItems, activeRace, scheduleMode, scheduleSlots, raceWeekSlots } = params
+  const { date, calendarEntries, goalItems, activeRace, scheduleMode, scheduleSlots, raceWeekSlots, habits, habitLogs } = params
   const items: TimedItem[] = []
+
+  for (const habit of habits) {
+    if (!habitAppliesToDate(habit, date)) continue
+    const startMinutes = habit.usualTime ? timeStringToMinutes(habit.usualTime) : null
+    items.push({
+      id: `habit-${habit.id}`,
+      source: 'habit',
+      title: habit.name,
+      startMinutes,
+      endMinutes: startMinutes != null ? startMinutes + DEFAULT_HABIT_BLOCK_MINUTES : null,
+      habit,
+      habitDoneToday: isHabitLoggedOnDate(habitLogs, habit.id, date),
+    })
+  }
 
   if (activeRace && activeRace.raceDate === date) {
     items.push({ id: 'race-day', source: 'race_day', title: `${activeRace.raceTypeLabel} race day`, startMinutes: null, endMinutes: null })

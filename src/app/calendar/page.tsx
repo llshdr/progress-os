@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { CalendarDays, ArrowLeft, ChevronLeft, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
+import { CalendarDays, ArrowLeft, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,6 +31,8 @@ import { raceTypeLabel } from '@/lib/race-constants'
 import { daysBetween } from '@/lib/goals'
 import DisruptionDeclaration, { type TrainingDisruption } from '@/components/disruption-declaration'
 import TravelPrepDialog from '@/components/calendar/travel-prep-dialog'
+import HabitsCard from '@/components/calendar/habits-card'
+import type { Habit, HabitLog } from '@/lib/habits'
 
 // Every source below is fetched once per page load via the exact
 // function/query each feature already ships with - this page only
@@ -50,7 +52,12 @@ const SOURCE_STYLE: Record<TimedItemSource, string> = {
   races: 'bg-orange-500/10 border-orange-400/30 text-orange-100',
   race_day: 'bg-white/10 border-white/25 text-white',
   goal: 'bg-white/5 border-white/10 text-white/70',
+  habit: 'bg-emerald-500/10 border-emerald-400/30 text-emerald-100',
 }
+// Brighter variant once a habit is logged for the displayed day - the
+// only source with a done/not-done state, so it's the only one that
+// needs a second style.
+const HABIT_DONE_STYLE = 'bg-emerald-500/40 border-emerald-400/70 text-white'
 
 function shiftDay(date: string, deltaDays: number): string {
   const d = new Date(date + 'T00:00:00')
@@ -76,6 +83,8 @@ export default function CalendarPage() {
   const [goalItems, setGoalItems] = useState<ActionItem[]>([])
   const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>([])
   const [disruptions, setDisruptions] = useState<TrainingDisruption[]>([])
+  const [habits, setHabits] = useState<Habit[]>([])
+  const [habitLogs, setHabitLogs] = useState<HabitLog[]>([])
   const [wakeTime, setWakeTime] = useState('06:00:00')
   const [sleepTime, setSleepTime] = useState('23:00:00')
   const [travelPrepEntryId, setTravelPrepEntryId] = useState<string | null>(null)
@@ -128,7 +137,17 @@ export default function CalendarPage() {
 
     const today = getLocalDateString()
 
-    const [settingsResult, slots, raceResult, mesoResult, activeGoalItems, entriesResult, disruptionsResult] = await Promise.all([
+    const [
+      settingsResult,
+      slots,
+      raceResult,
+      mesoResult,
+      activeGoalItems,
+      entriesResult,
+      disruptionsResult,
+      habitsResult,
+      habitLogsResult,
+    ] = await Promise.all([
       supabase.from('user_settings').select('schedule_mode, wake_time, sleep_time').eq('user_id', user.id).maybeSingle(),
       fetchScheduleSlots(supabase, user.id),
       supabase
@@ -152,6 +171,11 @@ export default function CalendarPage() {
         .select('id, start_date, end_date, reason, note')
         .eq('user_id', user.id)
         .order('start_date', { ascending: false }),
+      supabase.from('habits').select('id, name, recurrence_weekdays, usual_time').eq('user_id', user.id),
+      // No date window - a personal habit log stays small for years (see
+      // migration 063's own reasoning), same "fetch it all, filter
+      // per-day client-side" treatment calendarEntries already gets.
+      supabase.from('habit_logs').select('id, habit_id, date').eq('user_id', user.id),
     ])
 
     setScheduleMode(settingsResult.data?.schedule_mode === 'calendar' ? 'calendar' : 'rotation')
@@ -197,6 +221,15 @@ export default function CalendarPage() {
       }))
     )
     setDisruptions(disruptionsResult.data ?? [])
+    setHabits(
+      (habitsResult.data ?? []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        recurrenceWeekdays: r.recurrence_weekdays,
+        usualTime: r.usual_time,
+      }))
+    )
+    setHabitLogs((habitLogsResult.data ?? []).map((r: any) => ({ id: r.id, habitId: r.habit_id, date: r.date })))
 
     setLoading(false)
   }
@@ -212,6 +245,48 @@ export default function CalendarPage() {
       .eq('user_id', user.id)
       .order('start_date', { ascending: false })
     setDisruptions(data ?? [])
+  }
+
+  const refetchHabits = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+    const [habitsRes, logsRes] = await Promise.all([
+      supabase.from('habits').select('id, name, recurrence_weekdays, usual_time').eq('user_id', user.id),
+      supabase.from('habit_logs').select('id, habit_id, date').eq('user_id', user.id),
+    ])
+    setHabits(
+      (habitsRes.data ?? []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        recurrenceWeekdays: r.recurrence_weekdays,
+        usualTime: r.usual_time,
+      }))
+    )
+    setHabitLogs((logsRes.data ?? []).map((r: any) => ({ id: r.id, habitId: r.habit_id, date: r.date })))
+  }
+
+  // A log is presence-only: insert if missing, delete if present. Gated
+  // to today-or-earlier - logging a future day done makes no sense (same
+  // implicit invariant workouts already have via completed_at).
+  const handleToggleHabit = async (habit: Habit) => {
+    if (date > getLocalDateString()) return
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const existing = habitLogs.find((l) => l.habitId === habit.id && l.date === date)
+    const { error } = existing
+      ? await supabase.from('habit_logs').delete().eq('id', existing.id)
+      : await supabase.from('habit_logs').insert({ user_id: user.id, habit_id: habit.id, date })
+
+    if (error) {
+      console.error('Error toggling habit log:', error)
+      return
+    }
+    refetchHabits()
   }
 
   const resetForm = () => {
@@ -347,6 +422,8 @@ export default function CalendarPage() {
     scheduleMode,
     scheduleSlots,
     raceWeekSlots,
+    habits,
+    habitLogs,
   })
 
   const allDayItems = timedItems.filter((i) => i.startMinutes == null)
@@ -434,6 +511,22 @@ export default function CalendarPage() {
         {allDayItems.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {allDayItems.map((item) => {
+              if (item.source === 'habit' && item.habit) {
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleToggleHabit(item.habit!)}
+                    disabled={date > getLocalDateString()}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      item.habitDoneToday ? HABIT_DONE_STYLE : `${SOURCE_STYLE.habit} hover:brightness-125`
+                    }`}
+                  >
+                    {item.habitDoneToday && <CheckCircle2 className="w-3 h-3" />}
+                    {item.title}
+                  </button>
+                )
+              }
+
               const content = (
                 <span
                   className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border ${SOURCE_STYLE[item.source]}`}
@@ -494,18 +587,28 @@ export default function CalendarPage() {
                 const height = Math.max(MIN_BLOCK_HEIGHT, (item.endMinutes - item.startMinutes) * PIXELS_PER_MINUTE)
                 const widthPct = 100 / item.columnsInCluster
                 const leftPct = item.column * widthPct
-                const clickable = item.source === 'entry' && item.entry
+                const isHabit = item.source === 'habit' && item.habit
+                const canToggleHabit = isHabit && date <= getLocalDateString()
+                const clickable = (item.source === 'entry' && item.entry) || canToggleHabit
+
+                const handleClick = () => {
+                  if (item.source === 'entry' && item.entry) openEditDialog(item.entry)
+                  else if (canToggleHabit) handleToggleHabit(item.habit!)
+                }
 
                 return (
                   <div
                     key={item.id}
-                    onClick={clickable ? () => openEditDialog(item.entry!) : undefined}
-                    className={`absolute rounded-lg border px-2 py-1 overflow-hidden text-xs ${SOURCE_STYLE[item.source]} ${
-                      clickable ? 'cursor-pointer hover:brightness-125' : ''
-                    }`}
+                    onClick={clickable ? handleClick : undefined}
+                    className={`absolute rounded-lg border px-2 py-1 overflow-hidden text-xs ${
+                      isHabit && item.habitDoneToday ? HABIT_DONE_STYLE : SOURCE_STYLE[item.source]
+                    } ${clickable ? 'cursor-pointer hover:brightness-125' : ''}`}
                     style={{ top, height, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)` }}
                   >
-                    <p className="font-medium truncate">{item.title}</p>
+                    <p className="font-medium truncate flex items-center gap-1">
+                      {isHabit && item.habitDoneToday && <CheckCircle2 className="w-3 h-3 shrink-0" />}
+                      {item.title}
+                    </p>
                     <p className="text-[10px] opacity-70 truncate">
                       {minutesToTimeString(item.startMinutes)}–{minutesToTimeString(item.endMinutes)}
                     </p>
@@ -514,6 +617,10 @@ export default function CalendarPage() {
               })}
             </div>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <HabitsCard habits={habits} onChanged={refetchHabits} />
         </div>
 
         <div className="mt-6">
