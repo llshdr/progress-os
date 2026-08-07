@@ -26,6 +26,7 @@ import Link from 'next/link'
 import { getLocalWeekStartString } from '@/lib/date'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { Target } from 'lucide-react'
 
 type Goal = {
   id: string
@@ -264,6 +265,7 @@ export default function GoalsPage() {
         <div className="grid gap-3">
           {goals.length === 0 ? (
             <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+              <Target className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
               <p className="text-lapis-text-tertiary mb-4">No goals for this week yet</p>
               <Button
                 onClick={() => setIsDialogOpen(true)}

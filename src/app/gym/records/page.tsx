@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Award, ArrowLeft, Plus, Calendar } from 'lucide-react'
+import { Award, ArrowLeft, Plus, Calendar, Dumbbell, Footprints } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -623,6 +623,7 @@ export default function RecordsPage() {
               <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Strength Records</h2>
               {filteredStrength.length === 0 ? (
                 <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+                  <Dumbbell className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
                   <p className="text-lapis-text-tertiary">No strength records yet — log a workout to see your bests here.</p>
                 </div>
               ) : (
@@ -720,6 +721,7 @@ export default function RecordsPage() {
 
               {filteredCardio.length === 0 ? (
                 <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+                  <Footprints className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
                   <p className="text-lapis-text-tertiary">No cardio logged yet — record a run to see it here.</p>
                 </div>
               ) : (

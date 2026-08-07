@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Archive, MoreVertical, Copy, Trash2 } from 'lucide-react'
+import { Plus, Archive, MoreVertical, Copy, Trash2, LayoutTemplate } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
@@ -195,6 +195,7 @@ export default function WorkoutTemplatesPage() {
           <PageSkeleton />
         ) : filteredTemplates.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <LayoutTemplate className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">
               {showArchived ? 'No archived templates' : 'No templates yet'}
             </p>

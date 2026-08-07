@@ -133,6 +133,7 @@ export default function WorkoutsPage() {
           <PageSkeleton />
         ) : workouts.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <Calendar className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">No workouts yet</p>
             <Link href="/gym/workouts/new">
               <button className="px-4 py-2 rounded-lapis-sm border border-lapis-border text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors">

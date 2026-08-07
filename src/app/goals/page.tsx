@@ -175,6 +175,7 @@ export default function GoalsPage() {
           <PageSkeleton />
         ) : items.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <Target className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">No active goals or milestones yet</p>
             <div className="flex items-center justify-center gap-3">
               <Link href="/goals/new">

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Check, Clock, ArrowLeft, Trash2, RotateCcw } from 'lucide-react'
+import { Plus, Check, Clock, ArrowLeft, Trash2, RotateCcw, Dumbbell } from 'lucide-react'
 import SetLogger from '@/components/workout/set-logger'
 import CardioLogger from '@/components/workout/cardio-logger'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
@@ -414,6 +414,7 @@ export default function CurrentWorkoutPage() {
         <div className="space-y-3 mb-6">
           {exercises.length === 0 ? (
             <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+              <Dumbbell className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
               <p className="text-lapis-text-tertiary mb-4">No exercises yet</p>
               <button
                 onClick={() => setShowAddExercise(true)}

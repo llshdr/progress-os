@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award, Pencil } from 'lucide-react'
+import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award, Pencil, Footprints } from 'lucide-react'
 import ExerciseCoachCard from '@/components/ai-coach/exercise-coach-card'
 import ExerciseProgressChart, { type ExerciseSessionPoint } from '@/components/gym/exercise-progress-chart'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
@@ -566,6 +566,7 @@ export default function ExerciseDetailPage() {
             <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Run History</h2>
             {cardioEntries.length === 0 ? (
               <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+                <Footprints className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
                 <p className="text-lapis-text-tertiary">No runs logged yet</p>
               </div>
             ) : (
@@ -594,6 +595,7 @@ export default function ExerciseDetailPage() {
             <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Workout History</h2>
             {workouts.length === 0 ? (
               <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+                <Dumbbell className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
                 <p className="text-lapis-text-tertiary">No workout history yet</p>
               </div>
             ) : (

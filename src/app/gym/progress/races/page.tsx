@@ -391,6 +391,7 @@ export default function RacesPage() {
           <PageSkeleton />
         ) : races.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <Flag className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary">No races yet — add one to start tracking your race history.</p>
           </div>
         ) : (

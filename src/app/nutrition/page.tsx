@@ -660,6 +660,7 @@ export default function NutritionPage() {
 
         {!todayEntry ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <Apple className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">No entry logged for today yet</p>
             <Button onClick={openDialog} variant="outline" className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2">
               Log today&apos;s nutrition

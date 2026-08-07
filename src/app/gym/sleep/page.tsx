@@ -21,6 +21,7 @@ import { getLocalDateString } from '@/lib/date'
 import SleepChart from '@/components/sleep/sleep-chart'
 import SleepInsightCard from '@/components/sleep/sleep-insight-card'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { Moon } from 'lucide-react'
 
 type SleepEntry = {
   id: string
@@ -239,6 +240,7 @@ export default function SleepPage() {
 
         {entries.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <Moon className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">No sleep entries yet</p>
             <Button onClick={() => setIsDialogOpen(true)} variant="outline" className="border-lapis-border text-lapis-text-primary hover:bg-lapis-surface-2">
               Log your first night

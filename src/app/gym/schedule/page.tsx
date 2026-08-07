@@ -436,6 +436,7 @@ export default function SchedulePage() {
         <div className="mb-10">
           {slots.length === 0 ? (
             <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+              <CalendarDays className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
               <p className="text-lapis-text-tertiary mb-4">
                 {scheduleMode === 'calendar' ? 'No schedule set up yet' : 'No rotation set up yet'} — entirely optional.
               </p>

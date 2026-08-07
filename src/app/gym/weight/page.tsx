@@ -21,6 +21,7 @@ import { displayToKg, formatWeight, kgToDisplay, type WeightUnit } from '@/lib/w
 import WeightChart from '@/components/weight/weight-chart'
 import WeightInsightCard from '@/components/weight/weight-insight-card'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { Scale } from 'lucide-react'
 
 type WeightEntry = {
   id: string
@@ -279,6 +280,7 @@ export default function WeightPage() {
 
         {entries.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <Scale className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">No weight entries yet</p>
             <Button
               onClick={() => setIsDialogOpen(true)}

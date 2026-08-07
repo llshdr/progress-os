@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Plus, Search, Archive, Trash2, Pencil } from 'lucide-react'
+import { Plus, Search, Archive, Trash2, Pencil, Apple } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { mealTagLabel } from '@/lib/food-constants'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -133,6 +133,7 @@ export default function FoodLibraryPage() {
           <PageSkeleton />
         ) : filteredFoods.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <Apple className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">{searchQuery ? 'No foods found' : 'No saved foods yet'}</p>
             {!searchQuery && (
               <Link href="/nutrition/library/new">

@@ -6,6 +6,7 @@ import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { rankTierLabel } from '@/lib/rank'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { Users } from 'lucide-react'
 
 type PublicProfile = {
   user_id: string
@@ -214,8 +215,9 @@ export default function ProfilePage() {
           Others
         </h3>
         {others.length === 0 ? (
-          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-8 text-center text-lapis-text-tertiary">
-            No one else here yet
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-8 text-center">
+            <Users className="w-8 h-8 text-lapis-text-disabled mx-auto mb-3" />
+            <p className="text-lapis-text-tertiary">No one else here yet</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
