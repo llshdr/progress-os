@@ -18,11 +18,16 @@ import {
   layoutTimedItems,
   timeStringToMinutes,
   minutesToTimeString,
+  PIXELS_PER_MINUTE,
+  MIN_BLOCK_HEIGHT,
+  DAY_HEIGHT,
+  SOURCE_STYLE,
+  HABIT_DONE_STYLE,
   type CalendarEntry,
   type TimedItem,
-  type TimedItemSource,
   type PositionedItem,
 } from '@/lib/calendar'
+import WeekView from '@/components/calendar/week-view'
 import { fetchScheduleSlots, WEEKDAY_NAMES, type ScheduleSlot } from '@/lib/gym-schedule'
 import { fetchActiveActionItems, type ActionItem } from '@/lib/goals'
 import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
@@ -44,31 +49,6 @@ import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-sec
 
 type ScheduleMode = 'rotation' | 'calendar'
 
-const PIXELS_PER_MINUTE = 1 // 60px per hour
-// Tall enough for a block's own two lines (title + time range) without
-// clipping - 28px only fit ~20px of content after padding, cutting off
-// the time line on any block 28 minutes or shorter.
-const MIN_BLOCK_HEIGHT = 36
-const DAY_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE
-
-// Categorical, not semantic - each source keeps a fixed, distinct hue
-// from the Lapis palette so they stay visually distinguishable, reusing
-// (not inventing) the existing accent/citrine/jade tokens: gym was
-// already blue, so it keeps the primary lapis accent; races keeps its
-// warm distinction via citrine; habits keep their green via jade.
-const SOURCE_STYLE: Record<TimedItemSource, string> = {
-  entry: 'bg-lapis-surface-2 border-lapis-border-strong text-lapis-text-primary',
-  gym: 'bg-lapis-accent-500/10 border-lapis-accent-400/30 text-lapis-accent-400',
-  races: 'bg-lapis-citrine/10 border-lapis-citrine/30 text-lapis-citrine',
-  race_day: 'bg-lapis-surface-2 border-lapis-border-strong text-lapis-text-primary',
-  goal: 'bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-secondary',
-  habit: 'bg-lapis-jade/10 border-lapis-jade/30 text-lapis-jade',
-}
-// Brighter variant once a habit is logged for the displayed day - the
-// only source with a done/not-done state, so it's the only one that
-// needs a second style.
-const HABIT_DONE_STYLE = 'bg-lapis-jade/40 border-lapis-jade/70 text-lapis-text-primary'
-
 function shiftDay(date: string, deltaDays: number): string {
   const d = new Date(date + 'T00:00:00')
   d.setDate(d.getDate() + deltaDays)
@@ -80,10 +60,21 @@ function formatDayHeading(date: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
+function formatWeekHeading(weekStart: string): string {
+  const start = new Date(weekStart + 'T00:00:00')
+  const end = new Date(start)
+  end.setDate(end.getDate() + 6)
+  const sameMonth = start.getMonth() === end.getMonth()
+  const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const endLabel = end.toLocaleDateString('en-US', sameMonth ? { day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${startLabel} – ${endLabel}`
+}
+
 export default function CalendarPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [date, setDate] = useState(getLocalDateString())
+  const [viewMode, setViewMode] = useState<'day' | 'week'>('day')
 
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('rotation')
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>([])
@@ -479,16 +470,31 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => openAddDialog()}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="text-sm font-medium">Add Entry</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 p-1 rounded-lapis-sm bg-lapis-surface-2">
+              {(['day', 'week'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-3 py-1.5 rounded-lapis-sm text-sm font-medium capitalize transition-colors ${
+                    viewMode === mode ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'text-lapis-text-secondary hover:text-lapis-text-primary'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => openAddDialog()}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="text-sm font-medium">Add Entry</span>
+            </button>
+          </div>
         </div>
 
-        {date === today && showTodaySuggestions && (
+        {viewMode === 'day' && date === today && showTodaySuggestions && (
           <div className="mb-6">
             <TodaySuggestionsSection />
           </div>
@@ -510,13 +516,13 @@ export default function CalendarPage() {
 
         <div className="flex items-center justify-between mb-6">
           <button
-            onClick={() => setDate(shiftDay(date, -1))}
+            onClick={() => setDate(shiftDay(date, viewMode === 'week' ? -7 : -1))}
             className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="text-center">
-            <p className="text-lapis-text-primary font-medium">{formatDayHeading(date)}</p>
+            <p className="text-lapis-text-primary font-medium">{viewMode === 'week' ? formatWeekHeading(displayedWeekStart) : formatDayHeading(date)}</p>
             {mesocycleStatus && (
               <p className="text-lapis-text-tertiary text-xs mt-1">
                 {mesocycleStatus.mesocycle.label ? `${mesocycleStatus.mesocycle.label} — ` : ''}
@@ -534,7 +540,7 @@ export default function CalendarPage() {
               Today
             </button>
             <button
-              onClick={() => setDate(shiftDay(date, 1))}
+              onClick={() => setDate(shiftDay(date, viewMode === 'week' ? 7 : 1))}
               className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
             >
               <ChevronRight className="w-5 h-5" />
@@ -542,134 +548,157 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {allDayItems.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {allDayItems.map((item) => {
-              if (item.source === 'habit' && item.habit) {
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleToggleHabit(item.habit!)}
-                    disabled={date > getLocalDateString()}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                      item.habitDoneToday ? HABIT_DONE_STYLE : `${SOURCE_STYLE.habit} hover:brightness-125`
-                    }`}
-                  >
-                    {item.habitDoneToday && <CheckCircle2 className="w-3 h-3" />}
-                    {item.title}
-                  </button>
-                )
-              }
-
-              if (item.source === 'gym' && date === today) {
-                return (
-                  <button
-                    key={item.id}
-                    onClick={handleGymBlockClick}
-                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border transition-colors hover:brightness-125 ${SOURCE_STYLE.gym}`}
-                  >
-                    {item.title} · {activeWorkoutId ? 'Continue' : 'Start'}
-                  </button>
-                )
-              }
-
-              const content = (
-                <span
-                  className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border ${SOURCE_STYLE[item.source]}`}
-                >
-                  {item.source === 'goal' ? `Due: ${item.title}` : item.title}
-                </span>
-              )
-              if (item.href) {
-                return (
-                  <Link key={item.id} href={item.href} className="hover:opacity-80 transition-opacity">
-                    {content}
-                  </Link>
-                )
-              }
-              // Directly tappable, same as a timed block - a hover-reveal
-              // edit affordance never fires on a touchscreen, so untimed
-              // entries had no way to open (and therefore no way to
-              // delete, via the dialog's own Delete button below) on
-              // mobile at all until this changed.
-              if (item.entry) {
-                return (
-                  <button key={item.id} onClick={() => openEditDialog(item.entry!)} className="hover:brightness-125 transition-all">
-                    {content}
-                  </button>
-                )
-              }
-              return <div key={item.id}>{content}</div>
-            })}
-          </div>
-        )}
-
-        <div ref={axisRef} className="relative border border-lapis-border-subtle rounded-lapis-lg overflow-y-auto" style={{ maxHeight: '65vh' }}>
-          <div className="relative" style={{ height: DAY_HEIGHT }}>
-            {/* Dimmed regions outside wake/sleep - a default emphasis, never a hard cutoff; anything scheduled here still shows in full. */}
-            <div
-              className="absolute left-0 right-0 top-0 bg-lapis-bg/30 pointer-events-none"
-              style={{ height: wakeMinutes * PIXELS_PER_MINUTE }}
-            />
-            <div
-              className="absolute left-0 right-0 bottom-0 bg-lapis-bg/30 pointer-events-none"
-              style={{ height: (24 * 60 - sleepMinutes) * PIXELS_PER_MINUTE }}
-            />
-
-            {Array.from({ length: 24 }, (_, hour) => (
-              <div key={hour} className="absolute left-0 right-0 border-t border-lapis-border-subtle" style={{ top: hour * 60 * PIXELS_PER_MINUTE }}>
-                <span className="absolute -top-2 left-2 text-lapis-text-disabled text-xs bg-lapis-bg px-1">{String(hour).padStart(2, '0')}:00</span>
-              </div>
-            ))}
-
-            {/* Hour-label gutter shrinks on narrow screens (44px vs the
-                desktop 56px) - reclaims real width for the block area,
-                where overlap columns are already tightest. */}
-            <div className="absolute left-11 right-1 sm:left-14 sm:right-2 top-0 bottom-0">
-              {positioned.map((item) => {
-                const top = item.startMinutes * PIXELS_PER_MINUTE
-                const height = Math.max(MIN_BLOCK_HEIGHT, (item.endMinutes - item.startMinutes) * PIXELS_PER_MINUTE)
-                const widthPct = 100 / item.columnsInCluster
-                const leftPct = item.column * widthPct
-                const isHabit = item.source === 'habit' && item.habit
-                const canToggleHabit = isHabit && date <= getLocalDateString()
-                // Today's gym block is the same Start/Continue Workout
-                // action as Dashboard's Today's Focus hero, just in place
-                // at its actual scheduled time - only for today, since
-                // starting a workout "for" a past/future day makes no
-                // sense (same date gate habits use).
-                const canStartGymBlock = item.source === 'gym' && date === today
-                const clickable = (item.source === 'entry' && item.entry) || canToggleHabit || canStartGymBlock
-
-                const handleClick = () => {
-                  if (item.source === 'entry' && item.entry) openEditDialog(item.entry)
-                  else if (canToggleHabit) handleToggleHabit(item.habit!)
-                  else if (canStartGymBlock) handleGymBlockClick()
+        {viewMode === 'week' ? (
+          <WeekView
+            weekStart={displayedWeekStart}
+            today={today}
+            calendarEntries={calendarEntries}
+            goalItems={goalItems}
+            activeRace={activeRace}
+            scheduleMode={scheduleMode}
+            scheduleSlots={scheduleSlots}
+            raceWeekSlots={raceWeekSlots}
+            habits={habits}
+            habitLogs={habitLogs}
+            wakeTime={wakeTime}
+            sleepTime={sleepTime}
+            onSelectDate={(selected) => {
+              setDate(selected)
+              setViewMode('day')
+            }}
+          />
+        ) : (
+          <>
+          {allDayItems.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {allDayItems.map((item) => {
+                if (item.source === 'habit' && item.habit) {
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleToggleHabit(item.habit!)}
+                      disabled={date > getLocalDateString()}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                        item.habitDoneToday ? HABIT_DONE_STYLE : `${SOURCE_STYLE.habit} hover:brightness-125`
+                      }`}
+                    >
+                      {item.habitDoneToday && <CheckCircle2 className="w-3 h-3" />}
+                      {item.title}
+                    </button>
+                  )
                 }
 
-                return (
-                  <div
-                    key={item.id}
-                    onClick={clickable ? handleClick : undefined}
-                    className={`absolute rounded-lapis-sm border px-1.5 py-1 overflow-hidden text-xs ${
-                      isHabit && item.habitDoneToday ? HABIT_DONE_STYLE : SOURCE_STYLE[item.source]
-                    } ${clickable ? 'cursor-pointer hover:brightness-125' : ''}`}
-                    style={{ top, height, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)` }}
+                if (item.source === 'gym' && date === today) {
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={handleGymBlockClick}
+                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border transition-colors hover:brightness-125 ${SOURCE_STYLE.gym}`}
+                    >
+                      {item.title} · {activeWorkoutId ? 'Continue' : 'Start'}
+                    </button>
+                  )
+                }
+
+                const content = (
+                  <span
+                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border ${SOURCE_STYLE[item.source]}`}
                   >
-                    <p className="font-medium truncate flex items-center gap-1">
-                      {isHabit && item.habitDoneToday && <CheckCircle2 className="w-3 h-3 shrink-0" />}
-                      {item.title}
-                    </p>
-                    <p className="text-[10px] opacity-70 truncate">
-                      {minutesToTimeString(item.startMinutes)}–{minutesToTimeString(item.endMinutes)}
-                      {canStartGymBlock && (activeWorkoutId ? ' · Continue' : ' · Start')}
-                    </p>
-                  </div>
+                    {item.source === 'goal' ? `Due: ${item.title}` : item.title}
+                  </span>
                 )
+                if (item.href) {
+                  return (
+                    <Link key={item.id} href={item.href} className="hover:opacity-80 transition-opacity">
+                      {content}
+                    </Link>
+                  )
+                }
+                // Directly tappable, same as a timed block - a hover-reveal
+                // edit affordance never fires on a touchscreen, so untimed
+                // entries had no way to open (and therefore no way to
+                // delete, via the dialog's own Delete button below) on
+                // mobile at all until this changed.
+                if (item.entry) {
+                  return (
+                    <button key={item.id} onClick={() => openEditDialog(item.entry!)} className="hover:brightness-125 transition-all">
+                      {content}
+                    </button>
+                  )
+                }
+                return <div key={item.id}>{content}</div>
               })}
             </div>
+          )}
+
+          <div ref={axisRef} className="relative border border-lapis-border-subtle rounded-lapis-lg overflow-y-auto" style={{ maxHeight: '65vh' }}>
+            <div className="relative" style={{ height: DAY_HEIGHT }}>
+              {/* Dimmed regions outside wake/sleep - a default emphasis, never a hard cutoff; anything scheduled here still shows in full. */}
+              <div
+                className="absolute left-0 right-0 top-0 bg-lapis-bg/30 pointer-events-none"
+                style={{ height: wakeMinutes * PIXELS_PER_MINUTE }}
+              />
+              <div
+                className="absolute left-0 right-0 bottom-0 bg-lapis-bg/30 pointer-events-none"
+                style={{ height: (24 * 60 - sleepMinutes) * PIXELS_PER_MINUTE }}
+              />
+
+              {Array.from({ length: 24 }, (_, hour) => (
+                <div key={hour} className="absolute left-0 right-0 border-t border-lapis-border-subtle" style={{ top: hour * 60 * PIXELS_PER_MINUTE }}>
+                  <span className="absolute -top-2 left-2 text-lapis-text-disabled text-xs bg-lapis-bg px-1">{String(hour).padStart(2, '0')}:00</span>
+                </div>
+              ))}
+
+              {/* Hour-label gutter shrinks on narrow screens (44px vs the
+                  desktop 56px) - reclaims real width for the block area,
+                  where overlap columns are already tightest. */}
+              <div className="absolute left-11 right-1 sm:left-14 sm:right-2 top-0 bottom-0">
+                {positioned.map((item) => {
+                  const top = item.startMinutes * PIXELS_PER_MINUTE
+                  const height = Math.max(MIN_BLOCK_HEIGHT, (item.endMinutes - item.startMinutes) * PIXELS_PER_MINUTE)
+                  const widthPct = 100 / item.columnsInCluster
+                  const leftPct = item.column * widthPct
+                  const isHabit = item.source === 'habit' && item.habit
+                  const canToggleHabit = isHabit && date <= getLocalDateString()
+                  // Today's gym block is the same Start/Continue Workout
+                  // action as Dashboard's Today's Focus hero, just in place
+                  // at its actual scheduled time - only for today, since
+                  // starting a workout "for" a past/future day makes no
+                  // sense (same date gate habits use).
+                  const canStartGymBlock = item.source === 'gym' && date === today
+                  const clickable = (item.source === 'entry' && item.entry) || canToggleHabit || canStartGymBlock
+
+                  const handleClick = () => {
+                    if (item.source === 'entry' && item.entry) openEditDialog(item.entry)
+                    else if (canToggleHabit) handleToggleHabit(item.habit!)
+                    else if (canStartGymBlock) handleGymBlockClick()
+                  }
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={clickable ? handleClick : undefined}
+                      className={`absolute rounded-lapis-sm border px-1.5 py-1 overflow-hidden text-xs ${
+                        isHabit && item.habitDoneToday ? HABIT_DONE_STYLE : SOURCE_STYLE[item.source]
+                      } ${clickable ? 'cursor-pointer hover:brightness-125' : ''}`}
+                      style={{ top, height, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)` }}
+                    >
+                      <p className="font-medium truncate flex items-center gap-1">
+                        {isHabit && item.habitDoneToday && <CheckCircle2 className="w-3 h-3 shrink-0" />}
+                        {item.title}
+                      </p>
+                      <p className="text-[10px] opacity-70 truncate">
+                        {minutesToTimeString(item.startMinutes)}–{minutesToTimeString(item.endMinutes)}
+                        {canStartGymBlock && (activeWorkoutId ? ' · Continue' : ' · Start')}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
-        </div>
+          </>
+        )}
 
         <div className="mt-6">
           <HabitsCard habits={habits} onChanged={refetchHabits} />
