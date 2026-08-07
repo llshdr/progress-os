@@ -153,27 +153,27 @@ export default function WorkoutsPage() {
                     className="block"
                   >
                     <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-lapis-md bg-lapis-surface-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="p-3 rounded-lapis-md bg-lapis-surface-2 shrink-0">
                             <Calendar className="w-5 h-5 text-lapis-text-secondary" />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-lg font-medium text-lapis-text-primary">
+                              <h3 className="text-lg font-medium text-lapis-text-primary truncate">
                                 {workout.template_name || workout.workout_type || 'Workout'}
                               </h3>
                               {isComplete ? (
-                                <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500/15 text-lapis-accent-400 font-medium">
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500/15 text-lapis-accent-400 font-medium shrink-0">
                                   Completed
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-citrine/10 text-lapis-citrine border border-lapis-citrine/30 font-medium">
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-citrine/10 text-lapis-citrine border border-lapis-citrine/30 font-medium shrink-0">
                                   In Progress
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 text-lapis-text-tertiary text-sm">
+                            <div className="flex items-center gap-3 text-lapis-text-tertiary text-sm flex-wrap">
                               <span>{formatDate(workout.date)}</span>
                               <span>•</span>
                               <span className="font-data tabular-nums">
@@ -191,7 +191,7 @@ export default function WorkoutsPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="text-lapis-text-disabled">
+                        <div className="text-lapis-text-disabled shrink-0">
                           →
                         </div>
                       </div>

@@ -215,13 +215,13 @@ export default function WorkoutTemplatesPage() {
                 className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <Link href={`/gym/templates/${template.id}/edit`} className="flex-1">
+                  <Link href={`/gym/templates/${template.id}/edit`} className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-medium text-lapis-text-primary">
+                      <h3 className="text-lg font-medium text-lapis-text-primary truncate">
                         {template.name}
                       </h3>
                       {template.archived && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle shrink-0">
                           Archived
                         </span>
                       )}

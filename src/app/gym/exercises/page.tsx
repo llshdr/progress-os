@@ -269,7 +269,7 @@ export default function ExerciseLibraryPage() {
                   : 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle'
               } border`}
             >
-              <Star className={`w-4 h-4 ${showFavorites ? 'fill-white' : ''}`} />
+              <Star className={`w-4 h-4 ${showFavorites ? 'fill-lapis-gold-500 text-lapis-gold-500' : ''}`} />
               <span className="text-sm">Favorites</span>
             </button>
             <button
@@ -313,17 +313,17 @@ export default function ExerciseLibraryPage() {
                   className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <Link href={`/gym/exercises/${exercise.id}`}>
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-medium text-lapis-text-primary hover:text-lapis-text-secondary transition-colors">
+                          <h3 className="text-lg font-medium text-lapis-text-primary hover:text-lapis-text-secondary transition-colors truncate">
                             {exercise.name}
                           </h3>
                           {exercise.favorite && (
-                            <Star className="w-4 h-4 fill-white text-lapis-text-primary" />
+                            <Star className="w-4 h-4 fill-lapis-gold-500 text-lapis-gold-500 shrink-0" />
                           )}
                           {exercise.archived && (
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle shrink-0">
                               Archived
                             </span>
                           )}
@@ -348,7 +348,7 @@ export default function ExerciseLibraryPage() {
                         onClick={() => toggleFavorite(exercise.id, exercise.favorite)}
                         className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                       >
-                        <Star className={`w-5 h-5 ${exercise.favorite ? 'fill-white text-lapis-text-primary' : 'text-lapis-text-tertiary'}`} />
+                        <Star className={`w-5 h-5 ${exercise.favorite ? 'fill-lapis-gold-500 text-lapis-gold-500' : 'text-lapis-text-tertiary'}`} />
                       </button>
                       <button
                         onClick={() => toggleArchive(exercise.id, exercise.archived)}
