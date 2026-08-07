@@ -97,14 +97,14 @@ export default function ExerciseVariantsManager({
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-white/80">Equipment Variants (optional)</Label>
+        <Label className="text-lapis-text-secondary">Equipment Variants (optional)</Label>
         {canAddVariant ? (
-          <p className="text-white/40 text-xs mt-1">
+          <p className="text-lapis-text-tertiary text-xs mt-1">
             For machines/cables where the same weight number isn&apos;t directly comparable across
             brands or ratios — e.g. &quot;Hammer Strength&quot;, &quot;Life Fitness&quot;, &quot;1:1&quot;, &quot;2:1&quot;.
           </p>
         ) : (
-          <p className="text-white/40 text-xs mt-1">
+          <p className="text-lapis-text-tertiary text-xs mt-1">
             Not applicable for dumbbells — the weight is already directly comparable across gyms.
           </p>
         )}
@@ -115,13 +115,13 @@ export default function ExerciseVariantsManager({
           {variants.map((variant) => (
             <span
               key={variant.id}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-white/5 border border-white/10 text-white"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary"
             >
               {variant.label}
               <button
                 type="button"
                 onClick={() => setVariantToRemove(variant.id)}
-                className="text-white/40 hover:text-white/70 transition-colors"
+                className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -143,14 +143,14 @@ export default function ExerciseVariantsManager({
               }
             }}
             placeholder="e.g. Hammer Strength"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
           />
           <Button
             type="button"
             onClick={handleAddVariant}
             disabled={saving || !newLabel.trim()}
             variant="outline"
-            className="border-white/10 text-white hover:bg-white/5 shrink-0"
+            className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 shrink-0"
           >
             Add
           </Button>

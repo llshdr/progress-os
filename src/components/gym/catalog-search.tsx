@@ -49,19 +49,19 @@ export default function CatalogSearch({ onSelect }: CatalogSearchProps) {
 
   return (
     <div className="space-y-3">
-      <Label className="text-white/80">Search catalog (optional)</Label>
+      <Label className="text-lapis-text-secondary">Search catalog (optional)</Label>
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-lapis-text-tertiary" />
         <Input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="e.g. bänk, squat, löpning..."
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 pl-11"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled pl-11"
         />
       </div>
       {results.length > 0 && (
-        <div className="border border-white/10 rounded-xl bg-white/[0.02] divide-y divide-white/5 overflow-hidden">
+        <div className="border border-lapis-border-subtle rounded-lapis-md bg-lapis-surface-1 divide-y divide-white/5 overflow-hidden">
           {results.map((entry) => (
             <button
               key={entry.id}
@@ -70,10 +70,10 @@ export default function CatalogSearch({ onSelect }: CatalogSearchProps) {
                 onSelect(entry)
                 setQuery('')
               }}
-              className="w-full p-3 text-left hover:bg-white/[0.04] transition-colors"
+              className="w-full p-3 text-left hover:bg-lapis-surface-2 transition-colors"
             >
-              <div className="font-medium text-white">{entry.name}</div>
-              <div className="text-white/40 text-sm">
+              <div className="font-medium text-lapis-text-primary">{entry.name}</div>
+              <div className="text-lapis-text-tertiary text-sm">
                 {entry.muscle_group} • {entry.equipment_type}
                 {entry.exercise_type === 'cardio' && ' • Cardio'}
               </div>
@@ -81,7 +81,7 @@ export default function CatalogSearch({ onSelect }: CatalogSearchProps) {
           ))}
         </div>
       )}
-      <p className="text-white/40 text-xs">
+      <p className="text-lapis-text-tertiary text-xs">
         Pick a match to prefill the fields below — nothing is saved until you create the exercise, and
         you can still edit anything first.
       </p>

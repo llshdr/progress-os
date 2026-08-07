@@ -106,7 +106,7 @@ export default function EditExercisePage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -115,14 +115,14 @@ export default function EditExercisePage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym/exercises" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/gym/exercises" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
           Edit Exercise
         </h1>
-        <p className="text-white/50 text-sm mb-8">
+        <p className="text-lapis-text-tertiary text-sm mb-8">
           Update exercise details
         </p>
 
@@ -148,14 +148,14 @@ export default function EditExercisePage() {
             onIsUnilateralChange={setIsUnilateral}
           />
 
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
             <ExerciseVariantsManager exerciseLibraryId={params.id as string} equipmentType={equipmentType} />
           </div>
 
           <Button
             onClick={handleUpdateExercise}
             disabled={saving || !name || !primaryMuscleGroup || !equipmentType || !category}
-            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
+            className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
             {saving ? 'Saving...' : 'Update Exercise'}
           </Button>

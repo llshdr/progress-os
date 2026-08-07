@@ -300,7 +300,7 @@ export default function CurrentWorkoutPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -310,7 +310,7 @@ export default function CurrentWorkoutPage() {
     return (
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-white/40">Workout not found</div>
+          <div className="text-lapis-text-tertiary">Workout not found</div>
         </div>
       </AppLayout>
     )
@@ -328,7 +328,7 @@ export default function CurrentWorkoutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <button
             onClick={() => setActiveExerciseId(null)}
-            className="flex items-center gap-2 text-white/40 hover:text-white/60 transition-colors mb-6"
+            className="flex items-center gap-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to workout
@@ -360,21 +360,21 @@ export default function CurrentWorkoutPage() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
-            <Link href="/gym/workouts" className="text-white/40 hover:text-white/60 transition-colors mb-2 block">
+            <Link href="/gym/workouts" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-2 block">
               ← Back
             </Link>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-semibold tracking-tight text-white">
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary">
                 {workout.template_name || workout.workout_type || 'Workout'}
               </h1>
               {workout.completed_at && (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white/80 border border-white/20">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
                   <Check className="w-3 h-3" />
                   Completed
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 text-white/40 text-sm">
+            <div className="flex items-center gap-3 text-lapis-text-tertiary text-sm">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {formatDuration(workout.started_at)}
@@ -386,7 +386,7 @@ export default function CurrentWorkoutPage() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowDeleteWorkoutModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-secondary hover:text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               <span className="text-sm font-medium">Delete</span>
@@ -394,7 +394,7 @@ export default function CurrentWorkoutPage() {
             {workout.completed_at ? (
               <button
                 onClick={handleReopenWorkout}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors"
               >
                 <RotateCcw className="w-4 h-4" />
                 <span className="text-sm font-medium">Reopen</span>
@@ -402,7 +402,7 @@ export default function CurrentWorkoutPage() {
             ) : (
               <button
                 onClick={handleCompleteWorkout}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors"
               >
                 <Check className="w-4 h-4" />
                 <span className="text-sm font-medium">Complete</span>
@@ -414,11 +414,11 @@ export default function CurrentWorkoutPage() {
         {/* Exercises List */}
         <div className="space-y-3 mb-6">
           {exercises.length === 0 ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-              <p className="text-white/40 mb-4">No exercises yet</p>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+              <p className="text-lapis-text-tertiary mb-4">No exercises yet</p>
               <button
                 onClick={() => setShowAddExercise(true)}
-                className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors"
+                className="px-4 py-2 rounded-lapis-sm border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors"
               >
                 Add your first exercise
               </button>
@@ -432,23 +432,23 @@ export default function CurrentWorkoutPage() {
               return (
                 <div
                   key={exercise.id}
-                  className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
+                  className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <button
                       onClick={() => setActiveExerciseId(exercise.id)}
                       className="flex-1 text-left"
                     >
-                      <h3 className="text-lg font-medium text-white mb-1">
+                      <h3 className="text-lg font-medium text-lapis-text-primary mb-1">
                         {exerciseName}
                       </h3>
                       {equipment && (
-                        <p className="text-white/40 text-sm">{equipment}</p>
+                        <p className="text-lapis-text-tertiary text-sm">{equipment}</p>
                       )}
                     </button>
                     <button
                       onClick={() => openDeleteExerciseModal(exercise.id)}
-                      className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -461,17 +461,17 @@ export default function CurrentWorkoutPage() {
 
         {/* Add Exercise Form */}
         {showAddExercise && (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
             <form onSubmit={handleAddExercise} className="space-y-4">
               {/* Toggle between Library and Custom */}
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setUseLibrary(true)}
-                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
                     useLibrary
-                      ? 'bg-white text-black'
-                      : 'bg-white/5 text-white/60 hover:bg-white/10'
+                      ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                      : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                   }`}
                 >
                   From Library
@@ -479,10 +479,10 @@ export default function CurrentWorkoutPage() {
                 <button
                   type="button"
                   onClick={() => setUseLibrary(false)}
-                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
                     !useLibrary
-                      ? 'bg-white text-black'
-                      : 'bg-white/5 text-white/60 hover:bg-white/10'
+                      ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                      : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                   }`}
                 >
                   Custom
@@ -492,13 +492,13 @@ export default function CurrentWorkoutPage() {
               {useLibrary ? (
                 /* Library Selection */
                 <div>
-                  <label className="text-white/60 text-sm mb-3 block">Select Exercise</label>
+                  <label className="text-lapis-text-secondary text-sm mb-3 block">Select Exercise</label>
                   {libraryExercises.length === 0 && recentExercises.length === 0 ? (
                     <div className="text-center py-8">
-                      <p className="text-white/40 mb-3">No exercises in your library</p>
+                      <p className="text-lapis-text-tertiary mb-3">No exercises in your library</p>
                       <Link
                         href="/gym/exercises/new"
-                        className="text-white hover:text-white/60 text-sm"
+                        className="text-lapis-text-primary hover:text-lapis-text-secondary text-sm"
                       >
                         Create your first exercise →
                       </Link>
@@ -508,26 +508,26 @@ export default function CurrentWorkoutPage() {
                       {/* Recent Exercises */}
                       {recentExercises.length > 0 && (
                         <>
-                          <div className="text-white/40 text-xs px-3 py-2">Recent</div>
+                          <div className="text-lapis-text-tertiary text-xs px-3 py-2">Recent</div>
                           {recentExercises.map((libExercise) => (
                             <button
                               key={libExercise.id}
                               type="button"
                               onClick={() => setSelectedLibraryExercise(libExercise.id)}
-                              className={`w-full p-3 rounded-lg border transition-all duration-200 text-left ${
+                              className={`w-full p-3 rounded-lapis-sm border transition-all duration-200 text-left ${
                                 selectedLibraryExercise === libExercise.id
-                                  ? 'bg-white/10 text-white border-white/20'
-                                  : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                                  ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
+                                  : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
                               }`}
                             >
-                              <div className="font-medium text-white">{libExercise.name}</div>
-                              <div className="text-white/40 text-sm">
+                              <div className="font-medium text-lapis-text-primary">{libExercise.name}</div>
+                              <div className="text-lapis-text-tertiary text-sm">
                                 {libExercise.primary_muscle_group} • {libExercise.equipment_type}
                                 {libExercise.exercise_type === 'cardio' && ' • Cardio'}
                               </div>
                             </button>
                           ))}
-                          <div className="border-t border-white/10 my-2"></div>
+                          <div className="border-t border-lapis-border-subtle my-2"></div>
                         </>
                       )}
 
@@ -537,14 +537,14 @@ export default function CurrentWorkoutPage() {
                           key={libExercise.id}
                           type="button"
                           onClick={() => setSelectedLibraryExercise(libExercise.id)}
-                          className={`w-full p-3 rounded-lg border transition-all duration-200 text-left ${
+                          className={`w-full p-3 rounded-lapis-sm border transition-all duration-200 text-left ${
                             selectedLibraryExercise === libExercise.id
-                              ? 'bg-white/10 text-white border-white/20'
-                              : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                              ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
+                              : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
                           }`}
                         >
-                          <div className="font-medium text-white">{libExercise.name}</div>
-                          <div className="text-white/40 text-sm">
+                          <div className="font-medium text-lapis-text-primary">{libExercise.name}</div>
+                          <div className="text-lapis-text-tertiary text-sm">
                             {libExercise.primary_muscle_group} • {libExercise.equipment_type}
                             {libExercise.exercise_type === 'cardio' && ' • Cardio'}
                           </div>
@@ -557,24 +557,24 @@ export default function CurrentWorkoutPage() {
                 /* Custom Exercise */
                 <>
                   <div>
-                    <label className="text-white/60 text-sm mb-2 block">Exercise Name</label>
+                    <label className="text-lapis-text-secondary text-sm mb-2 block">Exercise Name</label>
                     <input
                       type="text"
                       value={newExerciseName}
                       onChange={(e) => setNewExerciseName(e.target.value)}
                       placeholder="Bench Press"
-                      className="w-full bg-white/5 border-white/10 text-white rounded-lg px-4 py-3 placeholder:text-white/30"
+                      className="w-full bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-4 py-3 placeholder:text-lapis-text-disabled"
                       autoFocus
                     />
                   </div>
                   <div>
-                    <label className="text-white/60 text-sm mb-2 block">Equipment (optional)</label>
+                    <label className="text-lapis-text-secondary text-sm mb-2 block">Equipment (optional)</label>
                     <input
                       type="text"
                       value={newExerciseEquipment}
                       onChange={(e) => setNewExerciseEquipment(e.target.value)}
                       placeholder="Barbell"
-                      className="w-full bg-white/5 border-white/10 text-white rounded-lg px-4 py-3 placeholder:text-white/30"
+                      className="w-full bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-4 py-3 placeholder:text-lapis-text-disabled"
                     />
                   </div>
                 </>
@@ -583,14 +583,14 @@ export default function CurrentWorkoutPage() {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  className="flex-1 bg-white text-black hover:bg-white/90 rounded-lg px-4 py-3 font-medium"
+                  className="flex-1 bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 rounded-lapis-sm px-4 py-3 font-medium"
                 >
                   Add Exercise
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddExercise(false)}
-                  className="px-4 py-3 rounded-lg border border-white/10 text-white hover:bg-white/5"
+                  className="px-4 py-3 rounded-lapis-sm border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2"
                 >
                   Cancel
                 </button>
@@ -603,7 +603,7 @@ export default function CurrentWorkoutPage() {
         {!showAddExercise && (
           <button
             onClick={() => setShowAddExercise(true)}
-            className="w-full border border-dashed border-white/20 rounded-2xl bg-white/[0.01] p-6 hover:bg-white/[0.02] transition-colors flex items-center justify-center gap-2 text-white/40 hover:text-white/60"
+            className="w-full border border-dashed border-lapis-border-strong rounded-lapis-lg bg-lapis-accent-500/[0.01] p-6 hover:bg-lapis-surface-1 transition-colors flex items-center justify-center gap-2 text-lapis-text-tertiary hover:text-lapis-text-secondary"
           >
             <Plus className="w-5 h-5" />
             <span className="font-medium">Add Exercise</span>

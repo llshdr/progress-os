@@ -140,19 +140,19 @@ export default function GoalsPage() {
 
   const getCategoryColor = (category: Goal['category']) => {
     const colors = {
-      fitness: 'bg-white/5 text-white/80 border-white/10',
-      business: 'bg-white/5 text-white/80 border-white/10',
-      productivity: 'bg-white/5 text-white/80 border-white/10',
-      self_improvement: 'bg-white/5 text-white/80 border-white/10',
+      fitness: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
+      business: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
+      productivity: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
+      self_improvement: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
     }
     return colors[category]
   }
 
   const getStatusColor = (status: Goal['status']) => {
     const colors = {
-      pending: 'bg-white/5 text-white/60 border-white/10',
-      in_progress: 'bg-white/5 text-white/60 border-white/10',
-      completed: 'bg-white/5 text-white/60 border-white/10',
+      pending: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
+      in_progress: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
+      completed: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
     }
     return colors[status]
   }
@@ -161,7 +161,7 @@ export default function GoalsPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -171,26 +171,26 @@ export default function GoalsPage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center gap-3 mb-8">
-          <Link href="/gym/progress" className="text-white/40 hover:text-white/60 transition-colors">
+          <Link href="/gym/progress" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back
           </Link>
           <div className="flex-1" />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger>
-              <Button className="bg-white text-black hover:bg-white/90 text-sm">
+              <Button className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm">
                 Add Goal
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-black border-white/10 text-white">
+            <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
               <DialogHeader>
                 <DialogTitle>Add New Goal</DialogTitle>
-                <DialogDescription className="text-white/40">
+                <DialogDescription className="text-lapis-text-tertiary">
                   Create a new goal for this week
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleAddGoal} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title" className="text-white/80">Title</Label>
+                  <Label htmlFor="title" className="text-lapis-text-secondary">Title</Label>
                   <Input
                     id="title"
                     value={newGoal.title}
@@ -198,11 +198,11 @@ export default function GoalsPage() {
                       setNewGoal({ ...newGoal, title: e.target.value })
                     }
                     required
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="text-white/80">Category</Label>
+                  <Label htmlFor="category" className="text-lapis-text-secondary">Category</Label>
                   <Select
                     value={newGoal.category}
                     onValueChange={(value) =>
@@ -212,10 +212,10 @@ export default function GoalsPage() {
                       })
                     }
                   >
-                    <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                    <SelectTrigger className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-black border-white/10">
+                    <SelectContent className="bg-lapis-bg border-lapis-border-subtle">
                       <SelectItem value="fitness">Fitness</SelectItem>
                       <SelectItem value="business">Business</SelectItem>
                       <SelectItem value="productivity">Productivity</SelectItem>
@@ -225,26 +225,26 @@ export default function GoalsPage() {
                     </SelectContent>
                   </Select>
                   {newGoal.category !== 'fitness' && (
-                    <p className="text-white/30 text-xs">
+                    <p className="text-lapis-text-disabled text-xs">
                       Business/Productivity/Self-improvement are placeholder categories until a
                       dedicated module exists — these goals only live here for now.
                     </p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-white/80">Description (optional)</Label>
+                  <Label htmlFor="description" className="text-lapis-text-secondary">Description (optional)</Label>
                   <Textarea
                     id="description"
                     value={newGoal.description}
                     onChange={(e) =>
                       setNewGoal({ ...newGoal, description: e.target.value })
                     }
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                   />
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-white text-black hover:bg-white/90"
+                  className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110"
                 >
                   Add Goal
                 </Button>
@@ -254,22 +254,22 @@ export default function GoalsPage() {
         </div>
 
         <div className="mb-6">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
             Weekly Goals
           </h1>
-          <p className="text-white/50 text-sm">
+          <p className="text-lapis-text-tertiary text-sm">
             {goals.filter((g) => g.status === 'completed').length} of {goals.length} completed
           </p>
         </div>
 
         <div className="grid gap-3">
           {goals.length === 0 ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-              <p className="text-white/40 mb-4">No goals for this week yet</p>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+              <p className="text-lapis-text-tertiary mb-4">No goals for this week yet</p>
               <Button
                 onClick={() => setIsDialogOpen(true)}
                 variant="outline"
-                className="border-white/10 text-white hover:bg-white/5"
+                className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2"
               >
                 Add your first goal
               </Button>
@@ -278,7 +278,7 @@ export default function GoalsPage() {
             goals.map((goal) => (
               <div
                 key={goal.id}
-                className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
+                className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -298,16 +298,16 @@ export default function GoalsPage() {
                         {goal.status.replace('_', ' ')}
                       </span>
                     </div>
-                    <h3 className="text-lg font-medium text-white mb-1">
+                    <h3 className="text-lg font-medium text-lapis-text-primary mb-1">
                       {goal.title}
                     </h3>
                     {goal.description && (
-                      <p className="text-white/40 text-sm">
+                      <p className="text-lapis-text-tertiary text-sm">
                         {goal.description}
                       </p>
                     )}
                     {goal.category !== 'fitness' && (
-                      <p className="text-white/30 text-xs mt-2">
+                      <p className="text-lapis-text-disabled text-xs mt-2">
                         Placeholder category — no dedicated module yet.
                       </p>
                     )}
@@ -325,7 +325,7 @@ export default function GoalsPage() {
                               : 'completed'
                           )
                         }
-                        className="border-white/10 text-white hover:bg-white/5"
+                        className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2"
                       >
                         {goal.status === 'pending' ? 'Start' : 'Complete'}
                       </Button>
@@ -334,7 +334,7 @@ export default function GoalsPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => openDeleteGoalModal(goal.id)}
-                      className="text-white/40 hover:text-white/60 hover:bg-white/5"
+                      className="text-lapis-text-tertiary hover:text-lapis-text-secondary hover:bg-lapis-surface-2"
                     >
                       Delete
                     </Button>

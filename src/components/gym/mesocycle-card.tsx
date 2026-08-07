@@ -93,21 +93,21 @@ export default function MesocycleCard({ userId }: { userId: string }) {
 
   const startBlockButton = (
     <DialogTrigger>
-      <button className="px-4 py-2 rounded-xl bg-white text-black hover:bg-white/90 transition-colors text-sm font-medium">
+      <button className="px-4 py-2 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors text-sm font-medium">
         Start New Block
       </button>
     </DialogTrigger>
   )
 
   return (
-    <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+    <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
       <div className="flex items-center gap-2 mb-4">
-        <TrendingUp className="w-4 h-4 text-white/40" />
-        <h3 className="text-lg font-medium text-white">Training Block</h3>
+        <TrendingUp className="w-4 h-4 text-lapis-text-tertiary" />
+        <h3 className="text-lg font-medium text-lapis-text-primary">Training Block</h3>
       </div>
 
-      {state.status === 'loading' && <p className="text-white/40 text-sm">Loading...</p>}
-      {state.status === 'error' && <p className="text-white/40 text-sm">Couldn&apos;t load your training block right now.</p>}
+      {state.status === 'loading' && <p className="text-lapis-text-tertiary text-sm">Loading...</p>}
+      {state.status === 'error' && <p className="text-lapis-text-tertiary text-sm">Couldn&apos;t load your training block right now.</p>}
 
       {state.status === 'ok' && (
         <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) resetForm() }}>
@@ -115,24 +115,24 @@ export default function MesocycleCard({ userId }: { userId: string }) {
             <div className="space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <p className="text-white font-medium">{state.active.mesocycle.label || 'Untitled block'}</p>
-                  <p className="text-white/40 text-sm">
+                  <p className="text-lapis-text-primary font-medium">{state.active.mesocycle.label || 'Untitled block'}</p>
+                  <p className="text-lapis-text-tertiary text-sm">
                     Week {state.active.currentWeek} of {state.active.mesocycle.lengthWeeks}
                   </p>
                 </div>
                 {state.active.isDeloadWeek ? (
-                  <span className="px-2.5 py-1 rounded-full text-xs bg-white text-black font-medium">Deload week</span>
+                  <span className="px-2.5 py-1 rounded-full text-xs bg-lapis-accent-500 text-lapis-text-primary font-medium">Deload week</span>
                 ) : (
                   state.active.weeksUntilDeload != null && (
-                    <span className="px-2.5 py-1 rounded-full text-xs bg-white/5 text-white/50 border border-white/10">
+                    <span className="px-2.5 py-1 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                       Deload in {state.active.weeksUntilDeload} week{state.active.weeksUntilDeload === 1 ? '' : 's'}
                     </span>
                   )
                 )}
               </div>
-              <div className="w-full bg-white/10 rounded-full h-1.5">
+              <div className="w-full bg-lapis-surface-2 rounded-full h-1.5">
                 <div
-                  className="h-1.5 rounded-full bg-white transition-all duration-300"
+                  className="h-1.5 rounded-full bg-lapis-accent-500 transition-all duration-300"
                   style={{ width: `${Math.min((state.active.currentWeek / state.active.mesocycle.lengthWeeks) * 100, 100)}%` }}
                 />
               </div>
@@ -140,18 +140,18 @@ export default function MesocycleCard({ userId }: { userId: string }) {
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-white/40 text-sm">No training block set up — entirely optional.</p>
-              <p className="text-white/30 text-xs">
+              <p className="text-lapis-text-tertiary text-sm">No training block set up — entirely optional.</p>
+              <p className="text-lapis-text-disabled text-xs">
                 Set a length and an optional deload week, and the AI Coach will factor it into its next-set recommendations.
               </p>
               {startBlockButton}
             </div>
           )}
 
-          <DialogContent className="bg-black border-white/10 text-white">
+          <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
             <DialogHeader>
               <DialogTitle>Start a Training Block</DialogTitle>
-              <DialogDescription className="text-white/40">
+              <DialogDescription className="text-lapis-text-tertiary">
                 A planned length, with an optional deload week - the AI Coach factors this into its per-set recommendations, it
                 doesn&apos;t generate a schedule of its own.
               </DialogDescription>
@@ -159,7 +159,7 @@ export default function MesocycleCard({ userId }: { userId: string }) {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="meso-start-date" className="text-white/80">
+                <Label htmlFor="meso-start-date" className="text-lapis-text-secondary">
                   Start date
                 </Label>
                 <Input
@@ -167,12 +167,12 @@ export default function MesocycleCard({ userId }: { userId: string }) {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="meso-length" className="text-white/80">
+                <Label htmlFor="meso-length" className="text-lapis-text-secondary">
                   Length (weeks)
                 </Label>
                 <Input
@@ -182,17 +182,17 @@ export default function MesocycleCard({ userId }: { userId: string }) {
                   max={16}
                   value={lengthWeeks}
                   onChange={(e) => setLengthWeeks(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white w-24"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary w-24"
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-white/70">
+              <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
                 <input type="checkbox" checked={includeDeload} onChange={(e) => setIncludeDeload(e.target.checked)} />
                 Include a deload in the final week
               </label>
 
               <div className="space-y-2">
-                <Label htmlFor="meso-label" className="text-white/80">
+                <Label htmlFor="meso-label" className="text-lapis-text-secondary">
                   Label (optional)
                 </Label>
                 <Input
@@ -201,11 +201,11 @@ export default function MesocycleCard({ userId }: { userId: string }) {
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder="Hypertrophy block"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                 />
               </div>
 
-              <Button onClick={handleStartBlock} disabled={saving || !canSave} className="w-full bg-white text-black hover:bg-white/90">
+              <Button onClick={handleStartBlock} disabled={saving || !canSave} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                 {saving ? 'Starting...' : 'Start Block'}
               </Button>
             </div>

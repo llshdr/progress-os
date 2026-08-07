@@ -345,7 +345,7 @@ export default function ExerciseDetailPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -355,7 +355,7 @@ export default function ExerciseDetailPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Exercise not found</div>
+          <div className="text-lapis-text-tertiary">Exercise not found</div>
         </div>
       </AppLayout>
     )
@@ -395,7 +395,7 @@ export default function ExerciseDetailPage() {
         <div className="mb-8">
           <Link
             href="/gym/exercises"
-            className="text-white/40 hover:text-white/60 transition-colors mb-6 inline-flex items-center gap-2"
+            className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Library
@@ -403,10 +403,10 @@ export default function ExerciseDetailPage() {
 
           <div className="mt-6 flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
                 {exercise.name}
               </h1>
-              <div className="flex flex-wrap gap-3 text-sm text-white/60">
+              <div className="flex flex-wrap gap-3 text-sm text-lapis-text-secondary">
                 <span className="flex items-center gap-1.5">
                   <Dumbbell className="w-4 h-4" />
                   {exercise.primary_muscle_group}
@@ -417,12 +417,12 @@ export default function ExerciseDetailPage() {
                 </span>
               </div>
               {exercise.notes && (
-                <p className="text-white/50 text-sm mt-3">{exercise.notes}</p>
+                <p className="text-lapis-text-tertiary text-sm mt-3">{exercise.notes}</p>
               )}
             </div>
             <Link
               href={`/gym/exercises/${exercise.id}/edit`}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-colors shrink-0"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-secondary hover:text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors shrink-0"
             >
               <Pencil className="w-4 h-4" />
               <span className="text-sm font-medium">Edit</span>
@@ -433,66 +433,66 @@ export default function ExerciseDetailPage() {
         {/* Statistics Section */}
         {exercise.exercise_type !== 'cardio' && statistics && (
           <div className="mb-8">
-            <h2 className="text-lg font-medium text-white mb-1">Statistics</h2>
+            <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Statistics</h2>
             {hasMixedVariants && (
-              <p className="text-white/40 text-xs mb-3">
+              <p className="text-lapis-text-tertiary text-xs mb-3">
                 Includes {distinctVariants.size} equipment variants — Best Set and Est. 1RM may not be
                 directly comparable across them.
               </p>
             )}
             <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 ${hasMixedVariants ? '' : 'mt-3'}`}>
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Times Performed</span>
+                  <TrendingUp className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Times Performed</span>
                 </div>
-                <p className="text-2xl font-semibold text-white">{statistics.timesPerformed}</p>
+                <p className="text-2xl font-semibold text-lapis-text-primary">{statistics.timesPerformed}</p>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Last Trained</span>
+                  <Clock className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Last Trained</span>
                 </div>
-                <p className="text-lg font-semibold text-white">
+                <p className="text-lg font-semibold text-lapis-text-primary">
                   {statistics.lastTrained ? formatDate(statistics.lastTrained) : 'Never'}
                 </p>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Award className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Best Set</span>
+                  <Award className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Best Set</span>
                 </div>
-                <p className="text-lg font-semibold text-white">
+                <p className="text-lg font-semibold text-lapis-text-primary">
                   {statistics.bestSet ? `${statistics.bestSet.weight} × ${statistics.bestSet.reps}` : 'N/A'}
                 </p>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Est. 1RM</span>
+                  <TrendingUp className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Est. 1RM</span>
                 </div>
-                <p className="text-lg font-semibold text-white">
+                <p className="text-lg font-semibold text-lapis-text-primary">
                   {statistics.estimated1RM ? `${Math.round(statistics.estimated1RM)} kg` : 'N/A'}
                 </p>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Dumbbell className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Total Sets</span>
+                  <Dumbbell className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Total Sets</span>
                 </div>
-                <p className="text-2xl font-semibold text-white">{statistics.totalSets}</p>
+                <p className="text-2xl font-semibold text-lapis-text-primary">{statistics.totalSets}</p>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Total Volume</span>
+                  <TrendingUp className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Total Volume</span>
                 </div>
-                <p className="text-2xl font-semibold text-white">{formatVolume(statistics.totalVolume)} kg</p>
+                <p className="text-2xl font-semibold text-lapis-text-primary">{formatVolume(statistics.totalVolume)} kg</p>
               </div>
             </div>
           </div>
@@ -501,8 +501,8 @@ export default function ExerciseDetailPage() {
         {/* Progress Section */}
         {exercise.exercise_type !== 'cardio' && chartSessions.length >= 2 && (
           <div className="mb-8">
-            <h2 className="text-lg font-medium text-white mb-4">Progress</h2>
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+            <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Progress</h2>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
               <ExerciseProgressChart sessions={chartSessions} />
             </div>
           </div>
@@ -518,42 +518,42 @@ export default function ExerciseDetailPage() {
         {/* Cardio Statistics Section */}
         {exercise.exercise_type === 'cardio' && cardioStatistics && (
           <div className="mb-8">
-            <h2 className="text-lg font-medium text-white mb-1">Statistics</h2>
+            <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Statistics</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Times Performed</span>
+                  <TrendingUp className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Times Performed</span>
                 </div>
-                <p className="text-2xl font-semibold text-white">{cardioStatistics.timesPerformed}</p>
+                <p className="text-2xl font-semibold text-lapis-text-primary">{cardioStatistics.timesPerformed}</p>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Last Trained</span>
+                  <Clock className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Last Trained</span>
                 </div>
-                <p className="text-lg font-semibold text-white">
+                <p className="text-lg font-semibold text-lapis-text-primary">
                   {cardioStatistics.lastTrained ? formatDate(cardioStatistics.lastTrained) : 'Never'}
                 </p>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Award className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Best Distance</span>
+                  <Award className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Best Distance</span>
                 </div>
-                <p className="text-lg font-semibold text-white">
+                <p className="text-lg font-semibold text-lapis-text-primary">
                   {cardioStatistics.bestDistance != null ? `${cardioStatistics.bestDistance} km` : 'N/A'}
                 </p>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-white/40" />
-                  <span className="text-xs text-white/40">Best Pace</span>
+                  <TrendingUp className="w-4 h-4 text-lapis-text-tertiary" />
+                  <span className="text-xs text-lapis-text-tertiary">Best Pace</span>
                 </div>
-                <p className="text-lg font-semibold text-white">
+                <p className="text-lg font-semibold text-lapis-text-primary">
                   {cardioStatistics.bestPaceSecondsPerKm != null ? formatPace(cardioStatistics.bestPaceSecondsPerKm) : 'N/A'}
                 </p>
               </div>
@@ -564,26 +564,26 @@ export default function ExerciseDetailPage() {
         {/* Workout History Section */}
         {exercise.exercise_type === 'cardio' ? (
           <div>
-            <h2 className="text-lg font-medium text-white mb-4">Run History</h2>
+            <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Run History</h2>
             {cardioEntries.length === 0 ? (
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-                <p className="text-white/40">No runs logged yet</p>
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+                <p className="text-lapis-text-tertiary">No runs logged yet</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {cardioEntries.map((entry, index) => (
                   <div
                     key={index}
-                    className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 flex items-center justify-between flex-wrap gap-2"
+                    className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 flex items-center justify-between flex-wrap gap-2"
                   >
                     <div className="flex items-center gap-3">
-                      <Calendar className="w-4 h-4 text-white/40" />
-                      <span className="text-white font-medium">{formatDate(entry.date)}</span>
+                      <Calendar className="w-4 h-4 text-lapis-text-tertiary" />
+                      <span className="text-lapis-text-primary font-medium">{formatDate(entry.date)}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-white/70 text-sm">
+                    <div className="flex items-center gap-4 text-lapis-text-secondary text-sm">
                       <span>{entry.distanceKm} km</span>
                       <span>{formatCardioDuration(entry.durationSeconds)}</span>
-                      <span className="text-white/40">{formatPace(entry.durationSeconds / entry.distanceKm)}</span>
+                      <span className="text-lapis-text-tertiary">{formatPace(entry.durationSeconds / entry.distanceKm)}</span>
                     </div>
                   </div>
                 ))}
@@ -592,25 +592,25 @@ export default function ExerciseDetailPage() {
           </div>
         ) : (
           <div>
-            <h2 className="text-lg font-medium text-white mb-4">Workout History</h2>
+            <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Workout History</h2>
             {workouts.length === 0 ? (
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-                <p className="text-white/40">No workout history yet</p>
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+                <p className="text-lapis-text-tertiary">No workout history yet</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {workouts.map((workout) => (
                   <div
                     key={workout.id}
-                    className="border border-white/10 rounded-2xl bg-white/[0.02] p-6"
+                    className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6"
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <Calendar className="w-4 h-4 text-white/40" />
-                        <span className="text-white font-medium">{formatDate(workout.date)}</span>
+                        <Calendar className="w-4 h-4 text-lapis-text-tertiary" />
+                        <span className="text-lapis-text-primary font-medium">{formatDate(workout.date)}</span>
                       </div>
                       {workout.template_name && (
-                        <span className="text-sm text-white/50 bg-white/5 px-3 py-1 rounded-full">
+                        <span className="text-sm text-lapis-text-tertiary bg-lapis-surface-2 px-3 py-1 rounded-full">
                           {workout.template_name}
                         </span>
                       )}
@@ -626,7 +626,7 @@ export default function ExerciseDetailPage() {
                                 .map((set) => (
                                   <span
                                     key={set.id}
-                                    className="text-sm text-white/70 bg-white/5 px-3 py-1.5 rounded-lg"
+                                    className="text-sm text-lapis-text-secondary bg-lapis-surface-2 px-3 py-1.5 rounded-lapis-sm"
                                   >
                                     {set.weight} × {set.reps}
                                   </span>

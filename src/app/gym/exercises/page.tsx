@@ -223,22 +223,22 @@ export default function ExerciseLibraryPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym/library" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/gym/library" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
               Exercise Library
             </h1>
-            <p className="text-white/50 text-sm">
+            <p className="text-lapis-text-tertiary text-sm">
               Manage your exercise collection
             </p>
           </div>
           <Link href="/gym/exercises/new">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors">
               <Plus className="w-4 h-4" />
               <span className="text-sm font-medium">Add Exercise</span>
             </button>
@@ -249,13 +249,13 @@ export default function ExerciseLibraryPage() {
         <div className="space-y-4 mb-8">
           {/* Search Bar */}
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-lapis-text-tertiary" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search exercises..."
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl pl-12 pr-4 py-3 placeholder:text-white/30"
+              className="w-full bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary rounded-lapis-md pl-12 pr-4 py-3 placeholder:text-lapis-text-disabled"
             />
           </div>
 
@@ -263,10 +263,10 @@ export default function ExerciseLibraryPage() {
           <div className="flex gap-3">
             <button
               onClick={() => setShowFavorites(!showFavorites)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lapis-sm transition-colors ${
                 showFavorites
-                  ? 'bg-white/10 text-white border-white/20'
-                  : 'bg-white/5 text-white/60 border-white/10'
+                  ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
+                  : 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle'
               } border`}
             >
               <Star className={`w-4 h-4 ${showFavorites ? 'fill-white' : ''}`} />
@@ -274,10 +274,10 @@ export default function ExerciseLibraryPage() {
             </button>
             <button
               onClick={() => setShowArchived(!showArchived)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lapis-sm transition-colors ${
                 showArchived
-                  ? 'bg-white/10 text-white border-white/20'
-                  : 'bg-white/5 text-white/60 border-white/10'
+                  ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
+                  : 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle'
               } border`}
             >
               <Archive className="w-4 h-4" />
@@ -289,16 +289,16 @@ export default function ExerciseLibraryPage() {
         {/* Exercise List */}
         {loading || searching ? (
           <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
+            <div className="text-lapis-text-tertiary">Loading...</div>
           </div>
         ) : filteredExercises.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <p className="text-lapis-text-tertiary mb-4">
               {searchQuery ? 'No exercises found' : 'No exercises yet'}
             </p>
             {!searchQuery && (
               <Link href="/gym/exercises/new">
-                <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
+                <button className="px-4 py-2 rounded-lapis-sm border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors">
                   Add your first exercise
                 </button>
               </Link>
@@ -310,25 +310,25 @@ export default function ExerciseLibraryPage() {
               {filteredExercises.map((exercise) => (
                 <div
                   key={exercise.id}
-                  className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
+                  className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <Link href={`/gym/exercises/${exercise.id}`}>
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-medium text-white hover:text-white/80 transition-colors">
+                          <h3 className="text-lg font-medium text-lapis-text-primary hover:text-lapis-text-secondary transition-colors">
                             {exercise.name}
                           </h3>
                           {exercise.favorite && (
-                            <Star className="w-4 h-4 fill-white text-white" />
+                            <Star className="w-4 h-4 fill-white text-lapis-text-primary" />
                           )}
                           {exercise.archived && (
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                               Archived
                             </span>
                           )}
                         </div>
-                        <div className="flex flex-wrap gap-2 text-white/40 text-sm">
+                        <div className="flex flex-wrap gap-2 text-lapis-text-tertiary text-sm">
                           <span>{exercise.primary_muscle_group}</span>
                           <span>•</span>
                           <span>{exercise.equipment_type}</span>
@@ -340,27 +340,27 @@ export default function ExerciseLibraryPage() {
                     <div className="flex gap-2">
                       <Link
                         href={`/gym/exercises/${exercise.id}/edit`}
-                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                       >
-                        <Pencil className="w-5 h-5 text-white/40" />
+                        <Pencil className="w-5 h-5 text-lapis-text-tertiary" />
                       </Link>
                       <button
                         onClick={() => toggleFavorite(exercise.id, exercise.favorite)}
-                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                       >
-                        <Star className={`w-5 h-5 ${exercise.favorite ? 'fill-white text-white' : 'text-white/40'}`} />
+                        <Star className={`w-5 h-5 ${exercise.favorite ? 'fill-white text-lapis-text-primary' : 'text-lapis-text-tertiary'}`} />
                       </button>
                       <button
                         onClick={() => toggleArchive(exercise.id, exercise.archived)}
-                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                       >
-                        <Archive className="w-5 h-5 text-white/40" />
+                        <Archive className="w-5 h-5 text-lapis-text-tertiary" />
                       </button>
                       <button
                         onClick={() => openDeleteExerciseModal(exercise.id)}
-                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                       >
-                        <Trash2 className="w-5 h-5 text-white/40" />
+                        <Trash2 className="w-5 h-5 text-lapis-text-tertiary" />
                       </button>
                     </div>
                   </div>
@@ -373,7 +373,7 @@ export default function ExerciseLibraryPage() {
                 <button
                   onClick={handleLoadMore}
                   disabled={loadingMore}
-                  className="px-6 py-2.5 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors disabled:opacity-50"
                 >
                   {loadingMore ? 'Loading...' : 'Load More'}
                 </button>

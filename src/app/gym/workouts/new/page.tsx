@@ -28,7 +28,7 @@ export default function NewWorkoutPage() {
       fallback={
         <AppLayout>
           <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
+            <div className="text-lapis-text-tertiary">Loading...</div>
           </div>
         </AppLayout>
       }
@@ -209,7 +209,7 @@ function NewWorkoutPageInner() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -219,23 +219,23 @@ function NewWorkoutPageInner() {
     return (
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Link href="/gym/workouts" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+          <Link href="/gym/workouts" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
             ← Back
           </Link>
 
-          <div className="border border-white/10 rounded-3xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-8 backdrop-blur-sm">
-            <h2 className="text-2xl font-semibold text-white mb-2">You have an unfinished workout</h2>
-            <p className="text-white/60 mb-6">
+          <div className="relative overflow-hidden border border-lapis-border rounded-lapis-xl bg-lapis-surface-1 p-8 before:content-[''] before:absolute before:top-0 before:left-8 before:right-8 before:h-[2px] before:bg-gradient-to-r before:from-lapis-gold-500 before:to-transparent">
+            <h2 className="font-display text-2xl font-semibold text-lapis-text-primary mb-2">You have an unfinished workout</h2>
+            <p className="text-lapis-text-secondary mb-6">
               {activeWorkout.template_name || activeWorkout.workout_type || 'Workout'} — started{' '}
               {formatStartedAgo(activeWorkout.started_at)}
             </p>
             <button
               onClick={() => router.push(`/gym/workouts/${activeWorkout.id}`)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-medium hover:bg-white/90 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-lapis-accent-500 text-lapis-text-primary rounded-lapis-md font-medium hover:brightness-110 transition-colors"
             >
               Continue Workout
             </button>
-            <p className="text-white/40 text-sm mt-4">
+            <p className="text-lapis-text-tertiary text-sm mt-4">
               Want to start fresh instead? Open that workout and delete it first.
             </p>
           </div>
@@ -247,40 +247,40 @@ function NewWorkoutPageInner() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym/workouts" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/gym/workouts" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
           New Workout
         </h1>
-        <p className="text-white/50 text-sm mb-8">
+        <p className="text-lapis-text-tertiary text-sm mb-8">
           Choose a template or start empty
         </p>
 
         {/* Empty Workout Option */}
         <button
           onClick={() => setSelectedTemplate(null)}
-          className={`w-full border rounded-2xl p-6 text-left transition-all duration-200 mb-4 ${
+          className={`w-full border rounded-lapis-lg p-6 text-left transition-all duration-200 mb-4 ${
             selectedTemplate === null
-              ? 'bg-white/10 border-white/30'
-              : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-white/15'
+              ? 'bg-lapis-surface-2 border-lapis-border-strong'
+              : 'bg-lapis-surface-1 border-lapis-border-subtle hover:bg-lapis-surface-2 hover:border-lapis-border/15'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-white mb-1">
+              <h3 className="text-lg font-medium text-lapis-text-primary mb-1">
                 Empty Workout
               </h3>
-              <p className="text-white/40 text-sm">Start from scratch</p>
+              <p className="text-lapis-text-tertiary text-sm">Start from scratch</p>
             </div>
             <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
               selectedTemplate === null
-                ? 'border-white bg-white'
-                : 'border-white/30'
+                ? 'border-lapis-border bg-lapis-accent-500'
+                : 'border-lapis-border-strong'
             }`}>
               {selectedTemplate === null && (
-                <div className="w-3 h-3 rounded-full bg-black" />
+                <div className="w-3 h-3 rounded-full bg-lapis-bg" />
               )}
             </div>
           </div>
@@ -293,29 +293,29 @@ function NewWorkoutPageInner() {
               <button
                 key={template.id}
                 onClick={() => setSelectedTemplate(template.id)}
-                className={`border rounded-2xl p-6 text-left transition-all duration-200 ${
+                className={`border rounded-lapis-lg p-6 text-left transition-all duration-200 ${
                   selectedTemplate === template.id
-                    ? 'bg-white/10 border-white/30'
-                    : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-white/15'
+                    ? 'bg-lapis-surface-2 border-lapis-border-strong'
+                    : 'bg-lapis-surface-1 border-lapis-border-subtle hover:bg-lapis-surface-2 hover:border-lapis-border/15'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-white mb-1">
+                    <h3 className="text-lg font-medium text-lapis-text-primary mb-1">
                       {template.name}
                     </h3>
                     {template.description && (
-                      <p className="text-white/40 text-sm mb-1">{template.description}</p>
+                      <p className="text-lapis-text-tertiary text-sm mb-1">{template.description}</p>
                     )}
-                    <p className="text-white/30 text-sm">{template.exercise_count} exercises</p>
+                    <p className="text-lapis-text-disabled text-sm">{template.exercise_count} exercises</p>
                   </div>
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                     selectedTemplate === template.id
-                      ? 'border-white bg-white'
-                      : 'border-white/30'
+                      ? 'border-lapis-border bg-lapis-accent-500'
+                      : 'border-lapis-border-strong'
                   }`}>
                     {selectedTemplate === template.id && (
-                      <div className="w-3 h-3 rounded-full bg-black" />
+                      <div className="w-3 h-3 rounded-full bg-lapis-bg" />
                     )}
                   </div>
                 </div>
@@ -326,13 +326,13 @@ function NewWorkoutPageInner() {
 
         {/* Notes (Optional) */}
         <div className="mb-8">
-          <label className="text-white/60 text-sm mb-3 block">Notes (optional)</label>
+          <label className="text-lapis-text-secondary text-sm mb-3 block">Notes (optional)</label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Any notes for this workout..."
             rows={3}
-            className="w-full bg-white/5 border-white/10 text-white rounded-xl px-4 py-3 placeholder:text-white/30 resize-none"
+            className="w-full bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary rounded-lapis-md px-4 py-3 placeholder:text-lapis-text-disabled resize-none"
           />
         </div>
 
@@ -340,7 +340,7 @@ function NewWorkoutPageInner() {
         <button
           onClick={handleCreateWorkout}
           disabled={creating}
-          className="w-full bg-white text-black hover:bg-white/90 rounded-xl px-4 py-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 rounded-lapis-md px-4 py-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {creating ? 'Creating...' : 'Start Workout'}
         </button>

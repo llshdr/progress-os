@@ -160,7 +160,7 @@ export default function WeightPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -170,26 +170,26 @@ export default function WeightPage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center gap-3 mb-8">
-          <Link href="/gym/progress" className="text-white/40 hover:text-white/60 transition-colors">
+          <Link href="/gym/progress" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back
           </Link>
           <div className="flex-1" />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger>
-              <Button className="bg-white text-black hover:bg-white/90 text-sm">
+              <Button className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm">
                 Log Weight
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-black border-white/10 text-white">
+            <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
               <DialogHeader>
                 <DialogTitle>Log Weight Entry</DialogTitle>
-                <DialogDescription className="text-white/40">
+                <DialogDescription className="text-lapis-text-tertiary">
                   Record your current weight and body composition
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleAddEntry} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="weight" className="text-white/80">Weight ({weightUnit})</Label>
+                  <Label htmlFor="weight" className="text-lapis-text-secondary">Weight ({weightUnit})</Label>
                   <Input
                     id="weight"
                     type="number"
@@ -200,11 +200,11 @@ export default function WeightPage() {
                     }
                     required
                     placeholder={weightUnit === 'kg' ? '75.5' : '165.0'}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="body_fat_percentage" className="text-white/80">
+                  <Label htmlFor="body_fat_percentage" className="text-lapis-text-secondary">
                     Body Fat % (optional)
                   </Label>
                   <Input
@@ -219,11 +219,11 @@ export default function WeightPage() {
                       })
                     }
                     placeholder="15.5"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="notes" className="text-white/80">Notes (optional)</Label>
+                  <Label htmlFor="notes" className="text-lapis-text-secondary">Notes (optional)</Label>
                   <Textarea
                     id="notes"
                     value={newEntry.notes}
@@ -231,12 +231,12 @@ export default function WeightPage() {
                       setNewEntry({ ...newEntry, notes: e.target.value })
                     }
                     placeholder="Any additional notes..."
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                   />
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-white text-black hover:bg-white/90"
+                  className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110"
                 >
                   Save Entry
                 </Button>
@@ -246,10 +246,10 @@ export default function WeightPage() {
         </div>
 
         <div className="mb-6">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
             Weight History
           </h1>
-          <p className="text-white/50 text-sm">
+          <p className="text-lapis-text-tertiary text-sm">
             {entries.length} entries recorded
             {goalWeightKg != null && (
               <> · Goal: {formatWeight(goalWeightKg, weightUnit)} {weightUnit}</>
@@ -259,8 +259,8 @@ export default function WeightPage() {
 
         {entries.length >= MIN_ENTRIES_FOR_TREND ? (
           <div className="grid gap-4 mb-6 lg:grid-cols-2">
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h3 className="text-lg font-medium text-white mb-4">Trend</h3>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h3 className="text-lg font-medium text-lapis-text-primary mb-4">Trend</h3>
               <WeightChart
                 entries={entries.map((e) => ({ weight: e.weight, recordedAt: e.recorded_at }))}
                 unit={weightUnit}
@@ -270,8 +270,8 @@ export default function WeightPage() {
             <WeightInsightCard refreshKey={insightRefreshKey} />
           </div>
         ) : entries.length > 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 mb-6">
-            <p className="text-white/40 text-sm">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
+            <p className="text-lapis-text-tertiary text-sm">
               Log {MIN_ENTRIES_FOR_TREND - entries.length} more weigh-in
               {MIN_ENTRIES_FOR_TREND - entries.length === 1 ? '' : 's'} to see your trend and an AI insight.
             </p>
@@ -279,12 +279,12 @@ export default function WeightPage() {
         ) : null}
 
         {entries.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">No weight entries yet</p>
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <p className="text-lapis-text-tertiary mb-4">No weight entries yet</p>
             <Button
               onClick={() => setIsDialogOpen(true)}
               variant="outline"
-              className="border-white/10 text-white hover:bg-white/5"
+              className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2"
             >
               Log your first entry
             </Button>
@@ -296,35 +296,35 @@ export default function WeightPage() {
               return (
                 <div
                   key={entry.id}
-                  className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
+                  className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="text-3xl font-semibold text-white">
+                      <div className="text-3xl font-semibold text-lapis-text-primary">
                         {formatWeight(entry.weight, weightUnit)}
-                        <span className="text-lg font-normal text-white/40 ml-1">
+                        <span className="text-lg font-normal text-lapis-text-tertiary ml-1">
                           {weightUnit}
                         </span>
                       </div>
                       {entry.body_fat_percentage && (
-                        <div className="text-sm text-white/40">
+                        <div className="text-sm text-lapis-text-tertiary">
                           {entry.body_fat_percentage}% body fat
                         </div>
                       )}
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="text-white font-medium">
+                        <div className="text-lapis-text-primary font-medium">
                           {formatDate(entry.recorded_at)}
                         </div>
                         {weightChange !== null && (
                           <div
                             className={`text-sm ${
                               weightChange > 0
-                                ? 'text-red-400'
+                                ? 'text-lapis-garnet'
                                 : weightChange < 0
-                                ? 'text-green-400'
-                                : 'text-white/40'
+                                ? 'text-lapis-jade'
+                                : 'text-lapis-text-tertiary'
                             }`}
                           >
                             {weightChange > 0 ? '+' : ''}
@@ -336,14 +336,14 @@ export default function WeightPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() => openDeleteEntryModal(entry.id)}
-                        className="text-white/40 hover:text-white/60 hover:bg-white/5"
+                        className="text-lapis-text-tertiary hover:text-lapis-text-secondary hover:bg-lapis-surface-2"
                       >
                         Delete
                       </Button>
                     </div>
                   </div>
                   {entry.notes && (
-                    <p className="text-white/40 text-sm mt-4">
+                    <p className="text-lapis-text-tertiary text-sm mt-4">
                       {entry.notes}
                     </p>
                   )}

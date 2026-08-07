@@ -134,15 +134,15 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, sch
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors">
             <Wand2 className="w-4 h-4" />
             <span className="text-sm font-medium">Quick Setup</span>
           </button>
         </DialogTrigger>
-        <DialogContent className="bg-black border-white/10 text-white">
+        <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
           <DialogHeader>
             <DialogTitle>Quick Setup</DialogTitle>
-            <DialogDescription className="text-white/40">
+            <DialogDescription className="text-lapis-text-tertiary">
               {scheduleMode === 'calendar'
                 ? 'Pick how many days a week you train, then a template for each. They’ll be spread across the week automatically (e.g. Monday/Wednesday/Friday) - you can reassign them to different days afterward.'
                 : 'Pick how many days a week you train, then a template for each. The rest of the week fills in as Rest Days automatically.'}
@@ -151,7 +151,7 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, sch
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="days-per-week" className="text-white/80">
+              <Label htmlFor="days-per-week" className="text-lapis-text-secondary">
                 Days per week
               </Label>
               <Input
@@ -161,9 +161,9 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, sch
                 max={7}
                 value={daysPerWeek}
                 onChange={(e) => handleDaysChange(parseInt(e.target.value, 10) || 1)}
-                className="bg-white/5 border-white/10 text-white"
+                className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
               />
-              <p className="text-white/40 text-xs">
+              <p className="text-lapis-text-tertiary text-xs">
                 The remaining {restDays} day{restDays === 1 ? '' : 's'} of the cycle become Rest Days.
               </p>
             </div>
@@ -171,17 +171,17 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, sch
             <div className="space-y-3">
               {templateIds.map((id, index) => (
                 <div key={index} className="space-y-2">
-                  <Label className="text-white/80">Day {index + 1}</Label>
+                  <Label className="text-lapis-text-secondary">Day {index + 1}</Label>
                   <select
                     value={id}
                     onChange={(e) => updateTemplateId(index, e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 text-white rounded-lg px-4 py-2.5"
+                    className="w-full bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-4 py-2.5"
                   >
-                    <option value="" className="bg-black">
+                    <option value="" className="bg-lapis-bg">
                       Select a template...
                     </option>
                     {templateOptions.map((t) => (
-                      <option key={t.id} value={t.id} className="bg-black">
+                      <option key={t.id} value={t.id} className="bg-lapis-bg">
                         {t.name}
                       </option>
                     ))}
@@ -193,12 +193,12 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, sch
             <Button
               onClick={handleCreateClick}
               disabled={saving || !canCreate || templateOptions.length === 0}
-              className="w-full bg-white text-black hover:bg-white/90"
+              className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110"
             >
               {saving ? 'Creating...' : scheduleMode === 'calendar' ? 'Create Schedule' : 'Create Rotation'}
             </Button>
             {templateOptions.length === 0 && (
-              <p className="text-white/30 text-xs text-center">Create a workout template first.</p>
+              <p className="text-lapis-text-disabled text-xs text-center">Create a workout template first.</p>
             )}
           </div>
         </DialogContent>

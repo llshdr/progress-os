@@ -54,47 +54,47 @@ export default function NewTemplatePage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym/templates" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/gym/templates" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
           New Workout Template
         </h1>
-        <p className="text-white/50 text-sm mb-8">
+        <p className="text-lapis-text-tertiary text-sm mb-8">
           Create a custom workout routine
         </p>
 
         <div className="max-w-2xl space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="template-name" className="text-white/80">Template Name *</Label>
+            <Label htmlFor="template-name" className="text-lapis-text-secondary">Template Name *</Label>
             <Input
               id="template-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Chest & Shoulders"
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
               autoFocus
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="template-description" className="text-white/80">Description (optional)</Label>
+            <Label htmlFor="template-description" className="text-lapis-text-secondary">Description (optional)</Label>
             <Textarea
               id="template-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Focus on compound movements..."
               rows={3}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
             />
           </div>
 
           <Button
             onClick={handleCreateTemplate}
             disabled={loading || !name}
-            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
+            className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
             {loading ? 'Creating...' : 'Create Template'}
           </Button>

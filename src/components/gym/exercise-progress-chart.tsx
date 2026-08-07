@@ -23,9 +23,9 @@ const PADDING = { top: 16, right: 12, bottom: 16, left: 12 }
 // chart (and the app generally) is monochrome, and realistically there are
 // only ever 2-3 variants for one exercise, so dash patterns are enough.
 const LINE_STYLES: { dasharray?: string; legendClass: string }[] = [
-  { dasharray: undefined, legendClass: 'border-t-2 border-solid border-white' },
-  { dasharray: '6 4', legendClass: 'border-t-2 border-dashed border-white/70' },
-  { dasharray: '2 3', legendClass: 'border-t-2 border-dotted border-white/70' },
+  { dasharray: undefined, legendClass: 'border-t-2 border-solid border-lapis-border' },
+  { dasharray: '6 4', legendClass: 'border-t-2 border-dashed border-lapis-border/70' },
+  { dasharray: '2 3', legendClass: 'border-t-2 border-dotted border-lapis-border/70' },
 ]
 
 // Reuses the same custom-SVG technique as the weight-tracking chart (viewBox
@@ -111,8 +111,8 @@ export default function ExerciseProgressChart({ sessions }: { sessions: Exercise
         <button
           type="button"
           onClick={() => setMetric('weight')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            metric === 'weight' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+          className={`px-3 py-1.5 rounded-lapis-sm text-xs font-medium transition-colors ${
+            metric === 'weight' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
           }`}
         >
           Top Set Weight
@@ -120,8 +120,8 @@ export default function ExerciseProgressChart({ sessions }: { sessions: Exercise
         <button
           type="button"
           onClick={() => setMetric('volume')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            metric === 'volume' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+          className={`px-3 py-1.5 rounded-lapis-sm text-xs font-medium transition-colors ${
+            metric === 'volume' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
           }`}
         >
           Volume
@@ -136,7 +136,7 @@ export default function ExerciseProgressChart({ sessions }: { sessions: Exercise
         onPointerLeave={() => setHoverIndex(null)}
       >
         {sorted.map((_, i) => (
-          <circle key={`pt-${i}`} cx={xForIndex(i)} cy={yForValue(values[i])} r={3} fill="rgba(255,255,255,0.4)" />
+          <circle key={`pt-${i}`} cx={xForIndex(i)} cy={yForValue(values[i])} r={3} fill="var(--color-lapis-text-secondary)" fillOpacity={0.4} />
         ))}
 
         {bucketPaths.map(({ key, indices, path }, bucketIndex) =>
@@ -145,7 +145,7 @@ export default function ExerciseProgressChart({ sessions }: { sessions: Exercise
               key={key ?? '__none__'}
               d={path}
               fill="none"
-              stroke="white"
+              stroke="var(--color-lapis-accent-500)"
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -161,28 +161,35 @@ export default function ExerciseProgressChart({ sessions }: { sessions: Exercise
               x2={xForIndex(hoverIndex)}
               y1={PADDING.top}
               y2={HEIGHT - PADDING.bottom}
-              stroke="rgba(255,255,255,0.15)"
+              stroke="var(--color-lapis-border)"
               strokeWidth={1}
             />
-            <circle cx={xForIndex(hoverIndex)} cy={yForValue(values[hoverIndex])} r={4.5} fill="white" />
+            <circle
+              cx={xForIndex(hoverIndex)}
+              cy={yForValue(values[hoverIndex])}
+              r={4.5}
+              fill="var(--color-lapis-bg)"
+              stroke="var(--color-lapis-accent-400)"
+              strokeWidth={2}
+            />
           </>
         )}
       </svg>
 
-      <div className="h-6 mt-2 text-sm text-white/70">
+      <div className="h-6 mt-2 text-sm text-lapis-text-secondary">
         {hoverIndex != null && sorted[hoverIndex] && (
           <>
             {formatDate(sorted[hoverIndex].date)} — {values[hoverIndex].toFixed(metric === 'weight' ? 1 : 0)}{' '}
             {unitLabel}
             {segmented && (
-              <span className="text-white/40"> · {sorted[hoverIndex].variantLabel ?? 'No variant'}</span>
+              <span className="text-lapis-text-tertiary"> · {sorted[hoverIndex].variantLabel ?? 'No variant'}</span>
             )}
           </>
         )}
       </div>
 
       {segmented && (
-        <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-white/40">
+        <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-lapis-text-tertiary">
           {bucketPaths.map(({ key }, bucketIndex) => (
             <span key={key ?? '__none__'} className="flex items-center gap-1.5">
               <span className={`inline-block w-4 ${LINE_STYLES[bucketIndex % LINE_STYLES.length].legendClass}`} />

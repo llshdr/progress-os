@@ -54,7 +54,7 @@ export default function ExerciseFormFields({
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="exercise-name" className="text-white/80">
+        <Label htmlFor="exercise-name" className="text-lapis-text-secondary">
           Exercise Name *
         </Label>
         <Input
@@ -63,22 +63,22 @@ export default function ExerciseFormFields({
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
           placeholder="Bench Press"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
         />
       </div>
 
       <div>
-        <Label className="text-white/80 mb-3 block">Type *</Label>
+        <Label className="text-lapis-text-secondary mb-3 block">Type *</Label>
         <div className="grid grid-cols-2 gap-2">
           {EXERCISE_TYPES.map((type) => (
             <button
               key={type}
               type="button"
               onClick={() => onExerciseTypeChange(type)}
-              className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
+              className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
                 exerciseType === type
-                  ? 'bg-white text-black border-white'
-                  : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                  ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                  : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
               }`}
             >
               {type === 'strength' ? 'Strength' : 'Cardio'}
@@ -86,24 +86,24 @@ export default function ExerciseFormFields({
           ))}
         </div>
         {exerciseType === 'cardio' && (
-          <p className="text-white/40 text-xs mt-2">
+          <p className="text-lapis-text-tertiary text-xs mt-2">
             Logged as distance/duration instead of weight/reps.
           </p>
         )}
       </div>
 
       <div>
-        <Label className="text-white/80 mb-3 block">Muscle Target *</Label>
+        <Label className="text-lapis-text-secondary mb-3 block">Muscle Target *</Label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {MUSCLE_GROUPS.map((muscle) => (
             <button
               key={muscle}
               type="button"
               onClick={() => onPrimaryMuscleGroupChange(muscle)}
-              className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
+              className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
                 primaryMuscleGroup === muscle
-                  ? 'bg-white text-black border-white'
-                  : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                  ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                  : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
               }`}
             >
               {muscle}
@@ -113,17 +113,17 @@ export default function ExerciseFormFields({
 
         {refineOptions.length > 0 && (
           <div className="mt-3">
-            <Label className="text-white/60 mb-2 block text-xs">Get more specific (optional)</Label>
+            <Label className="text-lapis-text-secondary mb-2 block text-xs">Get more specific (optional)</Label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {refineOptions.map((target) => (
                 <button
                   key={target}
                   type="button"
                   onClick={() => onToggleMuscleTarget(target)}
-                  className={`p-2.5 rounded-lg border transition-all duration-200 text-xs ${
+                  className={`p-2.5 rounded-lapis-sm border transition-all duration-200 text-xs ${
                     muscleTargets.includes(target)
-                      ? 'bg-white/10 text-white border-white/20'
-                      : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                      ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
+                      : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
                   }`}
                 >
                   {target}
@@ -135,17 +135,17 @@ export default function ExerciseFormFields({
       </div>
 
       <div>
-        <Label className="text-white/80 mb-3 block">Secondary Muscle Groups (optional)</Label>
+        <Label className="text-lapis-text-secondary mb-3 block">Secondary Muscle Groups (optional)</Label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {MUSCLE_GROUPS.filter((m) => m !== primaryMuscleGroup).map((muscle) => (
             <button
               key={muscle}
               type="button"
               onClick={() => onToggleSecondaryMuscle(muscle)}
-              className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
+              className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
                 secondaryMuscleGroups.includes(muscle)
-                  ? 'bg-white/10 text-white border-white/20'
-                  : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                  ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
+                  : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
               }`}
             >
               {muscle}
@@ -155,28 +155,28 @@ export default function ExerciseFormFields({
       </div>
 
       <div className="space-y-2">
-        <label className="flex items-center gap-2 text-sm text-white/70">
+        <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
           <input type="checkbox" checked={isUnilateral} onChange={(e) => onIsUnilateralChange(e.target.checked)} />
           Unilateral (one side at a time)
         </label>
-        <p className="text-white/40 text-xs">
+        <p className="text-lapis-text-tertiary text-xs">
           e.g. single-arm rows, Bulgarian split squats, walking lunges - helps the AI Coach reason about progression more
           carefully for this exercise.
         </p>
       </div>
 
       <div>
-        <Label className="text-white/80 mb-3 block">Equipment Type *</Label>
+        <Label className="text-lapis-text-secondary mb-3 block">Equipment Type *</Label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {EQUIPMENT_TYPES.map((equipment) => (
             <button
               key={equipment}
               type="button"
               onClick={() => onEquipmentTypeChange(equipment)}
-              className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
+              className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
                 equipmentType === equipment
-                  ? 'bg-white text-black border-white'
-                  : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                  ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                  : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
               }`}
             >
               {equipment}
@@ -186,17 +186,17 @@ export default function ExerciseFormFields({
       </div>
 
       <div>
-        <Label className="text-white/80 mb-3 block">Category *</Label>
+        <Label className="text-lapis-text-secondary mb-3 block">Category *</Label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() => onCategoryChange(cat)}
-              className={`p-3 rounded-lg border transition-all duration-200 text-sm ${
+              className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
                 category === cat
-                  ? 'bg-white text-black border-white'
-                  : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                  ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                  : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
               }`}
             >
               {cat}
@@ -206,7 +206,7 @@ export default function ExerciseFormFields({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="exercise-notes" className="text-white/80">
+        <Label htmlFor="exercise-notes" className="text-lapis-text-secondary">
           Notes (optional)
         </Label>
         <Textarea
@@ -215,7 +215,7 @@ export default function ExerciseFormFields({
           onChange={(e) => onNotesChange(e.target.value)}
           placeholder="Any notes about this exercise..."
           rows={3}
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
         />
       </div>
     </>

@@ -65,30 +65,30 @@ export default function ExerciseCoachCard({ exerciseLibraryId, exerciseName }: E
   }, [exerciseLibraryId, exerciseName, includeNutrition])
 
   return (
-    <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+    <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="w-4 h-4 text-white/40" />
-        <h2 className="text-lg font-medium text-white">AI Coach</h2>
+        <Sparkles className="w-4 h-4 text-lapis-text-tertiary" />
+        <h2 className="text-lg font-medium text-lapis-text-primary">AI Coach</h2>
       </div>
 
-      {loading && <p className="text-white/40 text-sm">Analyzing your recent sets...</p>}
+      {loading && <p className="text-lapis-text-tertiary text-sm">Analyzing your recent sets...</p>}
 
       {!loading && result?.status === 'not_enough_history' && (
-        <p className="text-white/40 text-sm">
+        <p className="text-lapis-text-tertiary text-sm">
           Log a couple more sessions of this exercise and I&apos;ll suggest your next weight and reps.
         </p>
       )}
 
       {!loading && result?.status === 'error' && (
-        <p className="text-white/40 text-sm">Couldn&apos;t generate a recommendation right now. Try again later.</p>
+        <p className="text-lapis-text-tertiary text-sm">Couldn&apos;t generate a recommendation right now. Try again later.</p>
       )}
 
       {!loading && result?.status === 'ok' && (
         <div>
-          <p className="text-2xl font-semibold text-white mb-1">
+          <p className="text-2xl font-semibold text-lapis-text-primary mb-1">
             {result.weight} kg × {result.reps}
           </p>
-          {result.reasoning && <p className="text-white/50 text-sm">{result.reasoning}</p>}
+          {result.reasoning && <p className="text-lapis-text-tertiary text-sm">{result.reasoning}</p>}
         </div>
       )}
 
@@ -96,7 +96,7 @@ export default function ExerciseCoachCard({ exerciseLibraryId, exerciseName }: E
         <button
           type="button"
           onClick={handleToggleNutrition}
-          className="mt-3 px-2.5 py-1 rounded-full text-xs bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 transition-colors"
+          className="mt-3 px-2.5 py-1 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle hover:bg-lapis-surface-2 hover:text-lapis-text-secondary transition-colors"
         >
           Nutrition {includeNutrition ? 'factored in' : 'not factored in'}
         </button>

@@ -368,7 +368,7 @@ export default function RecordsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link
           href="/gym/progress"
-          className="text-white/40 hover:text-white/60 transition-colors mb-6 inline-flex items-center gap-2"
+          className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Progress
@@ -376,12 +376,12 @@ export default function RecordsPage() {
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8 mt-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-              <Award className="w-8 h-8 text-white/80" />
+            <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
+              <Award className="w-8 h-8 text-lapis-text-secondary" />
             </div>
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">Personal Records</h1>
-              <p className="text-white/50 text-sm">Your best lift and run for every exercise</p>
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">Personal Records</h1>
+              <p className="text-lapis-text-tertiary text-sm">Your best lift and run for every exercise</p>
             </div>
           </div>
 
@@ -393,15 +393,15 @@ export default function RecordsPage() {
             }}
           >
             <DialogTrigger>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors">
                 <Plus className="w-4 h-4" />
                 <span className="text-sm font-medium">Add Manual PR</span>
               </button>
             </DialogTrigger>
-            <DialogContent className="bg-black border-white/10 text-white max-h-[85vh] overflow-y-auto">
+            <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add Manual PR</DialogTitle>
-                <DialogDescription className="text-white/40">
+                <DialogDescription className="text-lapis-text-tertiary">
                   For a lift or run from before this app existed, or anything you'd rather log without a full
                   workout entry.
                 </DialogDescription>
@@ -412,8 +412,8 @@ export default function RecordsPage() {
                   <button
                     type="button"
                     onClick={() => setExerciseMode('library')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      exerciseMode === 'library' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                    className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+                      exerciseMode === 'library' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                     }`}
                   >
                     From Library
@@ -421,8 +421,8 @@ export default function RecordsPage() {
                   <button
                     type="button"
                     onClick={() => setExerciseMode('custom')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      exerciseMode === 'custom' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                    className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+                      exerciseMode === 'custom' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                     }`}
                   >
                     Not in My Library
@@ -431,17 +431,17 @@ export default function RecordsPage() {
 
                 {exerciseMode === 'library' ? (
                   <div className="space-y-2">
-                    <Label className="text-white/80">Exercise</Label>
+                    <Label className="text-lapis-text-secondary">Exercise</Label>
                     <select
                       value={selectedLibraryId}
                       onChange={(e) => setSelectedLibraryId(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 text-white rounded-lg px-4 py-2.5"
+                      className="w-full bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-4 py-2.5"
                     >
-                      <option value="" className="bg-black">
+                      <option value="" className="bg-lapis-bg">
                         Select an exercise...
                       </option>
                       {libraryExercises.map((ex) => (
-                        <option key={ex.id} value={ex.id} className="bg-black">
+                        <option key={ex.id} value={ex.id} className="bg-lapis-bg">
                           {ex.name} {ex.exercise_type === 'cardio' ? '(Cardio)' : ''}
                         </option>
                       ))}
@@ -450,7 +450,7 @@ export default function RecordsPage() {
                 ) : (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="pr-name" className="text-white/80">
+                      <Label htmlFor="pr-name" className="text-lapis-text-secondary">
                         Exercise name
                       </Label>
                       <Input
@@ -459,21 +459,21 @@ export default function RecordsPage() {
                         value={customName}
                         onChange={(e) => setCustomName(e.target.value)}
                         placeholder="e.g. Bench Press"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-white/80">Type</Label>
+                      <Label className="text-lapis-text-secondary">Type</Label>
                       <div className="grid grid-cols-2 gap-2">
                         {EXERCISE_TYPES.map((type) => (
                           <button
                             key={type}
                             type="button"
                             onClick={() => setCustomType(type)}
-                            className={`p-2.5 rounded-lg border text-sm transition-colors ${
+                            className={`p-2.5 rounded-lapis-sm border text-sm transition-colors ${
                               customType === type
-                                ? 'bg-white text-black border-white'
-                                : 'bg-white/[0.02] border-white/10 text-white hover:bg-white/[0.04]'
+                                ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                                : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
                             }`}
                           >
                             {type === 'strength' ? 'Strength' : 'Cardio'}
@@ -487,7 +487,7 @@ export default function RecordsPage() {
                 {effectiveType === 'strength' ? (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="pr-weight" className="text-white/80">
+                      <Label htmlFor="pr-weight" className="text-lapis-text-secondary">
                         Weight (kg)
                       </Label>
                       <Input
@@ -497,11 +497,11 @@ export default function RecordsPage() {
                         value={weight}
                         onChange={(e) => setWeight(e.target.value)}
                         placeholder="100"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="pr-reps" className="text-white/80">
+                      <Label htmlFor="pr-reps" className="text-lapis-text-secondary">
                         Reps
                       </Label>
                       <Input
@@ -510,14 +510,14 @@ export default function RecordsPage() {
                         value={reps}
                         onChange={(e) => setReps(e.target.value)}
                         placeholder="1"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                       />
                     </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="pr-distance" className="text-white/80">
+                      <Label htmlFor="pr-distance" className="text-lapis-text-secondary">
                         Distance (km)
                       </Label>
                       <Input
@@ -527,11 +527,11 @@ export default function RecordsPage() {
                         value={distanceKm}
                         onChange={(e) => setDistanceKm(e.target.value)}
                         placeholder="5.0"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="pr-duration" className="text-white/80">
+                      <Label htmlFor="pr-duration" className="text-lapis-text-secondary">
                         Duration (minutes)
                       </Label>
                       <Input
@@ -541,14 +541,14 @@ export default function RecordsPage() {
                         value={durationMinutes}
                         onChange={(e) => setDurationMinutes(e.target.value)}
                         placeholder="25"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                       />
                     </div>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="pr-date" className="text-white/80">
+                  <Label htmlFor="pr-date" className="text-lapis-text-secondary">
                     Date (optional)
                   </Label>
                   <Input
@@ -556,12 +556,12 @@ export default function RecordsPage() {
                     type="date"
                     value={recordedDate}
                     onChange={(e) => setRecordedDate(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="pr-note" className="text-white/80">
+                  <Label htmlFor="pr-note" className="text-lapis-text-secondary">
                     Note (optional)
                   </Label>
                   <Textarea
@@ -570,14 +570,14 @@ export default function RecordsPage() {
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="Any context worth remembering..."
                     rows={2}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
                   />
                 </div>
 
                 <Button
                   onClick={handleAddManualPr}
                   disabled={saving || !canSave}
-                  className="w-full bg-white text-black hover:bg-white/90"
+                  className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110"
                 >
                   {saving ? 'Saving...' : 'Save PR'}
                 </Button>
@@ -588,7 +588,7 @@ export default function RecordsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
+            <div className="text-lapis-text-tertiary">Loading...</div>
           </div>
         ) : (
           <>
@@ -598,8 +598,8 @@ export default function RecordsPage() {
                   onClick={() => setMuscleFilter(null)}
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
                     muscleFilter === null
-                      ? 'bg-white text-black'
-                      : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                      ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                      : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2'
                   }`}
                 >
                   All
@@ -610,8 +610,8 @@ export default function RecordsPage() {
                     onClick={() => setMuscleFilter(muscle)}
                     className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
                       muscleFilter === muscle
-                        ? 'bg-white text-black'
-                        : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                        ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                        : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2'
                     }`}
                   >
                     {muscle}
@@ -621,10 +621,10 @@ export default function RecordsPage() {
             )}
 
             <div className="mb-10">
-              <h2 className="text-lg font-medium text-white mb-4">Strength Records</h2>
+              <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Strength Records</h2>
               {filteredStrength.length === 0 ? (
-                <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-                  <p className="text-white/40">No strength records yet — log a workout to see your bests here.</p>
+                <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+                  <p className="text-lapis-text-tertiary">No strength records yet — log a workout to see your bests here.</p>
                 </div>
               ) : (
                 <div className="grid gap-3">
@@ -635,23 +635,23 @@ export default function RecordsPage() {
                     const secondary = computedIsHeadline ? record.manual : record.computed
                     const secondaryIsManual = !computedIsHeadline ? false : Boolean(record.manual)
                     const content = (
-                      <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
+                      <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200">
                         <div className="flex items-center justify-between flex-wrap gap-4">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-lg font-medium text-white">{record.name}</h3>
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                              <h3 className="text-lg font-medium text-lapis-text-primary">{record.name}</h3>
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                                 {record.muscleGroup}
                               </span>
                               {!computedIsHeadline && (
-                                <span className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60 border border-white/20">
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
                                   Manual
                                 </span>
                               )}
                             </div>
-                            {record.computed && <p className="text-white/40 text-sm">Performed {record.computed.timesPerformed}x</p>}
+                            {record.computed && <p className="text-lapis-text-tertiary text-sm">Performed {record.computed.timesPerformed}x</p>}
                             {secondary && (
-                              <p className="text-white/30 text-xs mt-1">
+                              <p className="text-lapis-text-disabled text-xs mt-1">
                                 {secondaryIsManual ? 'Manual: ' : 'Logged: '}
                                 {'weight' in secondary ? `${secondary.weight} × ${secondary.reps}` : ''}
                                 {'bestWeight' in secondary ? `${secondary.bestWeight} × ${secondary.bestReps}` : ''}
@@ -660,8 +660,8 @@ export default function RecordsPage() {
                           </div>
                           <div className="flex gap-6 text-right shrink-0">
                             <div>
-                              <p className="text-xs text-white/40 mb-1">Best Set</p>
-                              <p className="text-white font-semibold">
+                              <p className="text-xs text-lapis-text-tertiary mb-1">Best Set</p>
+                              <p className="text-lapis-text-primary font-semibold">
                                 {headline && 'weight' in headline
                                   ? `${headline.weight} × ${headline.reps}`
                                   : headline && 'bestWeight' in headline
@@ -670,8 +670,8 @@ export default function RecordsPage() {
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs text-white/40 mb-1">Est. 1RM</p>
-                              <p className="text-white font-semibold">
+                              <p className="text-xs text-lapis-text-tertiary mb-1">Est. 1RM</p>
+                              <p className="text-lapis-text-primary font-semibold">
                                 {headline ? `${Math.round(headline.estimated1RM)} kg` : 'N/A'}
                               </p>
                             </div>
@@ -693,23 +693,23 @@ export default function RecordsPage() {
             </div>
 
             <div>
-              <h2 className="text-lg font-medium text-white mb-4">Cardio Records</h2>
+              <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Cardio Records</h2>
 
               {filteredCardioActivity.length > 0 && (
-                <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 mb-6">
-                  <h3 className="text-sm font-medium text-white/60 mb-4">Weekly Distance</h3>
+                <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
+                  <h3 className="text-sm font-medium text-lapis-text-secondary mb-4">Weekly Distance</h3>
                   <div className="space-y-3">
                     {cardioWeeks.map((week, i) => (
                       <div key={i}>
                         <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-white/80">
+                          <span className="text-lapis-text-secondary">
                             {week.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </span>
-                          <span className="text-white/40 text-xs">{week.totalKm.toFixed(1)} km</span>
+                          <span className="text-lapis-text-tertiary text-xs">{week.totalKm.toFixed(1)} km</span>
                         </div>
-                        <div className="w-full bg-white/10 rounded-full h-1.5">
+                        <div className="w-full bg-lapis-surface-2 rounded-full h-1.5">
                           <div
-                            className="h-1.5 rounded-full bg-white transition-all duration-300"
+                            className="h-1.5 rounded-full bg-lapis-accent-500 transition-all duration-300"
                             style={{ width: `${(week.totalKm / maxWeekKm) * 100}%` }}
                           />
                         </div>
@@ -720,8 +720,8 @@ export default function RecordsPage() {
               )}
 
               {filteredCardio.length === 0 ? (
-                <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-                  <p className="text-white/40">No cardio logged yet — record a run to see it here.</p>
+                <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+                  <p className="text-lapis-text-tertiary">No cardio logged yet — record a run to see it here.</p>
                 </div>
               ) : (
                 <div className="grid gap-3">
@@ -736,23 +736,23 @@ export default function RecordsPage() {
                     const secondary = computedIsHeadline ? record.manual : record.computed
 
                     const content = (
-                      <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
+                      <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200">
                         <div className="flex items-center justify-between flex-wrap gap-4">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-lg font-medium text-white">{record.name}</h3>
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                              <h3 className="text-lg font-medium text-lapis-text-primary">{record.name}</h3>
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                                 {record.muscleGroup}
                               </span>
                               {!computedIsHeadline && (
-                                <span className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60 border border-white/20">
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
                                   Manual
                                 </span>
                               )}
                             </div>
-                            {record.computed && <p className="text-white/40 text-sm">Performed {record.computed.timesPerformed}x</p>}
+                            {record.computed && <p className="text-lapis-text-tertiary text-sm">Performed {record.computed.timesPerformed}x</p>}
                             {secondary && (
-                              <p className="text-white/30 text-xs mt-1">
+                              <p className="text-lapis-text-disabled text-xs mt-1">
                                 {computedIsHeadline ? 'Manual: ' : 'Logged: '}
                                 {'distanceKm' in secondary
                                   ? `${secondary.distanceKm} km in ${formatDuration(secondary.durationSeconds)}`
@@ -762,12 +762,12 @@ export default function RecordsPage() {
                           </div>
                           <div className="flex gap-6 text-right shrink-0">
                             <div>
-                              <p className="text-xs text-white/40 mb-1">Best Distance</p>
-                              <p className="text-white font-semibold">{headlineDistanceVal ?? 'N/A'} km</p>
+                              <p className="text-xs text-lapis-text-tertiary mb-1">Best Distance</p>
+                              <p className="text-lapis-text-primary font-semibold">{headlineDistanceVal ?? 'N/A'} km</p>
                             </div>
                             <div>
-                              <p className="text-xs text-white/40 mb-1">Best Pace</p>
-                              <p className="text-white font-semibold">{headlinePace != null ? formatPace(headlinePace) : 'N/A'}</p>
+                              <p className="text-xs text-lapis-text-tertiary mb-1">Best Pace</p>
+                              <p className="text-lapis-text-primary font-semibold">{headlinePace != null ? formatPace(headlinePace) : 'N/A'}</p>
                             </div>
                           </div>
                         </div>
@@ -787,24 +787,24 @@ export default function RecordsPage() {
 
               {recentCardioActivity.length > 0 && (
                 <div className="mt-8">
-                  <h3 className="text-sm font-medium text-white/60 mb-4">Recent Activity</h3>
+                  <h3 className="text-sm font-medium text-lapis-text-secondary mb-4">Recent Activity</h3>
                   <div className="space-y-3">
                     {recentCardioActivity.map((activity, index) => (
                       <div
                         key={index}
-                        className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 flex items-center justify-between flex-wrap gap-2"
+                        className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 flex items-center justify-between flex-wrap gap-2"
                       >
                         <div className="flex items-center gap-3">
-                          <Calendar className="w-4 h-4 text-white/40" />
+                          <Calendar className="w-4 h-4 text-lapis-text-tertiary" />
                           <div>
-                            <span className="text-white font-medium">{activity.exerciseName}</span>
-                            <span className="text-white/40 text-sm ml-2">{formatActivityDate(activity.date)}</span>
+                            <span className="text-lapis-text-primary font-medium">{activity.exerciseName}</span>
+                            <span className="text-lapis-text-tertiary text-sm ml-2">{formatActivityDate(activity.date)}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 text-white/70 text-sm">
+                        <div className="flex items-center gap-4 text-lapis-text-secondary text-sm">
                           <span>{activity.distanceKm} km</span>
                           <span>{formatDuration(activity.durationSeconds)}</span>
-                          <span className="text-white/40">
+                          <span className="text-lapis-text-tertiary">
                             {activity.distanceKm > 0 ? formatPace(activity.durationSeconds / activity.distanceKm) : 'N/A'}
                           </span>
                         </div>

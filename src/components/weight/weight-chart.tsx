@@ -89,18 +89,18 @@ export default function WeightChart({ entries, unit, goalWeightKg }: WeightChart
             x2={WIDTH - PADDING.right}
             y1={goalY}
             y2={goalY}
-            stroke="rgba(255,255,255,0.3)"
+            stroke="var(--color-lapis-border-strong)"
             strokeWidth={1}
             strokeDasharray="4 4"
           />
         )}
 
         {sorted.map((_, i) => (
-          <circle key={`raw-${i}`} cx={xForIndex(i)} cy={yForValue(displayRaw[i])} r={2.5} fill="rgba(255,255,255,0.25)" />
+          <circle key={`raw-${i}`} cx={xForIndex(i)} cy={yForValue(displayRaw[i])} r={2.5} fill="var(--color-lapis-text-secondary)" fillOpacity={0.4} />
         ))}
 
         {displayAvg.length > 1 && (
-          <path d={linePath} fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          <path d={linePath} fill="none" stroke="var(--color-lapis-accent-500)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         )}
 
         {hoverIndex != null && (
@@ -110,33 +110,40 @@ export default function WeightChart({ entries, unit, goalWeightKg }: WeightChart
               x2={xForIndex(hoverIndex)}
               y1={PADDING.top}
               y2={HEIGHT - PADDING.bottom}
-              stroke="rgba(255,255,255,0.15)"
+              stroke="var(--color-lapis-border)"
               strokeWidth={1}
             />
-            <circle cx={xForIndex(hoverIndex)} cy={yForValue(displayAvg[hoverIndex])} r={4} fill="white" />
+            <circle
+              cx={xForIndex(hoverIndex)}
+              cy={yForValue(displayAvg[hoverIndex])}
+              r={4}
+              fill="var(--color-lapis-bg)"
+              stroke="var(--color-lapis-accent-400)"
+              strokeWidth={2}
+            />
           </>
         )}
       </svg>
 
-      <div className="h-6 mt-2 text-sm text-white/70">
+      <div className="h-6 mt-2 text-sm text-lapis-text-secondary">
         {hoverIndex != null && sorted[hoverIndex] && (
           <>
             {formatDate(sorted[hoverIndex].recordedAt)} — trend {displayAvg[hoverIndex].toFixed(1)} {unit}
-            <span className="text-white/40"> (raw: {displayRaw[hoverIndex].toFixed(1)} {unit})</span>
+            <span className="text-lapis-text-tertiary"> (raw: {displayRaw[hoverIndex].toFixed(1)} {unit})</span>
           </>
         )}
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-white/40">
+      <div className="flex items-center gap-4 text-xs text-lapis-text-tertiary">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-2 h-2 rounded-full bg-white/25" /> Raw weigh-ins
+          <span className="inline-block w-2 h-2 rounded-full bg-lapis-accent-500/25" /> Raw weigh-ins
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-0.5 bg-white" /> 7-day trend
+          <span className="inline-block w-3 h-0.5 bg-lapis-accent-500" /> 7-day trend
         </span>
         {goalDisplay != null && (
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 border-t border-dashed border-white/40" /> Goal
+            <span className="inline-block w-3 border-t border-dashed border-lapis-border/40" /> Goal
           </span>
         )}
       </div>

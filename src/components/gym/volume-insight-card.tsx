@@ -52,20 +52,20 @@ export default function VolumeInsightCard({ refreshKey }: { refreshKey: number }
   }, [refreshKey])
 
   return (
-    <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+    <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-4 h-4 text-white/40" />
-        <h3 className="text-lg font-medium text-white">Volume This Week</h3>
+        <Sparkles className="w-4 h-4 text-lapis-text-tertiary" />
+        <h3 className="text-lg font-medium text-lapis-text-primary">Volume This Week</h3>
       </div>
 
-      {state.status === 'loading' && <p className="text-white/40 text-sm">Analyzing your volume...</p>}
+      {state.status === 'loading' && <p className="text-lapis-text-tertiary text-sm">Analyzing your volume...</p>}
 
       {state.status === 'not_enough_data' && (
-        <p className="text-white/40 text-sm">Log a few sets this week to see volume per muscle.</p>
+        <p className="text-lapis-text-tertiary text-sm">Log a few sets this week to see volume per muscle.</p>
       )}
 
       {state.status === 'error' && (
-        <p className="text-white/40 text-sm">Couldn&apos;t load volume analysis right now. Try again later.</p>
+        <p className="text-lapis-text-tertiary text-sm">Couldn&apos;t load volume analysis right now. Try again later.</p>
       )}
 
       {state.status === 'ok' && (
@@ -73,15 +73,15 @@ export default function VolumeInsightCard({ refreshKey }: { refreshKey: number }
           {state.volumes.map((v) => (
             <div key={v.muscle}>
               <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-white/80">{v.muscle}</span>
-                <span className="text-white/40 text-xs">
+                <span className="text-lapis-text-secondary">{v.muscle}</span>
+                <span className="text-lapis-text-tertiary text-xs">
                   {v.sets} sets · {STATUS_LABEL[v.status]}
                 </span>
               </div>
-              <div className="w-full bg-white/10 rounded-full h-1.5">
+              <div className="w-full bg-lapis-surface-2 rounded-full h-1.5">
                 <div
                   className={`h-1.5 rounded-full transition-all duration-300 ${
-                    v.status === 'within' ? 'bg-white' : 'bg-white/40'
+                    v.status === 'within' ? 'bg-lapis-accent-500' : 'bg-lapis-accent-500/40'
                   }`}
                   style={{
                     width: `${Math.min((v.sets / MUSCLE_VOLUME_GUIDELINE.maxSetsPerWeek) * 100, 100)}%`,
@@ -89,7 +89,7 @@ export default function VolumeInsightCard({ refreshKey }: { refreshKey: number }
                 />
               </div>
               {v.imbalance && (
-                <p className="text-white/30 text-xs mt-1">
+                <p className="text-lapis-text-disabled text-xs mt-1">
                   Uneven: {v.imbalance.highHead} ({v.imbalance.highSets} sets) vs{' '}
                   {v.imbalance.lowHead} ({v.imbalance.lowSets} sets)
                 </p>
@@ -98,7 +98,7 @@ export default function VolumeInsightCard({ refreshKey }: { refreshKey: number }
           ))}
 
           {state.text && (
-            <p className="text-white/70 text-sm mt-4 pt-4 border-t border-white/10">{state.text}</p>
+            <p className="text-lapis-text-secondary text-sm mt-4 pt-4 border-t border-lapis-border-subtle">{state.text}</p>
           )}
         </div>
       )}

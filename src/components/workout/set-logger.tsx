@@ -413,16 +413,16 @@ export default function SetLogger({
     <div className="space-y-6">
       {/* Exercise Header */}
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-white mb-1">
+        <h2 className="text-2xl font-semibold tracking-tight text-lapis-text-primary mb-1">
           {exerciseName}
         </h2>
         {previousSet && (
-          <div className="text-white/40 text-sm">
+          <div className="text-lapis-text-tertiary text-sm">
             Last: {previousSet.weight} × {previousSet.reps}
           </div>
         )}
         {aiSuggestion?.status === 'ok' && (
-          <div className="text-white/50 text-sm mt-1">
+          <div className="text-lapis-text-tertiary text-sm mt-1">
             Suggested: {aiSuggestion.weight} kg × {aiSuggestion.reps}
           </div>
         )}
@@ -430,7 +430,7 @@ export default function SetLogger({
           <button
             type="button"
             onClick={handleToggleNutrition}
-            className="mt-1.5 px-2.5 py-1 rounded-full text-xs bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60 transition-colors"
+            className="mt-1.5 px-2.5 py-1 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle hover:bg-lapis-surface-2 hover:text-lapis-text-secondary transition-colors"
           >
             Nutrition {includeNutrition ? 'factored in' : 'not factored in'}
           </button>
@@ -441,15 +441,15 @@ export default function SetLogger({
           defined; optional, defaults to none. */}
       {variants.length > 0 && (
         <div>
-          <div className="text-white/40 text-xs mb-2">Equipment (optional)</div>
+          <div className="text-lapis-text-tertiary text-xs mb-2">Equipment (optional)</div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => handleSelectVariant(null)}
               className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
                 selectedVariantId === null
-                  ? 'bg-white text-black'
-                  : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                  ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                  : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2'
               }`}
             >
               None
@@ -461,8 +461,8 @@ export default function SetLogger({
                 onClick={() => handleSelectVariant(variant.id)}
                 className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
                   selectedVariantId === variant.id
-                    ? 'bg-white text-black'
-                    : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                    ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                    : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2'
                 }`}
               >
                 {variant.label}
@@ -476,7 +476,7 @@ export default function SetLogger({
           this never changes the template, just this session's exercise. */}
       {alternatives.length > 0 && savedSets.length === 0 && (
         <div>
-          <div className="text-white/40 text-xs mb-2">Swap exercise (optional)</div>
+          <div className="text-lapis-text-tertiary text-xs mb-2">Swap exercise (optional)</div>
           <div className="flex flex-wrap gap-2">
             {alternatives.map((alt) => (
               <button
@@ -484,7 +484,7 @@ export default function SetLogger({
                 type="button"
                 disabled={swapping}
                 onClick={() => handleSwapExercise(alt.exerciseLibraryId)}
-                className="px-3 py-1.5 rounded-full text-sm bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 rounded-full text-sm bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2 transition-colors disabled:opacity-50"
               >
                 {alt.name}
               </button>
@@ -499,39 +499,39 @@ export default function SetLogger({
           {savedSets.map((set) => (
             <div
               key={set.id}
-              className="flex items-center justify-between border border-white/10 rounded-xl bg-white/[0.02] p-4"
+              className="flex items-center justify-between border border-lapis-border-subtle rounded-lapis-md bg-lapis-surface-1 p-4"
             >
               {editingSetId === set.id ? (
                 <>
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="text-white/40 text-sm shrink-0">Set {set.set_order}</span>
+                    <span className="text-lapis-text-tertiary text-sm shrink-0">Set {set.set_order}</span>
                     <Input
                       type="number"
                       step="0.5"
                       value={editWeight}
                       onChange={(e) => setEditWeight(e.target.value)}
-                      className="bg-white/5 border-white/10 text-white h-9 w-20 text-center"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary h-9 w-20 text-center"
                       autoFocus
                     />
-                    <span className="text-white/40">×</span>
+                    <span className="text-lapis-text-tertiary">×</span>
                     <Input
                       type="number"
                       value={editReps}
                       onChange={(e) => setEditReps(e.target.value)}
-                      className="bg-white/5 border-white/10 text-white h-9 w-16 text-center"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary h-9 w-16 text-center"
                     />
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={handleUpdateSet}
                       disabled={!editWeight || !editReps}
-                      className="p-2 rounded-lg hover:bg-white/5 text-white/60 hover:text-white transition-colors disabled:opacity-30"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-secondary hover:text-lapis-text-primary transition-colors disabled:opacity-30"
                     >
                       <Check className="w-4 h-4" />
                     </button>
                     <button
                       onClick={cancelEditSet}
-                      className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -540,10 +540,10 @@ export default function SetLogger({
               ) : (
                 <>
                   <div className="flex items-center gap-4">
-                    <span className="text-white/40 text-sm">Set {set.set_order}</span>
-                    <span className="text-white font-medium">{set.weight} × {set.reps}</span>
+                    <span className="text-lapis-text-tertiary text-sm">Set {set.set_order}</span>
+                    <span className="text-lapis-text-primary font-medium">{set.weight} × {set.reps}</span>
                     {set.set_type && (
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                         {SET_TYPE_TAG[set.set_type]}
                       </span>
                     )}
@@ -551,13 +551,13 @@ export default function SetLogger({
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => startEditSet(set)}
-                      className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => openDeleteSetModal(set.id)}
-                      className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -571,13 +571,13 @@ export default function SetLogger({
 
       {/* Rest Timer */}
       {restStartedAt !== null && (
-        <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4 flex items-center justify-between flex-wrap gap-3">
+        <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <div className="text-white/40 text-xs mb-1">Rest</div>
-            <div className="text-2xl font-semibold text-white tabular-nums">
+            <div className="text-lapis-text-tertiary text-xs mb-1">Rest</div>
+            <div className="text-2xl font-semibold text-lapis-text-primary tabular-nums">
               {formatRestTime(restElapsedSeconds)}
             </div>
-            <div className="text-white/30 text-xs mt-1">Target: {formatRestTime(restTarget)}</div>
+            <div className="text-lapis-text-disabled text-xs mt-1">Target: {formatRestTime(restTarget)}</div>
           </div>
           <div className="flex items-center gap-2">
             {/* Myo-reps use very short rest-pause intervals (~10-20s) between
@@ -588,8 +588,8 @@ export default function SetLogger({
                 key={preset}
                 type="button"
                 onClick={() => setRestTarget(preset)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  restTarget === preset ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                className={`px-3 py-1.5 rounded-lapis-sm text-xs font-medium transition-colors ${
+                  restTarget === preset ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                 }`}
               >
                 {preset}s
@@ -598,7 +598,7 @@ export default function SetLogger({
             <button
               type="button"
               onClick={() => setRestStartedAt(null)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
+              className="px-3 py-1.5 rounded-lapis-sm text-xs font-medium bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2 transition-colors"
             >
               Skip
             </button>
@@ -607,42 +607,42 @@ export default function SetLogger({
       )}
 
       {/* Current Set */}
-      <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-        <div className="text-white/40 text-sm mb-4">
+      <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+        <div className="text-lapis-text-tertiary text-sm mb-4">
           Set {currentSetNumber}
         </div>
 
         <div className="space-y-4">
           {/* Weight Input */}
           <div className="space-y-2">
-            <label className="text-white/60 text-sm">Weight (kg)</label>
+            <label className="text-lapis-text-secondary text-sm">Weight (kg)</label>
             <Input
               type="number"
               step="0.5"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               placeholder="82.5"
-              className="bg-white/5 border-white/10 text-white text-2xl font-semibold h-16 text-center placeholder:text-white/20"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary text-2xl font-semibold h-16 text-center placeholder:text-lapis-text-disabled"
               autoFocus
             />
           </div>
 
           {/* Reps Input */}
           <div className="space-y-2">
-            <label className="text-white/60 text-sm">Reps</label>
+            <label className="text-lapis-text-secondary text-sm">Reps</label>
             <Input
               type="number"
               value={reps}
               onChange={(e) => setReps(e.target.value)}
               placeholder="8"
-              className="bg-white/5 border-white/10 text-white text-2xl font-semibold h-16 text-center placeholder:text-white/20"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary text-2xl font-semibold h-16 text-center placeholder:text-lapis-text-disabled"
             />
           </div>
 
           {/* Technique - always visible, defaults to Normal. Mirrors the
               Equipment Variant picker's pill-button style above. */}
           <div className="space-y-2">
-            <label className="text-white/60 text-sm">Technique</label>
+            <label className="text-lapis-text-secondary text-sm">Technique</label>
             <div className="flex flex-wrap gap-2">
               {(['normal', 'drop', 'myo'] as SetType[]).map((t) => (
                 <button
@@ -650,7 +650,7 @@ export default function SetLogger({
                   type="button"
                   onClick={() => setSetType(t)}
                   className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-                    setType === t ? 'bg-white text-black' : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                    setType === t ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2'
                   }`}
                 >
                   {SET_TYPE_LABEL[t]}
@@ -664,7 +664,7 @@ export default function SetLogger({
             <Button
               onClick={handleSaveSet}
               disabled={loading || !weight || !reps}
-              className="flex-1 bg-white text-black hover:bg-white/90 h-14 text-base font-medium"
+              className="flex-1 bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-14 text-base font-medium"
             >
               {loading ? (
                 'Saving...'
@@ -678,7 +678,7 @@ export default function SetLogger({
             <Button
               onClick={handleSkipSet}
               variant="outline"
-              className="border-white/10 text-white hover:bg-white/5 h-14 px-4"
+              className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 h-14 px-4"
             >
               <X className="w-5 h-5" />
             </Button>
@@ -690,7 +690,7 @@ export default function SetLogger({
       <Button
         onClick={handleFinishExercise}
         variant="outline"
-        className="w-full border-white/10 text-white hover:bg-white/5 h-12"
+        className="w-full border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 h-12"
       >
         Finish Exercise
       </Button>

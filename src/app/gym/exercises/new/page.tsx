@@ -153,21 +153,21 @@ export default function NewExercisePage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym/exercises" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/gym/exercises" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
           Add Exercise
         </h1>
-        <p className="text-white/50 text-sm mb-8">
+        <p className="text-lapis-text-tertiary text-sm mb-8">
           Create a new exercise for your library
         </p>
 
         <div className="max-w-2xl space-y-6">
           <CatalogSearch onSelect={handleCatalogSelect} />
 
-          <div className="border-t border-white/10 pt-6 space-y-6">
+          <div className="border-t border-lapis-border-subtle pt-6 space-y-6">
             <ExerciseFormFields
               name={name}
               onNameChange={handleNameChange}
@@ -193,7 +193,7 @@ export default function NewExercisePage() {
           <Button
             onClick={handleCreateExercise}
             disabled={loading || !name || !primaryMuscleGroup || !equipmentType || !category}
-            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
+            className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
             {loading ? 'Creating...' : 'Create Exercise'}
           </Button>

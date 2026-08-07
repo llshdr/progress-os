@@ -259,7 +259,7 @@ export default function EditTemplatePage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -269,7 +269,7 @@ export default function EditTemplatePage() {
     return (
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-white/40">Template not found</div>
+          <div className="text-lapis-text-tertiary">Template not found</div>
         </div>
       </AppLayout>
     )
@@ -280,13 +280,13 @@ export default function EditTemplatePage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
-          <Link href="/gym/templates" className="text-white/40 hover:text-white/60 transition-colors">
+          <Link href="/gym/templates" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back
           </Link>
           <button
             onClick={handleSaveTemplate}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             <span className="text-sm font-medium">{saving ? 'Saving...' : 'Save'}</span>
@@ -296,35 +296,35 @@ export default function EditTemplatePage() {
         <div className="max-w-2xl space-y-6">
           {/* Template Name */}
           <div className="space-y-2">
-            <Label htmlFor="template-name" className="text-white/80">Template Name</Label>
+            <Label htmlFor="template-name" className="text-lapis-text-secondary">Template Name</Label>
             <Input
               id="template-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-white/5 border-white/10 text-white"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="template-description" className="text-white/80">Description</Label>
+            <Label htmlFor="template-description" className="text-lapis-text-secondary">Description</Label>
             <Textarea
               id="template-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="bg-white/5 border-white/10 text-white resize-none"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary resize-none"
             />
           </div>
 
           {/* Exercises Section */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium text-white">Exercises</h2>
+              <h2 className="text-lg font-medium text-lapis-text-primary">Exercises</h2>
               <button
                 onClick={() => setShowAddExercise(!showAddExercise)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-lapis-sm bg-lapis-surface-2 text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 <span className="text-sm">Add Exercise</span>
@@ -333,11 +333,11 @@ export default function EditTemplatePage() {
 
             {/* Add Exercise Dropdown */}
             {showAddExercise && (
-              <div className="border border-white/10 rounded-xl bg-white/[0.02] p-4 mb-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-md bg-lapis-surface-1 p-4 mb-4">
                 {libraryExercises.length === 0 ? (
                   <div className="text-center py-4">
-                    <p className="text-white/40 mb-2">No exercises in your library</p>
-                    <Link href="/gym/exercises/new" className="text-white hover:text-white/60 text-sm">
+                    <p className="text-lapis-text-tertiary mb-2">No exercises in your library</p>
+                    <Link href="/gym/exercises/new" className="text-lapis-text-primary hover:text-lapis-text-secondary text-sm">
                       Create your first exercise →
                     </Link>
                   </div>
@@ -347,10 +347,10 @@ export default function EditTemplatePage() {
                       <button
                         key={libExercise.id}
                         onClick={() => handleAddExercise(libExercise.id)}
-                        className="w-full p-3 rounded-lg border border-white/10 bg-white/[0.02] text-white hover:bg-white/[0.04] transition-colors text-left"
+                        className="w-full p-3 rounded-lapis-sm border border-lapis-border-subtle bg-lapis-surface-1 text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors text-left"
                       >
                         <div className="font-medium">{libExercise.name}</div>
-                        <div className="text-white/40 text-sm">
+                        <div className="text-lapis-text-tertiary text-sm">
                           {libExercise.primary_muscle_group} • {libExercise.equipment_type}
                         </div>
                       </button>
@@ -362,50 +362,50 @@ export default function EditTemplatePage() {
 
             {/* Exercise List */}
             {templateExercises.length === 0 ? (
-              <div className="border border-dashed border-white/20 rounded-xl bg-white/[0.01] p-8 text-center">
-                <p className="text-white/40">No exercises yet</p>
+              <div className="border border-dashed border-lapis-border-strong rounded-lapis-md bg-lapis-accent-500/[0.01] p-8 text-center">
+                <p className="text-lapis-text-tertiary">No exercises yet</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {templateExercises.map((exercise, index) => (
                   <div
                     key={exercise.id}
-                    className="border border-white/10 rounded-xl bg-white/[0.02] p-4"
+                    className="border border-lapis-border-subtle rounded-lapis-md bg-lapis-surface-1 p-4"
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex flex-col gap-1 mt-1">
                         <button
                           onClick={() => handleMoveExercise(exercise.id, 'up')}
                           disabled={index === 0}
-                          className="p-1 rounded hover:bg-white/5 disabled:opacity-30 disabled:hover:bg-transparent"
+                          className="p-1 rounded hover:bg-lapis-surface-2 disabled:opacity-30 disabled:hover:bg-transparent"
                         >
-                          <GripVertical className="w-4 h-4 text-white/40" />
+                          <GripVertical className="w-4 h-4 text-lapis-text-tertiary" />
                         </button>
                         <button
                           onClick={() => handleMoveExercise(exercise.id, 'down')}
                           disabled={index === templateExercises.length - 1}
-                          className="p-1 rounded hover:bg-white/5 disabled:opacity-30 disabled:hover:bg-transparent"
+                          className="p-1 rounded hover:bg-lapis-surface-2 disabled:opacity-30 disabled:hover:bg-transparent"
                         >
-                          <GripVertical className="w-4 h-4 text-white/40" />
+                          <GripVertical className="w-4 h-4 text-lapis-text-tertiary" />
                         </button>
                       </div>
 
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-medium text-white">
+                          <h3 className="font-medium text-lapis-text-primary">
                             {exercise.exercise_library.name}
                           </h3>
                           <button
                             onClick={() => openDeleteExerciseModal(exercise.id)}
-                            className="p-1 rounded hover:bg-white/5"
+                            className="p-1 rounded hover:bg-lapis-surface-2"
                           >
-                            <Trash2 className="w-4 h-4 text-white/40" />
+                            <Trash2 className="w-4 h-4 text-lapis-text-tertiary" />
                           </button>
                         </div>
 
                         <div className="grid grid-cols-3 gap-3">
                           <div>
-                            <label className="text-white/40 text-xs mb-1 block">Target Sets</label>
+                            <label className="text-lapis-text-tertiary text-xs mb-1 block">Target Sets</label>
                             <input
                               type="number"
                               value={exercise.target_sets || ''}
@@ -415,11 +415,11 @@ export default function EditTemplatePage() {
                                 e.target.value ? parseInt(e.target.value) : null
                               )}
                               placeholder="3"
-                              className="w-full bg-white/5 border-white/10 text-white rounded-lg px-3 py-2 text-sm"
+                              className="w-full bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-3 py-2 text-sm"
                             />
                           </div>
                           <div>
-                            <label className="text-white/40 text-xs mb-1 block">Rep Range</label>
+                            <label className="text-lapis-text-tertiary text-xs mb-1 block">Rep Range</label>
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
@@ -430,9 +430,9 @@ export default function EditTemplatePage() {
                                   e.target.value ? parseInt(e.target.value) : null
                                 )}
                                 placeholder="8"
-                                className="w-full bg-white/5 border-white/10 text-white rounded-lg px-3 py-2 text-sm"
+                                className="w-full bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-3 py-2 text-sm"
                               />
-                              <span className="text-white/40">-</span>
+                              <span className="text-lapis-text-tertiary">-</span>
                               <input
                                 type="number"
                                 value={exercise.target_rep_range_max || ''}
@@ -442,18 +442,18 @@ export default function EditTemplatePage() {
                                   e.target.value ? parseInt(e.target.value) : null
                                 )}
                                 placeholder="12"
-                                className="w-full bg-white/5 border-white/10 text-white rounded-lg px-3 py-2 text-sm"
+                                className="w-full bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-3 py-2 text-sm"
                               />
                             </div>
                           </div>
                           <div>
-                            <label className="text-white/40 text-xs mb-1 block">Notes</label>
+                            <label className="text-lapis-text-tertiary text-xs mb-1 block">Notes</label>
                             <input
                               type="text"
                               value={exercise.notes || ''}
                               onChange={(e) => handleUpdateExercise(exercise.id, 'notes', e.target.value || null)}
                               placeholder="Optional"
-                              className="w-full bg-white/5 border-white/10 text-white rounded-lg px-3 py-2 text-sm"
+                              className="w-full bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-3 py-2 text-sm"
                             />
                           </div>
                         </div>

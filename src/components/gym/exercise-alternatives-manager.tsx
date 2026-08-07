@@ -102,21 +102,21 @@ export default function ExerciseAlternativesManager({
   const options = libraryExercises.filter((ex) => ex.id !== excludeExerciseLibraryId && !alreadyAddedIds.has(ex.id))
 
   return (
-    <div className="mt-3 pt-3 border-t border-white/5">
-      <Label className="text-white/60 text-xs mb-2 block">Alternatives (optional)</Label>
+    <div className="mt-3 pt-3 border-t border-lapis-border-subtle">
+      <Label className="text-lapis-text-secondary text-xs mb-2 block">Alternatives (optional)</Label>
 
       {alternatives.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
           {alternatives.map((alt) => (
             <span
               key={alt.id}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-white/5 border border-white/10 text-white"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary"
             >
               {alt.name}
               <button
                 type="button"
                 onClick={() => setAltToRemove(alt.id)}
-                className="text-white/40 hover:text-white/70 transition-colors"
+                className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -130,13 +130,13 @@ export default function ExerciseAlternativesManager({
           <select
             value={selectedToAdd}
             onChange={(e) => setSelectedToAdd(e.target.value)}
-            className="flex-1 bg-white/5 border border-white/10 text-white rounded-lg px-3 py-1.5 text-xs"
+            className="flex-1 bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-3 py-1.5 text-xs"
           >
-            <option value="" className="bg-black">
+            <option value="" className="bg-lapis-bg">
               Add alternative...
             </option>
             {options.map((ex) => (
-              <option key={ex.id} value={ex.id} className="bg-black">
+              <option key={ex.id} value={ex.id} className="bg-lapis-bg">
                 {ex.name}
               </option>
             ))}
@@ -145,7 +145,7 @@ export default function ExerciseAlternativesManager({
             type="button"
             onClick={handleAdd}
             disabled={saving || !selectedToAdd}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-white hover:bg-white/10 transition-colors disabled:opacity-40"
+            className="px-3 py-1.5 rounded-lapis-sm text-xs font-medium bg-lapis-surface-2 text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors disabled:opacity-40"
           >
             Add
           </button>

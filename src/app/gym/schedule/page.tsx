@@ -249,7 +249,7 @@ export default function SchedulePage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -260,7 +260,7 @@ export default function SchedulePage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link
           href="/gym/train"
-          className="text-white/40 hover:text-white/60 transition-colors mb-6 inline-flex items-center gap-2"
+          className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Train
@@ -268,12 +268,12 @@ export default function SchedulePage() {
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8 mt-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-              <CalendarDays className="w-8 h-8 text-white/80" />
+            <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
+              <CalendarDays className="w-8 h-8 text-lapis-text-secondary" />
             </div>
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">Schedule</h1>
-              <p className="text-white/50 text-sm">
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">Schedule</h1>
+              <p className="text-lapis-text-tertiary text-sm">
                 {scheduleMode === 'calendar'
                   ? 'Locked to the calendar — each weekday has its own workout'
                   : 'An optional rotation — repeats as you go, not locked to calendar days'}
@@ -299,15 +299,15 @@ export default function SchedulePage() {
               }}
             >
               <DialogTrigger>
-                <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors">
+                <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors">
                   <Plus className="w-4 h-4" />
                   <span className="text-sm font-medium">Add Slot</span>
                 </button>
               </DialogTrigger>
-              <DialogContent className="bg-black border-white/10 text-white">
+              <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
               <DialogHeader>
                 <DialogTitle>Add Schedule Slot</DialogTitle>
-                <DialogDescription className="text-white/40">
+                <DialogDescription className="text-lapis-text-tertiary">
                   {scheduleMode === 'calendar'
                     ? 'Add a template or a custom slot like "Rest Day" - it fills the earliest weekday that has none yet.'
                     : 'Add a template to the rotation, or a custom slot like "Rest Day" with no template.'}
@@ -319,8 +319,8 @@ export default function SchedulePage() {
                   <button
                     type="button"
                     onClick={() => setAddMode('template')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      addMode === 'template' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                    className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+                      addMode === 'template' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                     }`}
                   >
                     From Templates
@@ -328,8 +328,8 @@ export default function SchedulePage() {
                   <button
                     type="button"
                     onClick={() => setAddMode('custom')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      addMode === 'custom' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                    className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+                      addMode === 'custom' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                     }`}
                   >
                     Custom (e.g. Rest Day)
@@ -339,24 +339,24 @@ export default function SchedulePage() {
                 {addMode === 'template' ? (
                   templateOptions.length === 0 ? (
                     <div className="text-center py-6">
-                      <p className="text-white/40 mb-3">No templates yet</p>
-                      <Link href="/gym/templates/new" className="text-white hover:text-white/60 text-sm">
+                      <p className="text-lapis-text-tertiary mb-3">No templates yet</p>
+                      <Link href="/gym/templates/new" className="text-lapis-text-primary hover:text-lapis-text-secondary text-sm">
                         Create your first template →
                       </Link>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <Label className="text-white/80">Template</Label>
+                      <Label className="text-lapis-text-secondary">Template</Label>
                       <select
                         value={selectedTemplateId}
                         onChange={(e) => setSelectedTemplateId(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 text-white rounded-lg px-4 py-2.5"
+                        className="w-full bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-4 py-2.5"
                       >
-                        <option value="" className="bg-black">
+                        <option value="" className="bg-lapis-bg">
                           Select a template...
                         </option>
                         {templateOptions.map((t) => (
-                          <option key={t.id} value={t.id} className="bg-black">
+                          <option key={t.id} value={t.id} className="bg-lapis-bg">
                             {t.name}
                           </option>
                         ))}
@@ -365,7 +365,7 @@ export default function SchedulePage() {
                   )
                 ) : (
                   <div className="space-y-2">
-                    <Label htmlFor="slot-label" className="text-white/80">
+                    <Label htmlFor="slot-label" className="text-lapis-text-secondary">
                       Label
                     </Label>
                     <Input
@@ -374,7 +374,7 @@ export default function SchedulePage() {
                       value={customLabel}
                       onChange={(e) => setCustomLabel(e.target.value)}
                       placeholder="Rest Day"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                     />
                   </div>
                 )}
@@ -382,7 +382,7 @@ export default function SchedulePage() {
                 <Button
                   onClick={handleAddSlot}
                   disabled={saving || !canAddSlot}
-                  className="w-full bg-white text-black hover:bg-white/90"
+                  className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110"
                 >
                   {saving ? 'Adding...' : scheduleMode === 'calendar' ? 'Add to Schedule' : 'Add to Rotation'}
                 </Button>
@@ -396,8 +396,8 @@ export default function SchedulePage() {
           <button
             type="button"
             onClick={() => handleModeChange('rotation')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              scheduleMode === 'rotation' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+            className={`px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+              scheduleMode === 'rotation' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
             }`}
           >
             Rotation
@@ -405,8 +405,8 @@ export default function SchedulePage() {
           <button
             type="button"
             onClick={() => handleModeChange('calendar')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              scheduleMode === 'calendar' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+            className={`px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+              scheduleMode === 'calendar' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
             }`}
           >
             Calendar
@@ -420,14 +420,14 @@ export default function SchedulePage() {
         )}
 
         {scheduleMode === 'calendar' && catchUpSlot && (
-          <div className="border border-white/20 rounded-2xl bg-white/[0.04] p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
-            <p className="text-white text-sm">
+          <div className="border border-lapis-border-strong rounded-lapis-lg bg-lapis-surface-2 p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+            <p className="text-lapis-text-primary text-sm">
               You didn&apos;t log <span className="font-medium">{slotDisplayName(catchUpSlot)}</span> on{' '}
               {WEEKDAY_NAMES[catchUpSlot.slotOrder]}.
             </p>
             <Link
               href={`/gym/workouts/new?slot=${catchUpSlot.id}`}
-              className="px-4 py-2 rounded-lg bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors shrink-0"
+              className="px-4 py-2 rounded-lapis-sm bg-lapis-accent-500 text-lapis-text-primary text-sm font-medium hover:brightness-110 transition-colors shrink-0"
             >
               Start catch-up workout
             </Link>
@@ -436,18 +436,18 @@ export default function SchedulePage() {
 
         <div className="mb-10">
           {slots.length === 0 ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-              <p className="text-white/40 mb-4">
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+              <p className="text-lapis-text-tertiary mb-4">
                 {scheduleMode === 'calendar' ? 'No schedule set up yet' : 'No rotation set up yet'} — entirely optional.
               </p>
-              <p className="text-white/30 text-sm">
+              <p className="text-lapis-text-disabled text-sm">
                 Add a slot to start one, or ignore this page completely — nothing else in the app depends on it.
               </p>
             </div>
           ) : (
             <div className="grid gap-3">
               {scheduleMode === 'calendar' && slots.length < 7 && (
-                <p className="text-white/30 text-xs mb-1">
+                <p className="text-lapis-text-disabled text-xs mb-1">
                   {7 - slots.length} weekday{7 - slots.length === 1 ? '' : 's'} still have no slot assigned — use
                   Quick Setup or Add Slot to fill them in.
                 </p>
@@ -455,21 +455,21 @@ export default function SchedulePage() {
               {slots.map((slot, index) => (
                 <div
                   key={slot.id}
-                  className={`border rounded-2xl bg-white/[0.02] p-6 transition-all duration-200 ${
-                    slot.id === nextSlotId ? 'border-white/30' : 'border-white/10'
+                  className={`border rounded-lapis-lg bg-lapis-surface-1 p-6 transition-all duration-200 ${
+                    slot.id === nextSlotId ? 'border-lapis-border-strong' : 'border-lapis-border-subtle'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
                       {scheduleMode === 'calendar' && (
-                        <p className="text-white/40 text-xs uppercase tracking-wide mb-1">
+                        <p className="text-lapis-text-tertiary text-xs uppercase tracking-wide mb-1">
                           {WEEKDAY_NAMES[slot.slotOrder]}
                         </p>
                       )}
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-medium text-white">{slotDisplayName(slot)}</h3>
+                        <h3 className="text-lg font-medium text-lapis-text-primary">{slotDisplayName(slot)}</h3>
                         {slot.id === nextSlotId && (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-white text-black font-medium">
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500 text-lapis-text-primary font-medium">
                             {scheduleMode === 'calendar' ? 'Today' : 'Next'}
                           </span>
                         )}
@@ -479,7 +479,7 @@ export default function SchedulePage() {
                           {slotMuscles[slot.id].map((muscle) => (
                             <span
                               key={muscle}
-                              className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10"
+                              className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle"
                             >
                               {muscle}
                             </span>
@@ -487,7 +487,7 @@ export default function SchedulePage() {
                         </div>
                       )}
                       <div className="flex items-center gap-2 mt-2">
-                        <Label htmlFor={`usual-time-${slot.id}`} className="text-white/40 text-xs">
+                        <Label htmlFor={`usual-time-${slot.id}`} className="text-lapis-text-tertiary text-xs">
                           Usual time
                         </Label>
                         <Input
@@ -495,7 +495,7 @@ export default function SchedulePage() {
                           type="time"
                           value={slot.usualTime ?? ''}
                           onChange={(e) => updateUsualTime(slot.id, e.target.value)}
-                          className="bg-white/5 border-white/10 text-white w-28 h-7 text-xs"
+                          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary w-28 h-7 text-xs"
                         />
                       </div>
                     </div>
@@ -503,7 +503,7 @@ export default function SchedulePage() {
                       {slot.templateId && (
                         <Link
                           href={`/gym/workouts/new?slot=${slot.id}`}
-                          className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                          className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                           title="Start this slot"
                         >
                           <Play className="w-4 h-4" />
@@ -512,7 +512,7 @@ export default function SchedulePage() {
                       <button
                         onClick={() => swapSlots(index, index - 1)}
                         disabled={index === 0}
-                        className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors disabled:opacity-20 disabled:hover:bg-transparent"
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors disabled:opacity-20 disabled:hover:bg-transparent"
                         title={scheduleMode === 'calendar' ? 'Move to previous day' : 'Move up'}
                       >
                         <ArrowUp className="w-4 h-4" />
@@ -520,14 +520,14 @@ export default function SchedulePage() {
                       <button
                         onClick={() => swapSlots(index, index + 1)}
                         disabled={index === slots.length - 1}
-                        className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors disabled:opacity-20 disabled:hover:bg-transparent"
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors disabled:opacity-20 disabled:hover:bg-transparent"
                         title={scheduleMode === 'calendar' ? 'Move to next day' : 'Move down'}
                       >
                         <ArrowDown className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setSlotToRemove(slot.id)}
-                        className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                         title="Remove"
                       >
                         <Trash2 className="w-4 h-4" />

@@ -152,22 +152,22 @@ export default function WorkoutTemplatesPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym/library" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/gym/library" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
               Workout Templates
             </h1>
-            <p className="text-white/50 text-sm">
+            <p className="text-lapis-text-tertiary text-sm">
               Your custom workout routines
             </p>
           </div>
           <Link href="/gym/templates/new">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors">
               <Plus className="w-4 h-4" />
               <span className="text-sm font-medium">New Template</span>
             </button>
@@ -178,10 +178,10 @@ export default function WorkoutTemplatesPage() {
         <div className="mb-6">
           <button
             onClick={() => setShowArchived(!showArchived)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lapis-sm transition-colors ${
               showArchived
-                ? 'bg-white/10 text-white border-white/20'
-                : 'bg-white/5 text-white/60 border-white/10'
+                ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
+                : 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle'
             } border`}
           >
             <Archive className="w-4 h-4" />
@@ -192,16 +192,16 @@ export default function WorkoutTemplatesPage() {
         {/* Templates List */}
         {loading ? (
           <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
+            <div className="text-lapis-text-tertiary">Loading...</div>
           </div>
         ) : filteredTemplates.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <p className="text-lapis-text-tertiary mb-4">
               {showArchived ? 'No archived templates' : 'No templates yet'}
             </p>
             {!showArchived && (
               <Link href="/gym/templates/new">
-                <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
+                <button className="px-4 py-2 rounded-lapis-sm border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors">
                   Create your first template
                 </button>
               </Link>
@@ -212,50 +212,50 @@ export default function WorkoutTemplatesPage() {
             {filteredTemplates.map((template) => (
               <div
                 key={template.id}
-                className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
+                className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
               >
                 <div className="flex items-start justify-between gap-4">
                   <Link href={`/gym/templates/${template.id}/edit`} className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-medium text-white">
+                      <h3 className="text-lg font-medium text-lapis-text-primary">
                         {template.name}
                       </h3>
                       {template.archived && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                           Archived
                         </span>
                       )}
                     </div>
                     {template.description && (
-                      <p className="text-white/40 text-sm mb-2">
+                      <p className="text-lapis-text-tertiary text-sm mb-2">
                         {template.description}
                       </p>
                     )}
-                    <p className="text-white/30 text-sm">
+                    <p className="text-lapis-text-disabled text-sm">
                       {template.exercise_count} exercises
                     </p>
                   </Link>
                   <div className="flex gap-2">
                     <button
                       onClick={() => duplicateTemplate(template.id)}
-                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                       title="Duplicate"
                     >
-                      <Copy className="w-4 h-4 text-white/40" />
+                      <Copy className="w-4 h-4 text-lapis-text-tertiary" />
                     </button>
                     <button
                       onClick={() => toggleArchive(template.id, template.archived)}
-                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                       title={template.archived ? 'Unarchive' : 'Archive'}
                     >
-                      <Archive className="w-4 h-4 text-white/40" />
+                      <Archive className="w-4 h-4 text-lapis-text-tertiary" />
                     </button>
                     <button
                       onClick={() => openDeleteTemplateModal(template.id)}
-                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                       title="Delete"
                     >
-                      <Trash2 className="w-4 h-4 text-white/40" />
+                      <Trash2 className="w-4 h-4 text-lapis-text-tertiary" />
                     </button>
                   </div>
                 </div>

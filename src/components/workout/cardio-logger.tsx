@@ -116,27 +116,27 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-white mb-1">{exerciseName}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight text-lapis-text-primary mb-1">{exerciseName}</h2>
       </div>
 
       {savedLog && !editing ? (
-        <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+        <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <p className="text-2xl font-semibold text-white">{savedLog.distanceKm} km</p>
-              <p className="text-white/60 text-sm">{formatDuration(savedLog.durationSeconds)}</p>
-              <p className="text-white/40 text-sm">{formatPace(savedLog.distanceKm, savedLog.durationSeconds)}</p>
+              <p className="text-2xl font-semibold text-lapis-text-primary">{savedLog.distanceKm} km</p>
+              <p className="text-lapis-text-secondary text-sm">{formatDuration(savedLog.durationSeconds)}</p>
+              <p className="text-lapis-text-tertiary text-sm">{formatPace(savedLog.distanceKm, savedLog.durationSeconds)}</p>
             </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setEditing(true)}
-                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
               >
                 <Pencil className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -144,30 +144,30 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
           </div>
         </div>
       ) : (
-        <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+        <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-white/60 text-sm">Distance (km)</label>
+              <label className="text-lapis-text-secondary text-sm">Distance (km)</label>
               <Input
                 type="number"
                 step="0.01"
                 value={distanceKm}
                 onChange={(e) => setDistanceKm(e.target.value)}
                 placeholder="5.0"
-                className="bg-white/5 border-white/10 text-white text-2xl font-semibold h-16 text-center placeholder:text-white/20"
+                className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary text-2xl font-semibold h-16 text-center placeholder:text-lapis-text-disabled"
                 autoFocus
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-white/60 text-sm">Duration (minutes)</label>
+              <label className="text-lapis-text-secondary text-sm">Duration (minutes)</label>
               <Input
                 type="number"
                 step="0.1"
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(e.target.value)}
                 placeholder="25"
-                className="bg-white/5 border-white/10 text-white text-2xl font-semibold h-16 text-center placeholder:text-white/20"
+                className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary text-2xl font-semibold h-16 text-center placeholder:text-lapis-text-disabled"
               />
             </div>
 
@@ -175,7 +175,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
               <Button
                 onClick={handleSave}
                 disabled={loading || !distanceKm || !durationMinutes}
-                className="flex-1 bg-white text-black hover:bg-white/90 h-14 text-base font-medium"
+                className="flex-1 bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-14 text-base font-medium"
               >
                 {loading ? (
                   'Saving...'
@@ -194,7 +194,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
                     setDurationMinutes(String(savedLog.durationSeconds / 60))
                   }}
                   variant="outline"
-                  className="border-white/10 text-white hover:bg-white/5 h-14 px-4"
+                  className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 h-14 px-4"
                 >
                   Cancel
                 </Button>
@@ -207,7 +207,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
       <Button
         onClick={handleFinishExercise}
         variant="outline"
-        className="w-full border-white/10 text-white hover:bg-white/5 h-12"
+        className="w-full border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 h-12"
       >
         Finish Exercise
       </Button>
