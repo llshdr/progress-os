@@ -48,18 +48,23 @@ const PIXELS_PER_MINUTE = 1 // 60px per hour
 const MIN_BLOCK_HEIGHT = 28
 const DAY_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE
 
+// Categorical, not semantic - each source keeps a fixed, distinct hue
+// from the Lapis palette so they stay visually distinguishable, reusing
+// (not inventing) the existing accent/citrine/jade tokens: gym was
+// already blue, so it keeps the primary lapis accent; races keeps its
+// warm distinction via citrine; habits keep their green via jade.
 const SOURCE_STYLE: Record<TimedItemSource, string> = {
-  entry: 'bg-white/10 border-white/25 text-white',
-  gym: 'bg-blue-500/10 border-blue-400/30 text-blue-100',
-  races: 'bg-orange-500/10 border-orange-400/30 text-orange-100',
-  race_day: 'bg-white/10 border-white/25 text-white',
-  goal: 'bg-white/5 border-white/10 text-white/70',
-  habit: 'bg-emerald-500/10 border-emerald-400/30 text-emerald-100',
+  entry: 'bg-lapis-surface-2 border-lapis-border-strong text-lapis-text-primary',
+  gym: 'bg-lapis-accent-500/10 border-lapis-accent-400/30 text-lapis-accent-400',
+  races: 'bg-lapis-citrine/10 border-lapis-citrine/30 text-lapis-citrine',
+  race_day: 'bg-lapis-surface-2 border-lapis-border-strong text-lapis-text-primary',
+  goal: 'bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-secondary',
+  habit: 'bg-lapis-jade/10 border-lapis-jade/30 text-lapis-jade',
 }
 // Brighter variant once a habit is logged for the displayed day - the
 // only source with a done/not-done state, so it's the only one that
 // needs a second style.
-const HABIT_DONE_STYLE = 'bg-emerald-500/40 border-emerald-400/70 text-white'
+const HABIT_DONE_STYLE = 'bg-lapis-jade/40 border-lapis-jade/70 text-lapis-text-primary'
 
 function shiftDay(date: string, deltaDays: number): string {
   const d = new Date(date + 'T00:00:00')
@@ -405,7 +410,7 @@ export default function CalendarPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -455,25 +460,25 @@ export default function CalendarPage() {
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/dashboard" className="text-white/40 hover:text-white/60 transition-colors mb-6 inline-flex items-center gap-2">
+        <Link href="/dashboard" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
         </Link>
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-6 mt-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-              <CalendarDays className="w-8 h-8 text-white/80" />
+            <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
+              <CalendarDays className="w-8 h-8 text-lapis-text-secondary" />
             </div>
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">Calendar</h1>
-              <p className="text-white/50 text-sm">Your day, plus what your training already has planned</p>
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">Calendar</h1>
+              <p className="text-lapis-text-tertiary text-sm">Your day, plus what your training already has planned</p>
             </div>
           </div>
 
           <button
             onClick={() => openAddDialog()}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span className="text-sm font-medium">Add Entry</span>
@@ -487,13 +492,13 @@ export default function CalendarPage() {
         )}
 
         {recentlyEndedDisruption && !welcomeBackDismissed && (
-          <div className="flex items-center justify-between gap-3 border border-white/10 rounded-2xl bg-white/[0.02] p-4 mb-6">
-            <p className="text-white/60 text-sm">
+          <div className="flex items-center justify-between gap-3 border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4 mb-6">
+            <p className="text-lapis-text-secondary text-sm">
               Welcome back - pick up your plan where you left off{activeRace ? ', or Regenerate if things shifted while you were away' : ''}.
             </p>
             <button
               onClick={() => setWelcomeBackDismissed(true)}
-              className="text-white/30 hover:text-white/60 text-xs shrink-0 transition-colors"
+              className="text-lapis-text-disabled hover:text-lapis-text-secondary text-xs shrink-0 transition-colors"
             >
               Dismiss
             </button>
@@ -503,14 +508,14 @@ export default function CalendarPage() {
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => setDate(shiftDay(date, -1))}
-            className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+            className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="text-center">
-            <p className="text-white font-medium">{formatDayHeading(date)}</p>
+            <p className="text-lapis-text-primary font-medium">{formatDayHeading(date)}</p>
             {mesocycleStatus && (
-              <p className="text-white/40 text-xs mt-1">
+              <p className="text-lapis-text-tertiary text-xs mt-1">
                 {mesocycleStatus.mesocycle.label ? `${mesocycleStatus.mesocycle.label} — ` : ''}
                 {mesocycleStatus.isDeloadWeek
                   ? 'Deload week'
@@ -521,13 +526,13 @@ export default function CalendarPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setDate(getLocalDateString())}
-              className="text-xs text-white/50 hover:text-white px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              className="text-xs text-lapis-text-tertiary hover:text-lapis-text-primary px-2 py-1.5 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
             >
               Today
             </button>
             <button
               onClick={() => setDate(shiftDay(date, 1))}
-              className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+              className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -583,13 +588,13 @@ export default function CalendarPage() {
                     <span className="hidden group-hover:inline-flex items-center gap-0.5 ml-1">
                       <button
                         onClick={() => openEditDialog(item.entry!)}
-                        className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+                        className="p-1 rounded hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                       >
                         <Pencil className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => setEntryToDelete(item.entry!.id)}
-                        className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+                        className="p-1 rounded hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -601,21 +606,21 @@ export default function CalendarPage() {
           </div>
         )}
 
-        <div ref={axisRef} className="relative border border-white/10 rounded-2xl overflow-y-auto" style={{ maxHeight: '65vh' }}>
+        <div ref={axisRef} className="relative border border-lapis-border-subtle rounded-lapis-lg overflow-y-auto" style={{ maxHeight: '65vh' }}>
           <div className="relative" style={{ height: DAY_HEIGHT }}>
             {/* Dimmed regions outside wake/sleep - a default emphasis, never a hard cutoff; anything scheduled here still shows in full. */}
             <div
-              className="absolute left-0 right-0 top-0 bg-black/30 pointer-events-none"
+              className="absolute left-0 right-0 top-0 bg-lapis-bg/30 pointer-events-none"
               style={{ height: wakeMinutes * PIXELS_PER_MINUTE }}
             />
             <div
-              className="absolute left-0 right-0 bottom-0 bg-black/30 pointer-events-none"
+              className="absolute left-0 right-0 bottom-0 bg-lapis-bg/30 pointer-events-none"
               style={{ height: (24 * 60 - sleepMinutes) * PIXELS_PER_MINUTE }}
             />
 
             {Array.from({ length: 24 }, (_, hour) => (
-              <div key={hour} className="absolute left-0 right-0 border-t border-white/5" style={{ top: hour * 60 * PIXELS_PER_MINUTE }}>
-                <span className="absolute -top-2 left-2 text-white/25 text-xs bg-black px-1">{String(hour).padStart(2, '0')}:00</span>
+              <div key={hour} className="absolute left-0 right-0 border-t border-lapis-border-subtle" style={{ top: hour * 60 * PIXELS_PER_MINUTE }}>
+                <span className="absolute -top-2 left-2 text-lapis-text-disabled text-xs bg-lapis-bg px-1">{String(hour).padStart(2, '0')}:00</span>
               </div>
             ))}
 
@@ -645,7 +650,7 @@ export default function CalendarPage() {
                   <div
                     key={item.id}
                     onClick={clickable ? handleClick : undefined}
-                    className={`absolute rounded-lg border px-2 py-1 overflow-hidden text-xs ${
+                    className={`absolute rounded-lapis-sm border px-2 py-1 overflow-hidden text-xs ${
                       isHabit && item.habitDoneToday ? HABIT_DONE_STYLE : SOURCE_STYLE[item.source]
                     } ${clickable ? 'cursor-pointer hover:brightness-125' : ''}`}
                     style={{ top, height, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)` }}
@@ -681,15 +686,15 @@ export default function CalendarPage() {
           if (!open) resetForm()
         }}
       >
-        <DialogContent className="bg-black border-white/10 text-white max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Edit Entry' : 'Add Entry'}</DialogTitle>
-            <DialogDescription className="text-white/40">A title and a date is all you need - everything else is optional.</DialogDescription>
+            <DialogDescription className="text-lapis-text-tertiary">A title and a date is all you need - everything else is optional.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="entry-title" className="text-white/80">
+              <Label htmlFor="entry-title" className="text-lapis-text-secondary">
                 Title
               </Label>
               <Input
@@ -698,12 +703,12 @@ export default function CalendarPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Dentist appointment"
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="entry-start-date" className="text-white/80">
+              <Label htmlFor="entry-start-date" className="text-lapis-text-secondary">
                 {isMultiDay ? 'Start date' : 'Date'}
               </Label>
               <Input
@@ -711,12 +716,12 @@ export default function CalendarPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-white/5 border-white/10 text-white"
+                className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
               />
             </div>
 
             {!isRecurring && (
-              <label className="flex items-center gap-2 text-sm text-white/70">
+              <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
                 <input type="checkbox" checked={isMultiDay} onChange={(e) => setIsMultiDay(e.target.checked)} />
                 Spans multiple days
               </label>
@@ -724,7 +729,7 @@ export default function CalendarPage() {
 
             {isMultiDay && (
               <div className="space-y-2">
-                <Label htmlFor="entry-end-date" className="text-white/80">
+                <Label htmlFor="entry-end-date" className="text-lapis-text-secondary">
                   End date
                 </Label>
                 <Input
@@ -733,7 +738,7 @@ export default function CalendarPage() {
                   value={endDate}
                   min={startDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                 />
               </div>
             )}
@@ -742,13 +747,13 @@ export default function CalendarPage() {
               <button
                 type="button"
                 onClick={() => setTravelPrepEntryId(editingEntry.id)}
-                className="text-xs text-white/40 hover:text-white/60 transition-colors underline underline-offset-2"
+                className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors underline underline-offset-2"
               >
                 Travel Prep
               </button>
             )}
 
-            <label className="flex items-center gap-2 text-sm text-white/70">
+            <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
               <input type="checkbox" checked={hasTime} onChange={(e) => setHasTime(e.target.checked)} />
               Has a specific time
             </label>
@@ -756,7 +761,7 @@ export default function CalendarPage() {
             {hasTime && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="entry-start-time" className="text-white/80">
+                  <Label htmlFor="entry-start-time" className="text-lapis-text-secondary">
                     Start time
                   </Label>
                   <Input
@@ -764,11 +769,11 @@ export default function CalendarPage() {
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="entry-end-time" className="text-white/80">
+                  <Label htmlFor="entry-end-time" className="text-lapis-text-secondary">
                     End time
                   </Label>
                   <Input
@@ -776,14 +781,14 @@ export default function CalendarPage() {
                     type="time"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
                 </div>
               </div>
             )}
 
             {!isMultiDay && (
-              <label className="flex items-center gap-2 text-sm text-white/70">
+              <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
                 <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
                 Repeats weekly
               </label>
@@ -792,7 +797,7 @@ export default function CalendarPage() {
             {isRecurring && (
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label className="text-white/80">Repeats on</Label>
+                  <Label className="text-lapis-text-secondary">Repeats on</Label>
                   <div className="flex flex-wrap gap-2">
                     {WEEKDAY_NAMES.map((name, i) => (
                       <button
@@ -800,7 +805,7 @@ export default function CalendarPage() {
                         type="button"
                         onClick={() => toggleRecurrenceWeekday(i)}
                         className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
-                          recurrenceWeekdays.includes(i) ? 'bg-white text-black' : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                          recurrenceWeekdays.includes(i) ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2'
                         }`}
                       >
                         {name.slice(0, 3)}
@@ -809,7 +814,7 @@ export default function CalendarPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="entry-recurrence-end" className="text-white/80">
+                  <Label htmlFor="entry-recurrence-end" className="text-lapis-text-secondary">
                     Until (optional)
                   </Label>
                   <Input
@@ -818,17 +823,17 @@ export default function CalendarPage() {
                     value={recurrenceEndDate}
                     min={startDate}
                     onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
                 </div>
-                <p className="text-white/30 text-xs">
+                <p className="text-lapis-text-disabled text-xs">
                   Editing or deleting this entry affects every occurrence - there&apos;s no way to change just one week.
                 </p>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="entry-note" className="text-white/80">
+              <Label htmlFor="entry-note" className="text-lapis-text-secondary">
                 Note (optional)
               </Label>
               <Textarea
@@ -837,11 +842,11 @@ export default function CalendarPage() {
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Any details worth remembering..."
                 rows={3}
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+                className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
               />
             </div>
 
-            <Button onClick={handleSave} disabled={saving || !canSave} className="w-full bg-white text-black hover:bg-white/90">
+            <Button onClick={handleSave} disabled={saving || !canSave} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
               {saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Entry'}
             </Button>
           </div>

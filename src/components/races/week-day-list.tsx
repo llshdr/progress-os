@@ -97,7 +97,7 @@ export default function WeekDayList({
   level,
 }: Props) {
   return (
-    <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+    <div className="mt-3 pt-3 border-t border-lapis-border-subtle space-y-1.5">
       {DAY_ABBREVIATIONS.map((label, day) => {
         const endurance = slots.enduranceSlots.filter((s) => s.day === day)
         const strength = slots.strengthSlots.filter((s) => s.day === day)
@@ -106,19 +106,19 @@ export default function WeekDayList({
         if (endurance.length === 0 && strength.length === 0) {
           return (
             <div key={day} className="flex items-center gap-3">
-              <span className="text-white/30 text-xs w-9 shrink-0">{label}</span>
-              <span className="text-white/25 text-xs">Rest</span>
+              <span className="text-lapis-text-disabled text-xs w-9 shrink-0">{label}</span>
+              <span className="text-lapis-text-disabled text-xs">Rest</span>
             </div>
           )
         }
 
         return (
           <div key={day} className="flex items-center gap-3 flex-wrap">
-            <span className="text-white/50 text-xs w-9 shrink-0">{label}</span>
+            <span className="text-lapis-text-tertiary text-xs w-9 shrink-0">{label}</span>
             <div className="flex items-center gap-3 flex-wrap">
               {isBrick && (
                 <span
-                  className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60 border border-white/20"
+                  className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong"
                   title={TRANSITION_GUIDANCE[week.phase].full}
                 >
                   Brick
@@ -132,25 +132,25 @@ export default function WeekDayList({
                 const zone = ZONE_GUIDANCE[displayRole][week.phase]
                 const paceLabel = paceLabelForSlot(slot, week, weekIndexWithinPhase, easyPaceTargets, peakPaceTargets)
                 return (
-                  <span key={`${slot.type}-${i}`} className="flex items-center gap-1 text-xs text-white/70">
-                    <Icon className="w-3.5 h-3.5 text-white/40" />
+                  <span key={`${slot.type}-${i}`} className="flex items-center gap-1 text-xs text-lapis-text-secondary">
+                    <Icon className="w-3.5 h-3.5 text-lapis-text-tertiary" />
                     {TYPE_LABEL[slot.type]} {formatSlotKm(km)}
-                    <span className="text-white/40">({ROLE_LABEL[displayRole]})</span>
-                    <span className="text-white/30" title={thresholdZoneTitle(slot, displayRole, week.phase, thresholdPaceHints)}>
+                    <span className="text-lapis-text-tertiary">({ROLE_LABEL[displayRole]})</span>
+                    <span className="text-lapis-text-disabled" title={thresholdZoneTitle(slot, displayRole, week.phase, thresholdPaceHints)}>
                       {zone.short}
                     </span>
                     {paceLabel && (
-                      <span className="text-white/40" title={paceGapTitle(slot, week, paceGaps, weeksUntilRace, level)}>
+                      <span className="text-lapis-text-tertiary" title={paceGapTitle(slot, week, paceGaps, weeksUntilRace, level)}>
                         · ~{paceLabel}
                       </span>
                     )}
-                    {slot.progression && <TrendingUp className="w-3 h-3 text-white/40" />}
+                    {slot.progression && <TrendingUp className="w-3 h-3 text-lapis-text-tertiary" />}
                   </span>
                 )
               })}
               {strength.map((_, i) => (
-                <span key={`strength-${i}`} className="flex items-center gap-1 text-xs text-white/70">
-                  <STRENGTH_ICON className="w-3.5 h-3.5 text-white/40" />
+                <span key={`strength-${i}`} className="flex items-center gap-1 text-xs text-lapis-text-secondary">
+                  <STRENGTH_ICON className="w-3.5 h-3.5 text-lapis-text-tertiary" />
                   Strength
                 </span>
               ))}

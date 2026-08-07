@@ -156,12 +156,12 @@ export default function PhaseTemplateDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger>
-        <button className="text-xs text-white/40 hover:text-white/60 transition-colors underline underline-offset-2">View/Edit Template</button>
+        <button className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors underline underline-offset-2">View/Edit Template</button>
       </DialogTrigger>
-      <DialogContent className="bg-black border-white/10 text-white max-w-2xl">
+      <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary max-w-2xl">
         <DialogHeader>
           <DialogTitle>{PHASE_LABEL[phase]} Phase Template</DialogTitle>
-          <DialogDescription className="text-white/40">
+          <DialogDescription className="text-lapis-text-tertiary">
             Repeats every week of this phase. Editing here is separate from regenerating the plan - regenerating recomputes every phase&apos;s template from scratch and discards these edits.
           </DialogDescription>
         </DialogHeader>
@@ -175,19 +175,19 @@ export default function PhaseTemplateDialog({
             if (endurance.length === 0 && strength.length === 0) {
               return (
                 <div key={day} className="flex items-center gap-3 py-1">
-                  <span className="text-white/50 text-sm w-24 shrink-0">{name}</span>
-                  <span className="text-white/25 text-xs">Rest</span>
+                  <span className="text-lapis-text-tertiary text-sm w-24 shrink-0">{name}</span>
+                  <span className="text-lapis-text-disabled text-xs">Rest</span>
                 </div>
               )
             }
 
             return (
-              <div key={day} className="border border-white/10 rounded-xl p-3">
+              <div key={day} className="border border-lapis-border-subtle rounded-lapis-md p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-white text-sm font-medium w-24 shrink-0">{name}</span>
+                  <span className="text-lapis-text-primary text-sm font-medium w-24 shrink-0">{name}</span>
                   {isBrick && (
                     <span
-                      className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60 border border-white/20"
+                      className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong"
                       title={TRANSITION_GUIDANCE[phase].full}
                     >
                       Brick
@@ -202,22 +202,22 @@ export default function PhaseTemplateDialog({
                     const paceRange = paceRangeLabel(slot)
                     return (
                     <div key={slot.index} className="flex items-center gap-2 flex-wrap text-sm">
-                      <span className="flex items-center gap-1.5 text-white/80">
-                        <Icon className="w-4 h-4 text-white/40" />
-                        {TYPE_LABEL[slot.type]} <span className="text-white/40 text-xs">({ROLE_LABEL[slot.role]})</span>
-                        <span className="text-white/30 text-xs" title={thresholdZoneTitle(slot)}>
+                      <span className="flex items-center gap-1.5 text-lapis-text-secondary">
+                        <Icon className="w-4 h-4 text-lapis-text-tertiary" />
+                        {TYPE_LABEL[slot.type]} <span className="text-lapis-text-tertiary text-xs">({ROLE_LABEL[slot.role]})</span>
+                        <span className="text-lapis-text-disabled text-xs" title={thresholdZoneTitle(slot)}>
                           {zone.short}
                         </span>
                       </span>
-                      <span className="text-white/40 text-xs">{kmRangeLabel(slot)}</span>
-                      {paceRange && <span className="text-white/40 text-xs">{paceRange}</span>}
+                      <span className="text-lapis-text-tertiary text-xs">{kmRangeLabel(slot)}</span>
+                      {paceRange && <span className="text-lapis-text-tertiary text-xs">{paceRange}</span>}
                       <select
                         value={slot.day}
                         onChange={(e) => updateEnduranceDay(slot.index, Number(e.target.value))}
-                        className="bg-white/5 border border-white/10 text-white text-xs rounded-lg px-2 py-1"
+                        className="bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary text-xs rounded-lapis-sm px-2 py-1"
                       >
                         {WEEKDAY_NAMES.map((n, d) => (
-                          <option key={d} value={d} className="bg-black">
+                          <option key={d} value={d} className="bg-lapis-bg">
                             {n}
                           </option>
                         ))}
@@ -226,29 +226,29 @@ export default function PhaseTemplateDialog({
                         type="time"
                         value={slot.time ?? ''}
                         onChange={(e) => updateEnduranceTime(slot.index, e.target.value)}
-                        className="bg-white/5 border-white/10 text-white w-28 h-7 text-xs"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary w-28 h-7 text-xs"
                       />
                       {slot.role === 'key' && (
-                        <label className="flex items-center gap-1 text-xs text-white/50">
+                        <label className="flex items-center gap-1 text-xs text-lapis-text-tertiary">
                           <input type="checkbox" checked={slot.progression != null} onChange={(e) => toggleProgression(slot.index, e.target.checked)} />
                           Progressive
                         </label>
                       )}
                       {slot.progression && (
-                        <span className="flex items-center gap-1 text-xs text-white/50">
+                        <span className="flex items-center gap-1 text-xs text-lapis-text-tertiary">
                           starts at
                           <Input
                             type="number"
                             value={Math.round(slot.progression.startShareFraction * 100)}
                             onChange={(e) => updateProgressionField(slot.index, 'startShareFraction', Number(e.target.value) / 100)}
-                            className="bg-white/5 border-white/10 text-white w-14 h-7 text-xs"
+                            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary w-14 h-7 text-xs"
                           />
                           % of peak, reaches full over
                           <Input
                             type="number"
                             value={slot.progression.rampWeeks}
                             onChange={(e) => updateProgressionField(slot.index, 'rampWeeks', Number(e.target.value))}
-                            className="bg-white/5 border-white/10 text-white w-12 h-7 text-xs"
+                            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary w-12 h-7 text-xs"
                           />
                           wk(s)
                         </span>
@@ -258,17 +258,17 @@ export default function PhaseTemplateDialog({
 
                   {strength.map((slot) => (
                     <div key={`strength-${slot.index}`} className="flex items-center gap-2 flex-wrap text-sm">
-                      <span className="flex items-center gap-1.5 text-white/80">
-                        <STRENGTH_ICON className="w-4 h-4 text-white/40" />
+                      <span className="flex items-center gap-1.5 text-lapis-text-secondary">
+                        <STRENGTH_ICON className="w-4 h-4 text-lapis-text-tertiary" />
                         Strength
                       </span>
                       <select
                         value={slot.day}
                         onChange={(e) => updateStrengthDay(slot.index, Number(e.target.value))}
-                        className="bg-white/5 border border-white/10 text-white text-xs rounded-lg px-2 py-1"
+                        className="bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary text-xs rounded-lapis-sm px-2 py-1"
                       >
                         {WEEKDAY_NAMES.map((n, d) => (
-                          <option key={d} value={d} className="bg-black">
+                          <option key={d} value={d} className="bg-lapis-bg">
                             {n}
                           </option>
                         ))}
@@ -277,9 +277,9 @@ export default function PhaseTemplateDialog({
                         type="time"
                         value={slot.time ?? ''}
                         onChange={(e) => updateStrengthTime(slot.index, e.target.value)}
-                        className="bg-white/5 border-white/10 text-white w-28 h-7 text-xs"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary w-28 h-7 text-xs"
                       />
-                      {restrictedDays.has(slot.day) && <span className="text-yellow-200/60 text-xs">Right after a key/brick session - consider a different day.</span>}
+                      {restrictedDays.has(slot.day) && <span className="text-lapis-citrine/60 text-xs">Right after a key/brick session - consider a different day.</span>}
                     </div>
                   ))}
                 </div>
@@ -288,7 +288,7 @@ export default function PhaseTemplateDialog({
           })}
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="w-full bg-white text-black hover:bg-white/90">
+        <Button onClick={handleSave} disabled={saving} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
           {saving ? 'Saving...' : 'Save Template'}
         </Button>
       </DialogContent>

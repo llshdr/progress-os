@@ -101,17 +101,17 @@ export default function DisruptionDeclaration({ disruptions, onChanged, mesocycl
   }
 
   return (
-    <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+    <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-medium text-white">Training Disruptions</h2>
+        <h2 className="text-lg font-medium text-lapis-text-primary">Training Disruptions</h2>
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger>
-            <button className="text-xs text-white/40 hover:text-white/60 transition-colors underline underline-offset-2">Declare a disruption</button>
+            <button className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors underline underline-offset-2">Declare a disruption</button>
           </DialogTrigger>
-          <DialogContent className="bg-black border-white/10 text-white">
+          <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
             <DialogHeader>
               <DialogTitle>Declare a disruption</DialogTitle>
-              <DialogDescription className="text-white/40">
+              <DialogDescription className="text-lapis-text-tertiary">
                 Travel, illness, or anything else that pauses or limits training - before it starts or after the fact. This won&apos;t affect your
                 real fitness tracking, just keeps the plan from flagging a gap you already know about.
               </DialogDescription>
@@ -119,7 +119,7 @@ export default function DisruptionDeclaration({ disruptions, onChanged, mesocycl
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="disruption-start" className="text-white/80">
+                  <Label htmlFor="disruption-start" className="text-lapis-text-secondary">
                     Start date
                   </Label>
                   <Input
@@ -127,11 +127,11 @@ export default function DisruptionDeclaration({ disruptions, onChanged, mesocycl
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="disruption-end" className="text-white/80">
+                  <Label htmlFor="disruption-end" className="text-lapis-text-secondary">
                     End date
                   </Label>
                   <Input
@@ -140,24 +140,24 @@ export default function DisruptionDeclaration({ disruptions, onChanged, mesocycl
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     min={startDate || undefined}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
                 </div>
               </div>
               {startDate && endDate && endDate >= startDate && (() => {
                 const overlapNote = describeMesocycleOverlap(mesocycles, startDate, endDate)
-                return overlapNote ? <p className="text-white/50 text-xs">{overlapNote}</p> : null
+                return overlapNote ? <p className="text-lapis-text-tertiary text-xs">{overlapNote}</p> : null
               })()}
               <div className="space-y-2">
-                <Label className="text-white/80">Reason</Label>
+                <Label className="text-lapis-text-secondary">Reason</Label>
                 <div className="flex gap-2">
                   {REASON_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => setReason(opt.value)}
-                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                        reason === opt.value ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                      className={`px-3 py-2 rounded-lapis-sm text-sm transition-colors ${
+                        reason === opt.value ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                       }`}
                     >
                       {opt.label}
@@ -166,16 +166,16 @@ export default function DisruptionDeclaration({ disruptions, onChanged, mesocycl
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-white/80">What&apos;s still possible? (optional)</Label>
+                <Label className="text-lapis-text-secondary">What&apos;s still possible? (optional)</Label>
                 <Textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="e.g. can do bodyweight strength, no swim/bike/run"
                   rows={2}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
                 />
               </div>
-              <Button onClick={handleSave} disabled={saving || !startDate || !endDate} className="w-full bg-white text-black hover:bg-white/90">
+              <Button onClick={handleSave} disabled={saving || !startDate || !endDate} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                 {saving ? 'Saving...' : 'Declare'}
               </Button>
             </div>
@@ -184,21 +184,21 @@ export default function DisruptionDeclaration({ disruptions, onChanged, mesocycl
       </div>
 
       {disruptions.length === 0 ? (
-        <p className="text-white/40 text-sm">None declared.</p>
+        <p className="text-lapis-text-tertiary text-sm">None declared.</p>
       ) : (
         <div className="space-y-3">
           {disruptions.map((d) => (
-            <div key={d.id} className="border border-white/10 rounded-xl p-3">
+            <div key={d.id} className="border border-lapis-border-subtle rounded-lapis-md p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-white text-sm">
-                  {formatDateRange(d.start_date, d.end_date)} <span className="text-white/40 text-xs capitalize">({d.reason})</span>
+                <p className="text-lapis-text-primary text-sm">
+                  {formatDateRange(d.start_date, d.end_date)} <span className="text-lapis-text-tertiary text-xs capitalize">({d.reason})</span>
                 </p>
-                <button onClick={() => handleDelete(d.id)} className="text-white/30 hover:text-white/60 text-xs transition-colors">
+                <button onClick={() => handleDelete(d.id)} className="text-lapis-text-disabled hover:text-lapis-text-secondary text-xs transition-colors">
                   Remove
                 </button>
               </div>
-              {d.note && <p className="text-white/50 text-xs mt-1">&quot;{d.note}&quot;</p>}
-              <p className="text-white/40 text-xs mt-1">{DISRUPTION_GUIDANCE[d.reason]}</p>
+              {d.note && <p className="text-lapis-text-tertiary text-xs mt-1">&quot;{d.note}&quot;</p>}
+              <p className="text-lapis-text-tertiary text-xs mt-1">{DISRUPTION_GUIDANCE[d.reason]}</p>
             </div>
           ))}
         </div>

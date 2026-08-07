@@ -84,7 +84,7 @@ export default function ApproachSpectrum({
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center justify-between text-xs text-white/40 mb-2">
+        <div className="flex items-center justify-between text-xs text-lapis-text-tertiary mb-2">
           <span>Best Race Time</span>
           <span>Best Muscle Growth</span>
         </div>
@@ -97,41 +97,41 @@ export default function ApproachSpectrum({
           onChange={(e) => onChange(RACE_APPROACHES[Number(e.target.value)])}
           className="w-full accent-white"
         />
-        <p className="text-white text-sm font-medium text-center mt-2">{RACE_APPROACH_LABELS[value]}</p>
+        <p className="text-lapis-text-primary text-sm font-medium text-center mt-2">{RACE_APPROACH_LABELS[value]}</p>
       </div>
 
-      <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-4 space-y-1">
+      <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4 space-y-1">
         {preview.previewDisciplineKm ? (
           <>
-            <p className="text-white/60 text-xs">Peak weekly targets</p>
+            <p className="text-lapis-text-secondary text-xs">Peak weekly targets</p>
             {(['swim', 'bike', 'run'] as Discipline[]).map((discipline) => (
-              <p key={discipline} className="text-white text-sm">
+              <p key={discipline} className="text-lapis-text-primary text-sm">
                 {DISCIPLINE_LABELS[discipline]}: ~{preview.previewDisciplineKm![discipline]}km/week at peak
               </p>
             ))}
             {disciplineInputs?.hasCutoffRisk && disciplineInputs.order[0] && (
-              <p className="text-white/40 text-xs mt-1">
+              <p className="text-lapis-text-tertiary text-xs mt-1">
                 {DISCIPLINE_LABELS[disciplineInputs.order[0]]} (your weakest discipline) is getting extra emphasis above the usual weakness bias to help close your cutoff gap.
               </p>
             )}
           </>
         ) : (
           <>
-            <p className="text-white/60 text-xs">Cardio peak target</p>
-            <p className="text-white text-sm">~{preview.previewPeakCardioKm}km/week at this plan's peak</p>
+            <p className="text-lapis-text-secondary text-xs">Cardio peak target</p>
+            <p className="text-lapis-text-primary text-sm">~{preview.previewPeakCardioKm}km/week at this plan's peak</p>
           </>
         )}
-        <p className="text-white/60 text-xs mt-3">Strength Emphasis</p>
-        <p className="text-white text-sm">{strengthEmphasisText}</p>
+        <p className="text-lapis-text-secondary text-xs mt-3">Strength Emphasis</p>
+        <p className="text-lapis-text-primary text-sm">{strengthEmphasisText}</p>
         {muscleImpact.length > 0 && (
           <>
-            <p className="text-white/60 text-xs mt-3">Muscle Impact</p>
+            <p className="text-lapis-text-secondary text-xs mt-3">Muscle Impact</p>
             <div className="flex flex-wrap gap-2 mt-1">
               {muscleImpact.map((line) => (
                 <span
                   key={line.muscle}
                   title={line.description}
-                  className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10"
+                  className="px-3 py-1.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle"
                 >
                   {line.muscle}: {line.shortLabel}
                 </span>
@@ -143,46 +143,46 @@ export default function ApproachSpectrum({
 
       {showFinishTime && (
         <div className="space-y-2">
-          <Label className="text-white/80">Target finish time (optional)</Label>
+          <Label className="text-lapis-text-secondary">Target finish time (optional)</Label>
           {projectedFinishRange ? (
             <>
-              <p className="text-white/40 text-xs">
+              <p className="text-lapis-text-tertiary text-xs">
                 Estimated range: {formatDuration(projectedFinishRange.low)}–{formatDuration(projectedFinishRange.high)}. Override below if you have your own goal.
               </p>
               {finishRangeSource !== 'exact_course_result' && (
-                <p className="text-white/40 text-xs">Assumes you complete the training plan below - not a snapshot of your fitness today.</p>
+                <p className="text-lapis-text-tertiary text-xs">Assumes you complete the training plan below - not a snapshot of your fitness today.</p>
               )}
-              {finishRangeSourceNote && <p className="text-white/40 text-xs">{finishRangeSourceNote}</p>}
+              {finishRangeSourceNote && <p className="text-lapis-text-tertiary text-xs">{finishRangeSourceNote}</p>}
             </>
           ) : (
             projectedFinishSeconds != null && (
-              <p className="text-white/40 text-xs">
+              <p className="text-lapis-text-tertiary text-xs">
                 Estimated from your data: {formatDuration(projectedFinishSeconds)}. Override below if you have your own goal.
               </p>
             )
           )}
-          {currentFormReason && <p className="text-white/40 text-xs">{currentFormReason}</p>}
+          {currentFormReason && <p className="text-lapis-text-tertiary text-xs">{currentFormReason}</p>}
           <div className="flex items-center gap-2">
             <Input
               type="number"
               value={hh}
               onChange={(e) => onTargetFinishSecondsChange(parseDurationInput(e.target.value, mm, ss))}
               placeholder="hh"
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
             />
             <Input
               type="number"
               value={mm}
               onChange={(e) => onTargetFinishSecondsChange(parseDurationInput(hh, e.target.value, ss))}
               placeholder="mm"
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
             />
             <Input
               type="number"
               value={ss}
               onChange={(e) => onTargetFinishSecondsChange(parseDurationInput(hh, mm, e.target.value))}
               placeholder="ss"
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
             />
           </div>
         </div>

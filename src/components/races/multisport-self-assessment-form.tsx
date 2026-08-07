@@ -61,8 +61,8 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
               onClick={() =>
                 patchDiscipline(discipline, { [q.id]: current === Number(opt.value) ? null : Number(opt.value) } as Partial<DisciplineAssessment>)
               }
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                current === Number(opt.value) ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              className={`px-3 py-2 rounded-lapis-sm text-sm transition-colors ${
+                current === Number(opt.value) ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
               }`}
             >
               {opt.label}
@@ -89,8 +89,8 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
               key={opt.value}
               type="button"
               onClick={() => toggle(opt.value)}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                current.includes(opt.value) ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              className={`px-3 py-2 rounded-lapis-sm text-sm transition-colors ${
+                current.includes(opt.value) ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
               }`}
             >
               {opt.label}
@@ -126,9 +126,9 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
                   value={paceValue ?? ''}
                   onChange={(e) => (e.target.value ? updatePace(toSecPerKm(parseFloat(e.target.value), unit)) : clear())}
                   placeholder="e.g. 28"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-24"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-24"
                 />
-                <span className="text-white/40 text-sm">km/h</span>
+                <span className="text-lapis-text-tertiary text-sm">km/h</span>
               </>
             ) : (
               <>
@@ -142,9 +142,9 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
                     updatePace(toSecPerKm(mins + secs / 60, unit))
                   }}
                   placeholder="mm"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
                 />
-                <span className="text-white/40">:</span>
+                <span className="text-lapis-text-tertiary">:</span>
                 <Input
                   type="number"
                   value={paceValue != null ? Math.round((paceValue - Math.floor(paceValue)) * 60) : ''}
@@ -155,13 +155,13 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
                     updatePace(toSecPerKm(mins + secs / 60, unit))
                   }}
                   placeholder="ss"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
                 />
-                <span className="text-white/40 text-sm">/{unit === 'min_per_100m' ? '100m' : 'km'}</span>
+                <span className="text-lapis-text-tertiary text-sm">/{unit === 'min_per_100m' ? '100m' : 'km'}</span>
               </>
             )}
             {current && (
-              <button type="button" onClick={clear} className="text-xs text-white/40 hover:text-white/60 transition-colors">
+              <button type="button" onClick={clear} className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
                 Clear
               </button>
             )}
@@ -171,7 +171,7 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
             <button
               type="button"
               onClick={() => updatePace(facts.avgPaceSecPerKmRecent!)}
-              className="text-xs text-white/50 hover:text-white/80 underline underline-offset-2 text-left block"
+              className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary underline underline-offset-2 text-left block"
             >
               Use my logged average: {formatPaceForDiscipline(facts.avgPaceSecPerKmRecent, discipline)} — this blends easy and hard days, so your
               comfortable pace is probably a bit slower than this
@@ -185,9 +185,9 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
               onChange={(e) => e.target.value && updateSustainedMinutes(parseInt(e.target.value, 10))}
               placeholder="45"
               disabled={!current}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-20 disabled:opacity-40"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-20 disabled:opacity-40"
             />
-            <span className="text-white/40 text-sm">minutes you can currently hold that pace</span>
+            <span className="text-lapis-text-tertiary text-sm">minutes you can currently hold that pace</span>
           </div>
         </div>
       )
@@ -203,9 +203,9 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
             value={current ?? ''}
             onChange={(e) => patchDiscipline(discipline, { longestRecentSessionKm: e.target.value ? parseFloat(e.target.value) : null })}
             placeholder="e.g. 2"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
           />
-          <span className="text-white/40 text-sm">km</span>
+          <span className="text-lapis-text-tertiary text-sm">km</span>
         </div>
       )
     }
@@ -233,29 +233,29 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
           value={current?.distanceKm ?? ''}
           onChange={(e) => update({ distanceKm: e.target.value ? parseFloat(e.target.value) : 0 })}
           placeholder="km"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-24"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-24"
         />
-        <span className="text-white/40 text-sm">in</span>
+        <span className="text-lapis-text-tertiary text-sm">in</span>
         <Input
           type="number"
           value={hours || ''}
           onChange={(e) => update({ hours: e.target.value ? parseInt(e.target.value, 10) : 0 })}
           placeholder="hh"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
         />
         <Input
           type="number"
           value={minutes || ''}
           onChange={(e) => update({ minutes: e.target.value ? parseInt(e.target.value, 10) : 0 })}
           placeholder="mm"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
         />
         <Input
           type="number"
           value={seconds || ''}
           onChange={(e) => update({ seconds: e.target.value ? parseInt(e.target.value, 10) : 0 })}
           placeholder="ss"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
         />
       </div>
     )
@@ -264,25 +264,25 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
   return (
     <div className="space-y-8">
       {(['swim', 'bike', 'run'] as Discipline[]).map((discipline) => (
-        <div key={discipline} className="space-y-5 border-t border-white/10 pt-6 first:border-t-0 first:pt-0">
-          <h3 className="text-white font-medium">{DISCIPLINE_LABELS[discipline]}</h3>
+        <div key={discipline} className="space-y-5 border-t border-lapis-border-subtle pt-6 first:border-t-0 first:pt-0">
+          <h3 className="text-lapis-text-primary font-medium">{DISCIPLINE_LABELS[discipline]}</h3>
           {questionsForDiscipline(discipline).map((q) => (
             <div key={q.id} className="space-y-2">
-              <Label className="text-white/80">
+              <Label className="text-lapis-text-secondary">
                 {q.label}
-                {q.required && <span className="text-white/40"> *</span>}
+                {q.required && <span className="text-lapis-text-tertiary"> *</span>}
               </Label>
-              <p className="text-white/40 text-xs">{q.helpText}</p>
+              <p className="text-lapis-text-tertiary text-xs">{q.helpText}</p>
               {renderDisciplineQuestion(discipline, q)}
             </div>
           ))}
         </div>
       ))}
 
-      <div className="space-y-5 border-t border-white/10 pt-6">
+      <div className="space-y-5 border-t border-lapis-border-subtle pt-6">
         <div className="space-y-2">
-          <Label className="text-white/80">How would you rate your current strength training?</Label>
-          <p className="text-white/40 text-xs">We already track your logged lifts, so this is mostly a sanity check.</p>
+          <Label className="text-lapis-text-secondary">How would you rate your current strength training?</Label>
+          <p className="text-lapis-text-tertiary text-xs">We already track your logged lifts, so this is mostly a sanity check.</p>
           <div className="flex flex-wrap gap-2">
             {FITNESS_SCALE_OPTIONS.map((opt) => (
               <button
@@ -291,8 +291,8 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
                 onClick={() =>
                   onChange({ ...value, perceivedStrength: value.perceivedStrength === Number(opt.value) ? null : (Number(opt.value) as 1 | 2 | 3 | 4 | 5) })
                 }
-                className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                  value.perceivedStrength === Number(opt.value) ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                className={`px-3 py-2 rounded-lapis-sm text-sm transition-colors ${
+                  value.perceivedStrength === Number(opt.value) ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                 }`}
               >
                 {opt.label}
@@ -302,7 +302,7 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
         </div>
 
         <div className="space-y-2">
-          <Label className="text-white/80">Past multi-sport race experience</Label>
+          <Label className="text-lapis-text-secondary">Past multi-sport race experience</Label>
           <div className="flex flex-wrap gap-2">
             {PAST_EXPERIENCE_OPTIONS.map((opt) => (
               <button
@@ -314,8 +314,8 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
                     pastMultisportExperience: value.pastMultisportExperience === opt.value ? null : (opt.value as MultisportSelfAssessment['pastMultisportExperience']),
                   })
                 }
-                className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                  value.pastMultisportExperience === opt.value ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                className={`px-3 py-2 rounded-lapis-sm text-sm transition-colors ${
+                  value.pastMultisportExperience === opt.value ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                 }`}
               >
                 {opt.label}
@@ -325,13 +325,13 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
         </div>
 
         <div className="space-y-2">
-          <Label className="text-white/80">Anything else the plan should account for?</Label>
+          <Label className="text-lapis-text-secondary">Anything else the plan should account for?</Label>
           <Textarea
             value={value.notes ?? ''}
             onChange={(e) => onChange({ ...value, notes: e.target.value || null })}
             placeholder="Optional..."
             rows={2}
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
           />
         </div>
       </div>

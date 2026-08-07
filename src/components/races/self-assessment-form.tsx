@@ -29,8 +29,8 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
               key={opt.value}
               type="button"
               onClick={() => patch({ [q.id]: current === Number(opt.value) ? null : Number(opt.value) } as Partial<SimpleSelfAssessment>)}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                current === Number(opt.value) ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              className={`px-3 py-2 rounded-lapis-sm text-sm transition-colors ${
+                current === Number(opt.value) ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
               }`}
             >
               {opt.label}
@@ -57,8 +57,8 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
               key={opt.value}
               type="button"
               onClick={() => toggle(opt.value)}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                current.includes(opt.value) ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              className={`px-3 py-2 rounded-lapis-sm text-sm transition-colors ${
+                current.includes(opt.value) ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
               }`}
             >
               {opt.label}
@@ -77,8 +77,8 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
               key={opt.value}
               type="button"
               onClick={() => patch({ [q.id]: current === opt.value ? null : opt.value } as Partial<SimpleSelfAssessment>)}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                current === opt.value ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              className={`px-3 py-2 rounded-lapis-sm text-sm transition-colors ${
+                current === opt.value ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
               }`}
             >
               {opt.label}
@@ -98,9 +98,9 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
             value={current ?? ''}
             onChange={(e) => patch({ [q.id]: e.target.value ? parseFloat(e.target.value) : null } as Partial<SimpleSelfAssessment>)}
             placeholder="e.g. 5"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
           />
-          <span className="text-white/40 text-sm">km</span>
+          <span className="text-lapis-text-tertiary text-sm">km</span>
         </div>
       )
     }
@@ -132,29 +132,29 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
             value={current?.distanceKm ?? ''}
             onChange={(e) => update({ distanceKm: e.target.value ? parseFloat(e.target.value) : 0 })}
             placeholder="km"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-24"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-24"
           />
-          <span className="text-white/40 text-sm">in</span>
+          <span className="text-lapis-text-tertiary text-sm">in</span>
           <Input
             type="number"
             value={hours || ''}
             onChange={(e) => update({ hours: e.target.value ? parseInt(e.target.value, 10) : 0 })}
             placeholder="hh"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
           />
           <Input
             type="number"
             value={minutes || ''}
             onChange={(e) => update({ minutes: e.target.value ? parseInt(e.target.value, 10) : 0 })}
             placeholder="mm"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
           />
           <Input
             type="number"
             value={seconds || ''}
             onChange={(e) => update({ seconds: e.target.value ? parseInt(e.target.value, 10) : 0 })}
             placeholder="ss"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30 w-16"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
           />
         </div>
       )
@@ -167,7 +167,7 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
         onChange={(e) => patch({ [q.id]: e.target.value || null } as Partial<SimpleSelfAssessment>)}
         placeholder="Optional..."
         rows={2}
-        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
       />
     )
   }
@@ -176,8 +176,8 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
     <div className="space-y-6">
       {questions.map((q) => (
         <div key={q.id} className="space-y-2">
-          <Label className="text-white/80">{q.label}</Label>
-          <p className="text-white/40 text-xs">{q.helpText}</p>
+          <Label className="text-lapis-text-secondary">{q.label}</Label>
+          <p className="text-lapis-text-tertiary text-xs">{q.helpText}</p>
           {renderQuestion(q)}
         </div>
       ))}

@@ -100,23 +100,23 @@ export default function HabitsCard({ habits, onChanged }: Props) {
   }
 
   return (
-    <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+    <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-medium text-white">Habits</h2>
+        <h2 className="text-lg font-medium text-lapis-text-primary">Habits</h2>
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger>
-            <button className="text-xs text-white/40 hover:text-white/60 transition-colors underline underline-offset-2">Add a habit</button>
+            <button className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors underline underline-offset-2">Add a habit</button>
           </DialogTrigger>
-          <DialogContent className="bg-black border-white/10 text-white">
+          <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Edit habit' : 'Add a habit'}</DialogTitle>
-              <DialogDescription className="text-white/40">
+              <DialogDescription className="text-lapis-text-tertiary">
                 Fully optional - a name is all you need. Skip the schedule and time if this doesn&apos;t have a fixed rhythm.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="habit-name" className="text-white/80">
+                <Label htmlFor="habit-name" className="text-lapis-text-secondary">
                   Name
                 </Label>
                 <Input
@@ -125,11 +125,11 @@ export default function HabitsCard({ habits, onChanged }: Props) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Read, stretch, sleep by 11..."
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-white/70">
+              <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
                 <input type="checkbox" checked={hasSchedule} onChange={(e) => setHasSchedule(e.target.checked)} />
                 Only on certain days
               </label>
@@ -142,7 +142,7 @@ export default function HabitsCard({ habits, onChanged }: Props) {
                       type="button"
                       onClick={() => toggleWeekday(i)}
                       className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
-                        weekdays.includes(i) ? 'bg-white text-black' : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                        weekdays.includes(i) ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2'
                       }`}
                     >
                       {wname.slice(0, 3)}
@@ -151,14 +151,14 @@ export default function HabitsCard({ habits, onChanged }: Props) {
                 </div>
               )}
 
-              <label className="flex items-center gap-2 text-sm text-white/70">
+              <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
                 <input type="checkbox" checked={hasTime} onChange={(e) => setHasTime(e.target.checked)} />
                 Has a usual time
               </label>
 
               {hasTime && (
                 <div className="space-y-2">
-                  <Label htmlFor="habit-time" className="text-white/80">
+                  <Label htmlFor="habit-time" className="text-lapis-text-secondary">
                     Usual time
                   </Label>
                   <Input
@@ -166,12 +166,12 @@ export default function HabitsCard({ habits, onChanged }: Props) {
                     type="time"
                     value={usualTime}
                     onChange={(e) => setUsualTime(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
                 </div>
               )}
 
-              <Button onClick={handleSave} disabled={saving || !canSave} className="w-full bg-white text-black hover:bg-white/90">
+              <Button onClick={handleSave} disabled={saving || !canSave} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                 {saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add habit'}
               </Button>
             </div>
@@ -180,14 +180,14 @@ export default function HabitsCard({ habits, onChanged }: Props) {
       </div>
 
       {habits.length === 0 ? (
-        <p className="text-white/40 text-sm">None yet.</p>
+        <p className="text-lapis-text-tertiary text-sm">None yet.</p>
       ) : (
         <div className="space-y-3">
           {habits.map((habit) => (
-            <div key={habit.id} className="border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2">
+            <div key={habit.id} className="border border-lapis-border-subtle rounded-lapis-md p-3 flex items-center justify-between gap-2">
               <div>
-                <p className="text-white text-sm">{habit.name}</p>
-                <p className="text-white/40 text-xs mt-0.5">
+                <p className="text-lapis-text-primary text-sm">{habit.name}</p>
+                <p className="text-lapis-text-tertiary text-xs mt-0.5">
                   {habit.recurrenceWeekdays && habit.recurrenceWeekdays.length > 0
                     ? habit.recurrenceWeekdays.map((d) => WEEKDAY_NAMES[d].slice(0, 3)).join(', ')
                     : 'Every day'}
@@ -195,10 +195,10 @@ export default function HabitsCard({ habits, onChanged }: Props) {
                 </p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <button onClick={() => openEditDialog(habit)} className="text-white/30 hover:text-white/60 text-xs transition-colors">
+                <button onClick={() => openEditDialog(habit)} className="text-lapis-text-disabled hover:text-lapis-text-secondary text-xs transition-colors">
                   Edit
                 </button>
-                <button onClick={() => handleDelete(habit.id)} className="text-white/30 hover:text-white/60 text-xs transition-colors">
+                <button onClick={() => handleDelete(habit.id)} className="text-lapis-text-disabled hover:text-lapis-text-secondary text-xs transition-colors">
                   Remove
                 </button>
               </div>

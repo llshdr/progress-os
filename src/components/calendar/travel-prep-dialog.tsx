@@ -65,17 +65,17 @@ export default function TravelPrepDialog({ entry, mesocycles, open, onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-black border-white/10 text-white max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Travel Prep - {entry.title}</DialogTitle>
-          <DialogDescription className="text-white/40">{formatDateRange(entry.startDate, entry.endDate)}</DialogDescription>
+          <DialogDescription className="text-lapis-text-tertiary">{formatDateRange(entry.startDate, entry.endDate)}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {overlapNote && <p className="text-white/50 text-xs border border-white/10 rounded-lg px-3 py-2">{overlapNote}</p>}
+          {overlapNote && <p className="text-lapis-text-tertiary text-xs border border-lapis-border-subtle rounded-lapis-sm px-3 py-2">{overlapNote}</p>}
 
           <div className="space-y-2">
-            <p className="text-white/80 text-sm font-medium">What are you keeping up?</p>
+            <p className="text-lapis-text-secondary text-sm font-medium">What are you keeping up?</p>
             <div className="flex flex-wrap gap-2">
               {ALL_DISCIPLINES.map((d) => (
                 <button
@@ -83,7 +83,7 @@ export default function TravelPrepDialog({ entry, mesocycles, open, onOpenChange
                   type="button"
                   onClick={() => toggleDiscipline(d)}
                   className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
-                    disciplines.includes(d) ? 'bg-white text-black' : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                    disciplines.includes(d) ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2'
                   }`}
                 >
                   {TRAVEL_DISCIPLINE_LABELS[d]}
@@ -94,10 +94,10 @@ export default function TravelPrepDialog({ entry, mesocycles, open, onOpenChange
 
           {disciplines.length > 0 && (
             <div className="space-y-2">
-              <p className="text-white/80 text-sm font-medium">Packing checklist</p>
+              <p className="text-lapis-text-secondary text-sm font-medium">Packing checklist</p>
               <div className="space-y-1.5">
                 {disciplines.flatMap((d) => TRAVEL_CHECKLIST_ITEMS[d]).map((item) => (
-                  <label key={item} className="flex items-center gap-2 text-sm text-white/70">
+                  <label key={item} className="flex items-center gap-2 text-sm text-lapis-text-secondary">
                     <input type="checkbox" checked={!!checked[item]} onChange={() => toggleChecked(item)} />
                     {item}
                   </label>
@@ -107,16 +107,16 @@ export default function TravelPrepDialog({ entry, mesocycles, open, onOpenChange
           )}
 
           <div className="space-y-1">
-            <p className="text-white/80 text-sm font-medium">No gym, no problem</p>
-            <p className="text-white/50 text-xs">{TRAVEL_NO_GYM_GUIDE}</p>
+            <p className="text-lapis-text-secondary text-sm font-medium">No gym, no problem</p>
+            <p className="text-lapis-text-tertiary text-xs">{TRAVEL_NO_GYM_GUIDE}</p>
           </div>
 
-          <p className="text-white/30 text-xs">{TRAVEL_TIMEZONE_NOTE}</p>
+          <p className="text-lapis-text-disabled text-xs">{TRAVEL_TIMEZONE_NOTE}</p>
 
           <Button
             onClick={handleDeclareDisruption}
             disabled={declaring || declared}
-            className="w-full bg-white text-black hover:bg-white/90"
+            className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110"
           >
             {declared ? 'Declared as a training disruption' : declaring ? 'Declaring...' : 'Also declare this as a training disruption'}
           </Button>

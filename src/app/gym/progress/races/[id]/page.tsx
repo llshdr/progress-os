@@ -158,9 +158,9 @@ function formatMargin(marginSeconds: number): string {
 }
 
 const MARGIN_RISK_COLOR: Record<CutoffRiskFlag['risk'], string> = {
-  comfortable: 'text-white',
-  watch: 'text-yellow-200',
-  risk: 'text-red-300',
+  comfortable: 'text-lapis-text-primary',
+  watch: 'text-lapis-citrine',
+  risk: 'text-lapis-garnet',
 }
 
 // Three separately-labeled mini-stats (matching the Swim/Bike/Run/Strength
@@ -177,17 +177,17 @@ function CutoffMarginRow({ flag, range }: { flag: CutoffRiskFlag; range: Project
 
   return (
     <div className="flex items-center gap-6">
-      <span className="text-white/40 text-xs w-20 shrink-0 capitalize">{SEGMENT_LABEL[flag.segment]}</span>
+      <span className="text-lapis-text-tertiary text-xs w-20 shrink-0 capitalize">{SEGMENT_LABEL[flag.segment]}</span>
       <div>
-        <p className="text-xs text-white/40 mb-0.5">Projected (slow)</p>
-        <p className="text-white text-sm">{formatDuration(projectedSlowEnd)}</p>
+        <p className="text-xs text-lapis-text-tertiary mb-0.5">Projected (slow)</p>
+        <p className="text-lapis-text-primary text-sm">{formatDuration(projectedSlowEnd)}</p>
       </div>
       <div>
-        <p className="text-xs text-white/40 mb-0.5">Cutoff</p>
-        <p className="text-white text-sm">{formatDuration(flag.cutoffSecondsFromStart)}</p>
+        <p className="text-xs text-lapis-text-tertiary mb-0.5">Cutoff</p>
+        <p className="text-lapis-text-primary text-sm">{formatDuration(flag.cutoffSecondsFromStart)}</p>
       </div>
       <div>
-        <p className="text-xs text-white/40 mb-0.5">Margin</p>
+        <p className="text-xs text-lapis-text-tertiary mb-0.5">Margin</p>
         <p className={`text-sm font-medium ${MARGIN_RISK_COLOR[flag.risk]}`}>{formatMargin(flag.marginSecondsSlowEnd)}</p>
       </div>
     </div>
@@ -236,13 +236,13 @@ function FinishTimeCard({
 
   return (
     <div>
-      <p className="text-xs text-white/40 mb-1">{label}</p>
-      <p className="text-white text-sm">{value}</p>
+      <p className="text-xs text-lapis-text-tertiary mb-1">{label}</p>
+      <p className="text-lapis-text-primary text-sm">{value}</p>
       {showsTrainingAssumption && (
-        <p className="text-white/40 text-xs mt-1 max-w-sm">Assumes you complete the training plan below - not a snapshot of your fitness today.</p>
+        <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">Assumes you complete the training plan below - not a snapshot of your fitness today.</p>
       )}
-      {showingProjection && <p className="text-white/40 text-xs mt-1 max-w-sm">{courseRange!.sourceNote}</p>}
-      {reason && <p className="text-white/40 text-xs mt-1 max-w-sm">{reason}</p>}
+      {showingProjection && <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">{courseRange!.sourceNote}</p>}
+      {reason && <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">{reason}</p>}
     </div>
   )
 }
@@ -257,10 +257,10 @@ function CutoffRiskBanner({ flags }: { flags: CutoffRiskFlag[] }) {
   if (riskFlags.length === 0) return null
 
   return (
-    <div className="border border-red-500/30 rounded-2xl bg-red-500/[0.06] p-4">
-      <p className="text-red-300 text-sm font-semibold mb-1">Real cutoff risk</p>
+    <div className="border border-lapis-garnet/30 rounded-lapis-lg bg-lapis-garnet/[0.06] p-4">
+      <p className="text-lapis-garnet text-sm font-semibold mb-1">Real cutoff risk</p>
       {riskFlags.map((f) => (
-        <p key={f.segment} className="text-red-200/80 text-xs mt-1">
+        <p key={f.segment} className="text-lapis-garnet/80 text-xs mt-1">
           {f.message}
         </p>
       ))}
@@ -276,14 +276,14 @@ function BenchmarkComplianceBanner({ flags, onRegenerate }: { flags: BenchmarkFl
   if (flags.length === 0) return null
 
   return (
-    <div className="border border-amber-500/30 rounded-2xl bg-amber-500/[0.06] p-4">
-      <p className="text-amber-300 text-sm font-semibold mb-1">Falling behind plan</p>
+    <div className="border border-lapis-citrine/30 rounded-lapis-lg bg-lapis-citrine/[0.06] p-4">
+      <p className="text-lapis-citrine text-sm font-semibold mb-1">Falling behind plan</p>
       {flags.map((f) => (
-        <p key={f.discipline} className="text-amber-200/80 text-xs mt-1">
+        <p key={f.discipline} className="text-lapis-citrine/80 text-xs mt-1">
           {f.message}
         </p>
       ))}
-      <button onClick={onRegenerate} className="text-amber-200 text-xs font-medium underline underline-offset-2 mt-2 hover:text-amber-100 transition-colors">
+      <button onClick={onRegenerate} className="text-lapis-citrine text-xs font-medium underline underline-offset-2 mt-2 hover:brightness-125 transition-all">
         Regenerate Plan
       </button>
     </div>
@@ -576,7 +576,7 @@ export default function RaceDetailPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -586,11 +586,11 @@ export default function RaceDetailPage() {
     return (
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Link href="/gym/progress/races" className="text-white/40 hover:text-white/60 transition-colors mb-6 inline-flex items-center gap-2">
+          <Link href="/gym/progress/races" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Races
           </Link>
-          <p className="text-white/40">Race not found.</p>
+          <p className="text-lapis-text-tertiary">Race not found.</p>
         </div>
       </AppLayout>
     )
@@ -797,48 +797,48 @@ export default function RaceDetailPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym/progress/races" className="text-white/40 hover:text-white/60 transition-colors mb-6 inline-flex items-center gap-2">
+        <Link href="/gym/progress/races" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" />
           Back to Races
         </Link>
 
         <div className="flex items-center gap-4 mb-8 mt-6">
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-            <Flag className="w-8 h-8 text-white/80" />
+          <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
+            <Flag className="w-8 h-8 text-lapis-text-secondary" />
           </div>
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">
               {raceTypeLabel(race.race_type)}
-              {race.courseOrLocation && <span className="text-white/40"> · {race.courseOrLocation}</span>}
+              {race.courseOrLocation && <span className="text-lapis-text-tertiary"> · {race.courseOrLocation}</span>}
             </h1>
-            <p className="text-white/50 text-sm">
+            <p className="text-lapis-text-tertiary text-sm">
               {new Date(race.race_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               {' — '}
               {daysUntil > 0 ? `${daysUntil} days away` : daysUntil === 0 ? 'Today' : `${Math.abs(daysUntil)} days ago`}
             </p>
-            {RACE_TYPE_DISTANCE[race.race_type] && <p className="text-white/30 text-xs mt-1">{RACE_TYPE_DISTANCE[race.race_type]}</p>}
+            {RACE_TYPE_DISTANCE[race.race_type] && <p className="text-lapis-text-disabled text-xs mt-1">{RACE_TYPE_DISTANCE[race.race_type]}</p>}
           </div>
         </div>
 
         {step !== 'review' && (
           <div className="flex flex-wrap items-center gap-1 mb-8 text-xs">
             {stepSequence.map((s, i) => (
-              <span key={s} className={step === s ? 'text-white font-medium' : 'text-white/30'}>
+              <span key={s} className={step === s ? 'text-lapis-text-primary font-medium' : 'text-lapis-text-disabled'}>
                 {i + 1}. {STEP_LABELS[s]}
-                {i < stepSequence.length - 1 ? <span className="text-white/20 mx-1">·</span> : null}
+                {i < stepSequence.length - 1 ? <span className="text-lapis-text-disabled mx-1">·</span> : null}
               </span>
             ))}
           </div>
         )}
 
         {step === 'confirm' && (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-            <p className="text-white/60 text-sm mb-4">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+            <p className="text-lapis-text-secondary text-sm mb-4">
               Next, a few questions about your current condition, then a look at your real training data, then you
               choose how this race should shape your training.
             </p>
             <div className="space-y-2 mb-6 max-w-xs">
-              <Label htmlFor="training-start-date" className="text-white/80">
+              <Label htmlFor="training-start-date" className="text-lapis-text-secondary">
                 When do you want to start training?
               </Label>
               <Input
@@ -848,11 +848,11 @@ export default function RaceDetailPage() {
                 min={today}
                 max={race.race_date}
                 onChange={(e) => setTrainingStartDateInput(e.target.value)}
-                className="bg-white/5 border-white/10 text-white"
+                className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
               />
-              <p className="text-white/40 text-xs">Defaults to today - the plan's week-by-week schedule is built from whichever date you pick.</p>
+              <p className="text-lapis-text-tertiary text-xs">Defaults to today - the plan's week-by-week schedule is built from whichever date you pick.</p>
             </div>
-            <Button onClick={handleConfirmStartDate} className="bg-white text-black hover:bg-white/90">
+            <Button onClick={handleConfirmStartDate} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
               Continue
             </Button>
           </div>
@@ -860,9 +860,9 @@ export default function RaceDetailPage() {
 
         {step === 'assessment' && (
           <div className="space-y-6">
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h2 className="text-lg font-medium text-white mb-1">How are you feeling right now?</h2>
-              <p className="text-white/40 text-sm mb-6">
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h2 className="text-lg font-medium text-lapis-text-primary mb-1">How are you feeling right now?</h2>
+              <p className="text-lapis-text-tertiary text-sm mb-6">
                 {category === 'multisport'
                   ? 'Rate your comfort level for each discipline (required) - everything else is optional and only fills gaps in your logged data.'
                   : 'Every question is optional — this only fills gaps in your logged data, it never replaces it.'}
@@ -881,9 +881,9 @@ export default function RaceDetailPage() {
                 <SelfAssessmentForm category={category} value={selfAssessment as SimpleSelfAssessment} onChange={setSelfAssessment} />
               )}
             </div>
-            {assessmentError && <p className="text-sm text-red-400">{assessmentError}</p>}
-            {weaknessError && <p className="text-sm text-red-400">{weaknessError}</p>}
-            <Button onClick={handleAssessmentContinue} disabled={weaknessLoading} className="bg-white text-black hover:bg-white/90">
+            {assessmentError && <p className="text-sm text-lapis-garnet">{assessmentError}</p>}
+            {weaknessError && <p className="text-sm text-lapis-garnet">{weaknessError}</p>}
+            <Button onClick={handleAssessmentContinue} disabled={weaknessLoading} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
               {weaknessLoading ? 'Analyzing...' : weaknessError ? 'Retry analysis' : 'Continue'}
             </Button>
           </div>
@@ -891,25 +891,25 @@ export default function RaceDetailPage() {
 
         {step === 'weakness' && disciplineWeakness && (
           <div className="space-y-6">
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h2 className="text-lg font-medium text-white mb-4">Discipline Analysis</h2>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Discipline Analysis</h2>
               <div className="space-y-4">
                 {disciplineWeakness.order.map((discipline, i) => (
                   <div key={discipline}>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-white font-medium">{DISCIPLINE_LABELS[discipline]}</span>
-                      {i === 0 && <span className="px-2 py-0.5 rounded-full text-xs bg-white text-black">Primary Focus</span>}
+                      <span className="text-lapis-text-primary font-medium">{DISCIPLINE_LABELS[discipline]}</span>
+                      {i === 0 && <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500 text-lapis-text-primary">Primary Focus</span>}
                     </div>
-                    <p className="text-white/60 text-sm">{disciplineWeakness.notes[discipline]}</p>
+                    <p className="text-lapis-text-secondary text-sm">{disciplineWeakness.notes[discipline]}</p>
                     {(() => {
                       const facts = disciplineActivityFacts?.[discipline]
                       if (!facts) return null
                       const trend = describePaceTrend(facts.avgPaceSecPerKmRecent, facts.avgPaceSecPerKmPrior)
                       if (trend === 'insufficient_data') {
-                        return <p className="text-white/30 text-xs mt-1">No recent pace trend yet.</p>
+                        return <p className="text-lapis-text-disabled text-xs mt-1">No recent pace trend yet.</p>
                       }
                       return (
-                        <p className="text-white/30 text-xs mt-1">
+                        <p className="text-lapis-text-disabled text-xs mt-1">
                           Pace: {trend} ({formatPaceForDiscipline(facts.avgPaceSecPerKmPrior!, discipline)} →{' '}
                           {formatPaceForDiscipline(facts.avgPaceSecPerKmRecent!, discipline)} over the last 8 weeks)
                         </p>
@@ -920,10 +920,10 @@ export default function RaceDetailPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setStep('assessment')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+              <button onClick={() => setStep('assessment')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
                 Back
               </button>
-              <Button onClick={() => setStep('snapshot')} className="bg-white text-black hover:bg-white/90">
+              <Button onClick={() => setStep('snapshot')} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                 Continue
               </Button>
             </div>
@@ -935,7 +935,7 @@ export default function RaceDetailPage() {
             <CutoffRiskBanner flags={cutoffRiskFlags} />
 
             {(category === 'run' || category === 'multisport') && (
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
                 <FinishTimeCard
                   category={category}
                   targetFinishSeconds={targetFinishSeconds}
@@ -947,10 +947,10 @@ export default function RaceDetailPage() {
             )}
 
             {allFlags.length > 0 && (
-              <div className="border border-yellow-500/20 rounded-2xl bg-yellow-500/[0.04] p-4">
-                <p className="text-yellow-200/80 text-sm font-medium mb-1">Worth double-checking</p>
+              <div className="border border-lapis-citrine/20 rounded-lapis-lg bg-lapis-citrine/[0.04] p-4">
+                <p className="text-lapis-citrine/80 text-sm font-medium mb-1">Worth double-checking</p>
                 {allFlags.map((flag, i) => (
-                  <p key={i} className="text-yellow-200/60 text-xs mt-1">
+                  <p key={i} className="text-lapis-citrine/60 text-xs mt-1">
                     {flag}
                   </p>
                 ))}
@@ -958,32 +958,32 @@ export default function RaceDetailPage() {
             )}
 
             {snapshot && (
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-4">Current Fitness Snapshot</h2>
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Current Fitness Snapshot</h2>
 
                 <div className="mb-6">
-                  <p className="text-white/60 text-sm mb-3">Weekly cardio distance (last 8 weeks)</p>
+                  <p className="text-lapis-text-secondary text-sm mb-3">Weekly cardio distance (last 8 weeks)</p>
                   <div className="space-y-2">
                     {snapshot.cardio.weeklyDistanceKm.map((km, i) => {
                       const max = Math.max(...snapshot.cardio.weeklyDistanceKm, 1)
                       return (
-                        <div key={i} className="w-full bg-white/10 rounded-full h-1.5">
-                          <div className="h-1.5 rounded-full bg-white transition-all duration-300" style={{ width: `${(km / max) * 100}%` }} />
+                        <div key={i} className="w-full bg-lapis-surface-2 rounded-full h-1.5">
+                          <div className="h-1.5 rounded-full bg-lapis-accent-500 transition-all duration-300" style={{ width: `${(km / max) * 100}%` }} />
                         </div>
                       )
                     })}
                   </div>
-                  <p className="text-white/40 text-xs mt-2">
+                  <p className="text-lapis-text-tertiary text-xs mt-2">
                     Averaging {snapshot.cardio.recentAvgWeeklyKm.toFixed(1)}km/week across {snapshot.cardio.recentAvgSessionsPerWeek.toFixed(1)} sessions/week recently, active {snapshot.cardio.weeksActive}/8 weeks. Longest recent session: {snapshot.cardio.longestSessionKm}km.
                   </p>
                 </div>
 
                 {snapshot.strength.muscleGroupTrends.length > 0 && (
                   <div className="mb-6">
-                    <p className="text-white/60 text-sm mb-3">Strength trend (best est. 1RM, last 6 weeks vs. prior 6)</p>
+                    <p className="text-lapis-text-secondary text-sm mb-3">Strength trend (best est. 1RM, last 6 weeks vs. prior 6)</p>
                     <div className="flex flex-wrap gap-2">
                       {snapshot.strength.muscleGroupTrends.map((t) => (
-                        <span key={t.muscleGroup} className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10">
+                        <span key={t.muscleGroup} className="px-3 py-1.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle">
                           {t.muscleGroup}: {t.currentBestEst1RM}kg ({t.trend})
                         </span>
                       ))}
@@ -993,8 +993,8 @@ export default function RaceDetailPage() {
 
                 {snapshot.weightTrend && (
                   <div className="mb-6">
-                    <p className="text-white/60 text-sm mb-3">Body weight</p>
-                    <p className="text-white/70 text-sm">
+                    <p className="text-lapis-text-secondary text-sm mb-3">Body weight</p>
+                    <p className="text-lapis-text-secondary text-sm">
                       {snapshot.weightTrend.currentWeightKg}kg currently
                       {snapshot.weightTrend.changeKgLast90Days != null &&
                         ` (${snapshot.weightTrend.changeKgLast90Days >= 0 ? '+' : ''}${snapshot.weightTrend.changeKgLast90Days.toFixed(1)}kg over 90 days)`}
@@ -1004,10 +1004,10 @@ export default function RaceDetailPage() {
 
                 {snapshot.pastRaceResults.length > 0 && (
                   <div className="mb-6">
-                    <p className="text-white/60 text-sm mb-3">Past race results</p>
+                    <p className="text-lapis-text-secondary text-sm mb-3">Past race results</p>
                     <div className="space-y-1">
                       {snapshot.pastRaceResults.slice(0, 3).map((r, i) => (
-                        <p key={i} className="text-white/70 text-sm">
+                        <p key={i} className="text-lapis-text-secondary text-sm">
                           {raceTypeLabel(r.raceType)}
                           {r.courseOrLocation ? ` (${r.courseOrLocation})` : ''} — {r.raceDate}
                         </p>
@@ -1016,7 +1016,7 @@ export default function RaceDetailPage() {
                   </div>
                 )}
 
-                <p className="text-white/40 text-xs">
+                <p className="text-lapis-text-tertiary text-xs">
                   Consistency (last 90 days): {snapshot.gymConsistencyWeeks} weeks with gym activity, {snapshot.nutritionConsistencyWeeks} weeks with nutrition logged.
                   {snapshot.trainingPhase && ` Current training phase: ${snapshot.trainingPhase} (${snapshot.trainingIntensity}).`}
                   {snapshot.competingGoalsCount > 0 && ` ${snapshot.competingGoalsCount} other active goal(s).`}
@@ -1025,22 +1025,22 @@ export default function RaceDetailPage() {
             )}
 
             {(courseProfile || cutoffRiskFlags.length > 0) && (
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-3">About This Course</h2>
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-3">About This Course</h2>
                 {courseProfile && (
                   <div className="space-y-1">
                     {describeCourseDifficulty(courseProfile.difficultyFactor) && (
-                      <p className="text-white/70 text-sm">{describeCourseDifficulty(courseProfile.difficultyFactor)}</p>
+                      <p className="text-lapis-text-secondary text-sm">{describeCourseDifficulty(courseProfile.difficultyFactor)}</p>
                     )}
-                    {courseProfile.elevationGainM != null && <p className="text-white/70 text-sm">Elevation gain: ~{courseProfile.elevationGainM}m</p>}
-                    {courseProfile.swimNotes && <p className="text-white/70 text-sm">Swim: {courseProfile.swimNotes}</p>}
-                    {courseProfile.bikeNotes && <p className="text-white/70 text-sm">Bike: {courseProfile.bikeNotes}</p>}
-                    {courseProfile.runNotes && <p className="text-white/70 text-sm">Run: {courseProfile.runNotes}</p>}
+                    {courseProfile.elevationGainM != null && <p className="text-lapis-text-secondary text-sm">Elevation gain: ~{courseProfile.elevationGainM}m</p>}
+                    {courseProfile.swimNotes && <p className="text-lapis-text-secondary text-sm">Swim: {courseProfile.swimNotes}</p>}
+                    {courseProfile.bikeNotes && <p className="text-lapis-text-secondary text-sm">Bike: {courseProfile.bikeNotes}</p>}
+                    {courseProfile.runNotes && <p className="text-lapis-text-secondary text-sm">Run: {courseProfile.runNotes}</p>}
                   </div>
                 )}
                 {cutoffRiskFlags.length > 0 && courseRange && (
-                  <div className={courseProfile ? 'mt-4 pt-4 border-t border-white/10 space-y-3' : 'space-y-3'}>
-                    <p className="text-white/40 text-xs">Cutoff safety margin</p>
+                  <div className={courseProfile ? 'mt-4 pt-4 border-t border-lapis-border-subtle space-y-3' : 'space-y-3'}>
+                    <p className="text-lapis-text-tertiary text-xs">Cutoff safety margin</p>
                     {cutoffRiskFlags.map((f) => (
                       <CutoffMarginRow key={f.segment} flag={f} range={courseRange} />
                     ))}
@@ -1052,11 +1052,11 @@ export default function RaceDetailPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(category === 'multisport' ? 'weakness' : 'assessment')}
-                className="text-sm text-white/40 hover:text-white/60 transition-colors"
+                className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
               >
                 Back
               </button>
-              <Button onClick={() => setStep('spectrum')} className="bg-white text-black hover:bg-white/90">
+              <Button onClick={() => setStep('spectrum')} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                 Continue
               </Button>
             </div>
@@ -1067,9 +1067,9 @@ export default function RaceDetailPage() {
           <div className="space-y-6">
             <CutoffRiskBanner flags={cutoffRiskFlags} />
 
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h2 className="text-lg font-medium text-white mb-1">Approach</h2>
-              <p className="text-white/40 text-sm mb-6">Choose how much this race should take over your training.</p>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Approach</h2>
+              <p className="text-lapis-text-tertiary text-sm mb-6">Choose how much this race should take over your training.</p>
               <ApproachSpectrum
                 value={approach}
                 onChange={(v) => {
@@ -1099,24 +1099,24 @@ export default function RaceDetailPage() {
                   }
                 }}
                 disabled={generating || (category === 'multisport' && !disciplineWeakness)}
-                className="w-full bg-white text-black hover:bg-white/90 mt-6"
+                className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 mt-6"
               >
                 {generating ? 'Generating...' : plan ? 'Regenerate Plan' : 'Generate Plan'}
               </Button>
               {category === 'multisport' && !disciplineWeakness && (
-                <p className="text-sm text-red-400 mt-2">
+                <p className="text-sm text-lapis-garnet mt-2">
                   Discipline analysis is missing for this race - go back and complete the assessment step before generating a plan.
                 </p>
               )}
-              {generateError && <p className="text-sm text-red-400 mt-2">{generateError}</p>}
+              {generateError && <p className="text-sm text-lapis-garnet mt-2">{generateError}</p>}
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setStep('snapshot')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+              <button onClick={() => setStep('snapshot')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
                 Back
               </button>
               {plan && (
-                <button onClick={() => setStep('review')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                <button onClick={() => setStep('review')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
                   Cancel
                 </button>
               )}
@@ -1130,7 +1130,7 @@ export default function RaceDetailPage() {
             <BenchmarkComplianceBanner flags={behindBenchmarkFlags} onRegenerate={() => setStep('spectrum')} />
 
             {activeOrUpcomingDisruption && (
-              <p className="text-white/40 text-xs">
+              <p className="text-lapis-text-tertiary text-xs">
                 {formatDateRange(activeOrUpcomingDisruption.start_date, activeOrUpcomingDisruption.end_date)} (
                 {activeOrUpcomingDisruption.reason}) - {DISRUPTION_GUIDANCE[activeOrUpcomingDisruption.reason]}
               </p>
@@ -1138,36 +1138,36 @@ export default function RaceDetailPage() {
 
             <DisruptionDeclaration disruptions={disruptions} onChanged={refetchDisruptions} />
 
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
               <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
-                <h2 className="text-lg font-medium text-white">
-                  Training Plan <span className="text-white/40 text-sm font-normal">({RACE_APPROACH_LABELS[plan.approach]})</span>
+                <h2 className="text-lg font-medium text-lapis-text-primary">
+                  Training Plan <span className="text-lapis-text-tertiary text-sm font-normal">({RACE_APPROACH_LABELS[plan.approach]})</span>
                 </h2>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setStep('confirm')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                  <button onClick={() => setStep('confirm')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
                     Edit start date
                   </button>
-                  <button onClick={() => setStep('assessment')} className="text-sm text-white/40 hover:text-white/60 transition-colors">
+                  <button onClick={() => setStep('assessment')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
                     Edit my assessment
                   </button>
-                  <Button onClick={() => setStep('spectrum')} variant="outline" className="border-white/10 text-white hover:bg-white/5">
+                  <Button onClick={() => setStep('spectrum')} variant="outline" className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2">
                     Regenerate Plan
                   </Button>
                 </div>
               </div>
               {race.trainingStartDate && race.trainingStartDate > today && (
-                <p className="text-white/40 text-xs mb-3">
+                <p className="text-lapis-text-tertiary text-xs mb-3">
                   Training starts {new Date(race.trainingStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} -{' '}
                   {daysBetween(race.trainingStartDate, today)} days from now.
                 </p>
               )}
-              <p className="text-white/70 text-sm leading-relaxed mb-4">{plan.overview}</p>
-              {seasonMismatchNote && <p className="text-white/40 text-xs mb-4">{seasonMismatchNote}</p>}
+              <p className="text-lapis-text-secondary text-sm leading-relaxed mb-4">{plan.overview}</p>
+              {seasonMismatchNote && <p className="text-lapis-text-tertiary text-xs mb-4">{seasonMismatchNote}</p>}
 
-              <div className="flex flex-wrap gap-8 pt-4 border-t border-white/10">
+              <div className="flex flex-wrap gap-8 pt-4 border-t border-lapis-border-subtle">
                 <div>
-                  <p className="text-xs text-white/40 mb-1">Strength Emphasis</p>
-                  <p className="text-white text-sm">{describeStrengthEmphasis(plan.approach, snapshot.strength.recentSessionsPerWeek)}</p>
+                  <p className="text-xs text-lapis-text-tertiary mb-1">Strength Emphasis</p>
+                  <p className="text-lapis-text-primary text-sm">{describeStrengthEmphasis(plan.approach, snapshot.strength.recentSessionsPerWeek)}</p>
                 </div>
                 <FinishTimeCard
                   category={category}
@@ -1179,8 +1179,8 @@ export default function RaceDetailPage() {
               </div>
 
               {cutoffRiskFlags.length > 0 && courseRange && (
-                <div className="pt-4 mt-4 border-t border-white/10 space-y-3">
-                  <p className="text-xs text-white/40">Cutoff safety margin</p>
+                <div className="pt-4 mt-4 border-t border-lapis-border-subtle space-y-3">
+                  <p className="text-xs text-lapis-text-tertiary">Cutoff safety margin</p>
                   {cutoffRiskFlags.map((f) => (
                     <CutoffMarginRow key={f.segment} flag={f} range={courseRange} />
                   ))}
@@ -1188,14 +1188,14 @@ export default function RaceDetailPage() {
               )}
 
               {muscleImpact.length > 0 && (
-                <div className="pt-4 mt-4 border-t border-white/10">
-                  <p className="text-xs text-white/40 mb-2">Muscle Impact</p>
+                <div className="pt-4 mt-4 border-t border-lapis-border-subtle">
+                  <p className="text-xs text-lapis-text-tertiary mb-2">Muscle Impact</p>
                   <div className="flex flex-wrap gap-2">
                     {muscleImpact.map((line) => (
                       <span
                         key={line.muscle}
                         title={line.description}
-                        className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10"
+                        className="px-3 py-1.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle"
                       >
                         {line.muscle}: {line.shortLabel}
                       </span>
@@ -1205,9 +1205,9 @@ export default function RaceDetailPage() {
               )}
 
               {nutritionTensionFlag && (
-                <div className="mt-4 border border-yellow-500/20 rounded-2xl bg-yellow-500/[0.04] p-4">
-                  <p className="text-yellow-200/80 text-sm font-medium mb-1">Worth double-checking</p>
-                  <p className="text-yellow-200/60 text-xs">{nutritionTensionFlag}</p>
+                <div className="mt-4 border border-lapis-citrine/20 rounded-lapis-lg bg-lapis-citrine/[0.04] p-4">
+                  <p className="text-lapis-citrine/80 text-sm font-medium mb-1">Worth double-checking</p>
+                  <p className="text-lapis-citrine/60 text-xs">{nutritionTensionFlag}</p>
                 </div>
               )}
             </div>
@@ -1215,7 +1215,7 @@ export default function RaceDetailPage() {
             {weeksByPhase.map((group) => (
               <div key={`${group.phase}-${group.isAcclimation}`}>
                 <div className="flex items-center gap-3 mb-1">
-                  <h3 className="text-sm font-medium text-white/60">{group.isAcclimation ? 'Acclimation' : `${PHASE_LABELS[group.phase]} Phase`}</h3>
+                  <h3 className="text-sm font-medium text-lapis-text-secondary">{group.isAcclimation ? 'Acclimation' : `${PHASE_LABELS[group.phase]} Phase`}</h3>
                   {/* Editing here reuses the shared Base template, which also governs
                       real Base weeks - hidden for the acclimation group so "edit" isn't
                       offered from a heading it wouldn't be scoped to. */}
@@ -1233,9 +1233,9 @@ export default function RaceDetailPage() {
                     />
                   )}
                 </div>
-                {group.isAcclimation && <p className="text-white/40 text-xs mb-1">{ACCLIMATION_GUIDANCE}</p>}
-                <p className="text-white/40 text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
-                <p className="text-white/40 text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
+                {group.isAcclimation && <p className="text-lapis-text-tertiary text-xs mb-1">{ACCLIMATION_GUIDANCE}</p>}
+                <p className="text-lapis-text-tertiary text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
+                <p className="text-lapis-text-tertiary text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
                 <div className="grid gap-3">
                   {group.weeks.map((week, weekIndex) => {
                     const isCurrentWeek = week.weekStartDate === currentWeekStartDate
@@ -1244,18 +1244,18 @@ export default function RaceDetailPage() {
                     return (
                       <div
                         key={week.weekStartDate}
-                        className={`border rounded-2xl p-6 transition-all duration-200 ${
-                          isCurrentWeek ? 'border-white/25 bg-white/[0.05]' : 'border-white/10 bg-white/[0.02]'
+                        className={`border rounded-lapis-lg p-6 transition-all duration-200 ${
+                          isCurrentWeek ? 'border-lapis-border-strong bg-lapis-accent-500/[0.05]' : 'border-lapis-border-subtle bg-lapis-surface-1'
                         }`}
                       >
                         <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-white font-medium">Week of {formatWeekDate(week.weekStartDate)}</span>
+                            <span className="text-lapis-text-primary font-medium">Week of {formatWeekDate(week.weekStartDate)}</span>
                             {isCurrentWeek && (
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-white text-black">This Week</span>
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500 text-lapis-text-primary">This Week</span>
                             )}
                             {!!week.brickSessions && (
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-white/10 text-white/60 border border-white/20">
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
                                 {week.brickSessions} brick
                               </span>
                             )}
@@ -1264,40 +1264,40 @@ export default function RaceDetailPage() {
                             <div className="flex gap-4 text-right text-sm flex-wrap justify-end">
                               {(['swim', 'bike', 'run'] as Discipline[]).map((d) => (
                                 <div key={d}>
-                                  <p className="text-xs text-white/40">{DISCIPLINE_LABELS[d]}</p>
-                                  <p className="text-white font-semibold">
+                                  <p className="text-xs text-lapis-text-tertiary">{DISCIPLINE_LABELS[d]}</p>
+                                  <p className="text-lapis-text-primary font-semibold">
                                     {week.disciplines![d].km}km · {week.disciplines![d].sessions}x
                                   </p>
                                 </div>
                               ))}
                               <div>
-                                <p className="text-xs text-white/40">Strength</p>
-                                <p className="text-white font-semibold">{week.targetStrengthSessions}x</p>
+                                <p className="text-xs text-lapis-text-tertiary">Strength</p>
+                                <p className="text-lapis-text-primary font-semibold">{week.targetStrengthSessions}x</p>
                               </div>
                             </div>
                           ) : (
                             <div className="flex gap-4 text-right text-sm">
                               <div>
-                                <p className="text-xs text-white/40">Cardio</p>
-                                <p className="text-white font-semibold">
+                                <p className="text-xs text-lapis-text-tertiary">Cardio</p>
+                                <p className="text-lapis-text-primary font-semibold">
                                   {isCurrentWeek && currentWeekActual ? `${currentWeekActual.cardioKm.toFixed(1)} / ` : ''}
                                   {week.targetCardioKm}km
                                 </p>
                               </div>
                               <div>
-                                <p className="text-xs text-white/40">Sessions</p>
-                                <p className="text-white font-semibold">{week.targetCardioSessions} cardio · {week.targetStrengthSessions} strength</p>
+                                <p className="text-xs text-lapis-text-tertiary">Sessions</p>
+                                <p className="text-lapis-text-primary font-semibold">{week.targetCardioSessions} cardio · {week.targetStrengthSessions} strength</p>
                               </div>
                             </div>
                           )}
                         </div>
-                        <p className="text-white/50 text-sm">{week.focusNote}</p>
+                        <p className="text-lapis-text-tertiary text-sm">{week.focusNote}</p>
 
                         {phaseTemplate && (
                           <>
                             <button
                               onClick={() => toggleWeekExpanded(week.weekStartDate)}
-                              className="flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors mt-3"
+                              className="flex items-center gap-1 text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mt-3"
                             >
                               {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                               {isExpanded ? 'Hide days' : 'Show days'}
@@ -1325,15 +1325,15 @@ export default function RaceDetailPage() {
               </div>
             ))}
 
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h2 className="text-lg font-medium text-white mb-3">Packing List</h2>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Packing List</h2>
               <div className="grid gap-4 sm:grid-cols-3">
                 {packingList.t1 && (
                   <div>
-                    <p className="text-xs text-white/40 mb-2">T1 (Swim → Bike)</p>
+                    <p className="text-xs text-lapis-text-tertiary mb-2">T1 (Swim → Bike)</p>
                     <ul className="space-y-1">
                       {packingList.t1.map((item) => (
-                        <li key={item} className="text-white/70 text-sm">
+                        <li key={item} className="text-lapis-text-secondary text-sm">
                           {item}
                         </li>
                       ))}
@@ -1342,10 +1342,10 @@ export default function RaceDetailPage() {
                 )}
                 {packingList.t2 && (
                   <div>
-                    <p className="text-xs text-white/40 mb-2">T2 (Bike → Run)</p>
+                    <p className="text-xs text-lapis-text-tertiary mb-2">T2 (Bike → Run)</p>
                     <ul className="space-y-1">
                       {packingList.t2.map((item) => (
-                        <li key={item} className="text-white/70 text-sm">
+                        <li key={item} className="text-lapis-text-secondary text-sm">
                           {item}
                         </li>
                       ))}
@@ -1354,10 +1354,10 @@ export default function RaceDetailPage() {
                 )}
                 {packingList.t3 && (
                   <div>
-                    <p className="text-xs text-white/40 mb-2">Special Needs (T3)</p>
+                    <p className="text-xs text-lapis-text-tertiary mb-2">Special Needs (T3)</p>
                     <ul className="space-y-1">
                       {packingList.t3.map((item) => (
-                        <li key={item} className="text-white/70 text-sm">
+                        <li key={item} className="text-lapis-text-secondary text-sm">
                           {item}
                         </li>
                       ))}
@@ -1366,10 +1366,10 @@ export default function RaceDetailPage() {
                 )}
                 {packingList.bag && (
                   <div>
-                    <p className="text-xs text-white/40 mb-2">Race Day Bag</p>
+                    <p className="text-xs text-lapis-text-tertiary mb-2">Race Day Bag</p>
                     <ul className="space-y-1">
                       {packingList.bag.map((item) => (
-                        <li key={item} className="text-white/70 text-sm">
+                        <li key={item} className="text-lapis-text-secondary text-sm">
                           {item}
                         </li>
                       ))}
@@ -1380,44 +1380,44 @@ export default function RaceDetailPage() {
             </div>
 
             {fuelingPhaseSummaries.length > 0 && (
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-3">Fueling</h2>
-                <p className="text-white/70 text-sm leading-relaxed mb-4">{FUELING_GUIDANCE}</p>
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Fueling</h2>
+                <p className="text-lapis-text-secondary text-sm leading-relaxed mb-4">{FUELING_GUIDANCE}</p>
                 <div className="space-y-1 mb-4">
                   {fuelingPhaseSummaries.map((line) => (
-                    <p key={line.phase} className="text-white/40 text-xs">
-                      <span className="text-white/60">{PHASE_LABELS[line.phase]}:</span> {line.summary}
+                    <p key={line.phase} className="text-lapis-text-tertiary text-xs">
+                      <span className="text-lapis-text-secondary">{PHASE_LABELS[line.phase]}:</span> {line.summary}
                     </p>
                   ))}
                 </div>
-                <Link href="/nutrition" className="text-sm text-white/70 hover:text-white underline underline-offset-2">
+                <Link href="/nutrition" className="text-sm text-lapis-text-secondary hover:text-lapis-text-primary underline underline-offset-2">
                   Log an Intra-Workout entry →
                 </Link>
               </div>
             )}
 
             {milestoneSuggestions && (
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
                 <button
                   onClick={() => setMilestoneExpanded((prev) => !prev)}
-                  className="flex items-center gap-1 text-lg font-medium text-white"
+                  className="flex items-center gap-1 text-lg font-medium text-lapis-text-primary"
                 >
                   {milestoneExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   Milestone session ideas
                 </button>
                 {!milestoneExpanded ? (
-                  <p className="text-white/40 text-sm mt-2">
+                  <p className="text-lapis-text-tertiary text-sm mt-2">
                     You have a long runway to this race - optionally, consider one longer-than-usual session per discipline for confidence and nutrition
                     practice. Entirely optional and doesn&apos;t change your plan&apos;s numbers.
                   </p>
                 ) : (
                   <div className="mt-3 space-y-2">
-                    <p className="text-white/40 text-xs mb-2">
+                    <p className="text-lapis-text-tertiary text-xs mb-2">
                       A one-off, occasional session per discipline - not a new weekly expectation. Adjust distance/timing to how it feels.
                     </p>
                     {milestoneSuggestions.map((s) => (
-                      <p key={s.discipline} className="text-white/70 text-sm">
-                        <span className="text-white/40">{DISCIPLINE_LABELS[s.discipline]}:</span> ~{s.km}km, around the week of {formatWeekDate(s.weekStartDate)}
+                      <p key={s.discipline} className="text-lapis-text-secondary text-sm">
+                        <span className="text-lapis-text-tertiary">{DISCIPLINE_LABELS[s.discipline]}:</span> ~{s.km}km, around the week of {formatWeekDate(s.weekStartDate)}
                       </p>
                     ))}
                   </div>
@@ -1425,22 +1425,22 @@ export default function RaceDetailPage() {
               </div>
             )}
 
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h2 className="text-lg font-medium text-white mb-3">Race Day Plan</h2>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Race Day Plan</h2>
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs text-white/40 mb-1">Pacing</p>
-                  <p className="text-white/70 text-sm">{ZONE_GUIDANCE.key.peak.full}</p>
+                  <p className="text-xs text-lapis-text-tertiary mb-1">Pacing</p>
+                  <p className="text-lapis-text-secondary text-sm">{ZONE_GUIDANCE.key.peak.full}</p>
                   {peakPaceTargets && (
                     <div className="mt-2 space-y-1">
                       {(['swim', 'bike', 'run'] as Discipline[]).map((d) => {
                         const gap = paceGaps.find((g) => g.discipline === d)
                         return (
-                          <p key={d} className="text-white/60 text-sm">
+                          <p key={d} className="text-lapis-text-secondary text-sm">
                             {DISCIPLINE_LABELS[d]}: ~{formatPaceForDiscipline(peakPaceTargets[d], d)}
-                            {gap && <span className="text-white/40 text-xs"> ({describePaceGap(gap, weeksUntilRace, level)})</span>}
+                            {gap && <span className="text-lapis-text-tertiary text-xs"> ({describePaceGap(gap, weeksUntilRace, level)})</span>}
                             {!gap && safeCutoffPaceTargets && (
-                              <span className="text-white/40 text-xs">
+                              <span className="text-lapis-text-tertiary text-xs">
                                 {' '}
                                 (a safe-cutoff pace would be ~{formatPaceForDiscipline(safeCutoffPaceTargets[d], d)} - reaching your goal takes real
                                 improvement, not just showing up; not enough logged data yet for a more precise comparison)
@@ -1452,7 +1452,7 @@ export default function RaceDetailPage() {
                     </div>
                   )}
                   {targetFinishSeconds != null && peakPaceTargets && (
-                    <p className="text-white/40 text-xs mt-2 max-w-sm">
+                    <p className="text-lapis-text-tertiary text-xs mt-2 max-w-sm">
                       These paces reserve ~{Math.round(TYPICAL_TRANSITION_SECONDS / 60)} minutes for T1/T2 transitions, so multiplying them out by
                       distance won't quite reach your goal time on its own - that's expected, not a shortfall.
                     </p>
@@ -1461,8 +1461,8 @@ export default function RaceDetailPage() {
 
                 {(courseRange || projectedFinishSeconds != null) && (
                   <div>
-                    <p className="text-xs text-white/40 mb-1">Projected Finish</p>
-                    <p className="text-white/70 text-sm">
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Projected Finish</p>
+                    <p className="text-lapis-text-secondary text-sm">
                       {courseRange
                         ? `${formatDuration(courseRange.totalSecondsLow)}–${formatDuration(courseRange.totalSecondsHigh)}`
                         : formatDuration(projectedFinishSeconds!)}
@@ -1472,11 +1472,11 @@ export default function RaceDetailPage() {
 
                 {aspirationalRange && nextTier && (
                   <div>
-                    <p className="text-xs text-white/40 mb-1">If You Progress Further</p>
-                    <p className="text-white/60 text-sm">
+                    <p className="text-xs text-lapis-text-tertiary mb-1">If You Progress Further</p>
+                    <p className="text-lapis-text-secondary text-sm">
                       {formatDuration(aspirationalRange.totalSecondsLow)}–{formatDuration(aspirationalRange.totalSecondsHigh)}
                     </p>
-                    <p className="text-white/40 text-xs mt-1 max-w-sm">
+                    <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">
                       If your real training reaches {TIER_LABELS[nextTier]}-level fitness by race day - the same tracking already updating your
                       projection above - your range could look more like this. Not a promise, just where the evidence would point.
                     </p>
@@ -1485,9 +1485,9 @@ export default function RaceDetailPage() {
 
                 {cutoffRiskFlags.length > 0 && (
                   <div>
-                    <p className="text-xs text-white/40 mb-1">Cutoff Margins</p>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Cutoff Margins</p>
                     {cutoffRiskFlags.map((f) => (
-                      <p key={f.segment} className="text-white/70 text-sm">
+                      <p key={f.segment} className="text-lapis-text-secondary text-sm">
                         {f.message}
                       </p>
                     ))}
@@ -1496,25 +1496,25 @@ export default function RaceDetailPage() {
 
                 {category === 'multisport' && (
                   <div>
-                    <p className="text-xs text-white/40 mb-1">Transitions</p>
-                    <p className="text-white/70 text-sm">{TRANSITION_GUIDANCE.peak.full}</p>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Transitions</p>
+                    <p className="text-lapis-text-secondary text-sm">{TRANSITION_GUIDANCE.peak.full}</p>
                   </div>
                 )}
 
                 <div>
-                  <p className="text-xs text-white/40 mb-1">Fueling</p>
-                  <p className="text-white/70 text-sm">{FUELING_GUIDANCE}</p>
+                  <p className="text-xs text-lapis-text-tertiary mb-1">Fueling</p>
+                  <p className="text-lapis-text-secondary text-sm">{FUELING_GUIDANCE}</p>
                 </div>
 
                 <div>
-                  <p className="text-xs text-white/40 mb-2">Checkpoints</p>
+                  <p className="text-xs text-lapis-text-tertiary mb-2">Checkpoints</p>
                   <div className="space-y-2">
                     {RACE_DAY_CHECKPOINTS[category].map((checkpoint) => (
                       <div key={checkpoint.label}>
-                        <p className="text-white text-sm font-medium">{checkpoint.label}</p>
+                        <p className="text-lapis-text-primary text-sm font-medium">{checkpoint.label}</p>
                         <ul className="list-disc ml-4">
                           {checkpoint.notes.map((note) => (
-                            <li key={note} className="text-white/60 text-xs">
+                            <li key={note} className="text-lapis-text-secondary text-xs">
                               {note}
                             </li>
                           ))}
