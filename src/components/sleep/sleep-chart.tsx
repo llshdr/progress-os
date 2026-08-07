@@ -75,11 +75,18 @@ export default function SleepChart({ entries }: SleepChartProps) {
         onPointerLeave={() => setHoverIndex(null)}
       >
         {sorted.map((_, i) => (
-          <circle key={`raw-${i}`} cx={xForIndex(i)} cy={yForValue(rawValues[i])} r={2.5} fill="rgba(255,255,255,0.25)" />
+          <circle key={`raw-${i}`} cx={xForIndex(i)} cy={yForValue(rawValues[i])} r={2.5} fill="var(--color-lapis-text-secondary)" fillOpacity={0.4} />
         ))}
 
         {avgValues.length > 1 && (
-          <path d={linePath} fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d={linePath}
+            fill="none"
+            stroke="var(--color-lapis-accent-500)"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         )}
 
         {hoverIndex != null && (
@@ -89,29 +96,36 @@ export default function SleepChart({ entries }: SleepChartProps) {
               x2={xForIndex(hoverIndex)}
               y1={PADDING.top}
               y2={HEIGHT - PADDING.bottom}
-              stroke="rgba(255,255,255,0.15)"
+              stroke="var(--color-lapis-border)"
               strokeWidth={1}
             />
-            <circle cx={xForIndex(hoverIndex)} cy={yForValue(avgValues[hoverIndex])} r={4} fill="white" />
+            <circle
+              cx={xForIndex(hoverIndex)}
+              cy={yForValue(avgValues[hoverIndex])}
+              r={4}
+              fill="var(--color-lapis-bg)"
+              stroke="var(--color-lapis-accent-400)"
+              strokeWidth={2}
+            />
           </>
         )}
       </svg>
 
-      <div className="h-6 mt-2 text-sm text-white/70">
+      <div className="font-data h-6 mt-2 text-sm tabular-nums text-lapis-text-secondary">
         {hoverIndex != null && sorted[hoverIndex] && (
           <>
             {formatDate(sorted[hoverIndex].date)} — trend {avgValues[hoverIndex].toFixed(1)}h
-            <span className="text-white/40"> (raw: {rawValues[hoverIndex].toFixed(1)}h)</span>
+            <span className="text-lapis-text-tertiary"> (raw: {rawValues[hoverIndex].toFixed(1)}h)</span>
           </>
         )}
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-white/40">
+      <div className="flex items-center gap-4 text-xs text-lapis-text-tertiary">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-2 h-2 rounded-full bg-white/25" /> Raw nights
+          <span className="inline-block w-2 h-2 rounded-full bg-lapis-text-secondary/40" /> Raw nights
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-0.5 bg-white" /> 7-day trend
+          <span className="inline-block w-3 h-0.5 bg-lapis-accent-500" /> 7-day trend
         </span>
       </div>
     </div>

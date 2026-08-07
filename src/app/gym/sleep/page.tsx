@@ -137,7 +137,7 @@ export default function SleepPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -147,22 +147,24 @@ export default function SleepPage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center gap-3 mb-8">
-          <Link href="/gym/progress" className="text-white/40 hover:text-white/60 transition-colors">
+          <Link href="/gym/progress" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back
           </Link>
           <div className="flex-1" />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger>
-              <Button className="bg-white text-black hover:bg-white/90 text-sm">Log Sleep</Button>
+              <Button className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm">Log Sleep</Button>
             </DialogTrigger>
-            <DialogContent className="bg-black border-white/10 text-white">
+            <DialogContent className="bg-lapis-surface-1 border-lapis-border text-lapis-text-primary">
               <DialogHeader>
-                <DialogTitle>Log Sleep Entry</DialogTitle>
-                <DialogDescription className="text-white/40">Hours slept and bedroom temperature - both optional except hours.</DialogDescription>
+                <DialogTitle className="font-display">Log Sleep Entry</DialogTitle>
+                <DialogDescription className="text-lapis-text-tertiary">
+                  Hours slept and bedroom temperature - both optional except hours.
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleAddEntry} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="sleep-date" className="text-white/80">
+                  <Label htmlFor="sleep-date" className="text-lapis-text-secondary">
                     Date
                   </Label>
                   <Input
@@ -172,11 +174,11 @@ export default function SleepPage() {
                     onChange={(e) => setNewEntry({ ...newEntry, date: e.target.value })}
                     max={getLocalDateString()}
                     required
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border text-lapis-text-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="hours-slept" className="text-white/80">
+                  <Label htmlFor="hours-slept" className="text-lapis-text-secondary">
                     Hours slept
                   </Label>
                   <Input
@@ -189,11 +191,11 @@ export default function SleepPage() {
                     onChange={(e) => setNewEntry({ ...newEntry, hours_slept: e.target.value })}
                     required
                     placeholder="7.5"
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    className="bg-lapis-surface-2 border-lapis-border text-lapis-text-primary placeholder:text-lapis-text-disabled"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="room-temp" className="text-white/80">
+                  <Label htmlFor="room-temp" className="text-lapis-text-secondary">
                     Bedroom temperature ({tempUnit === 'f' ? '°F' : '°C'}) - optional
                   </Label>
                   <Input
@@ -203,10 +205,10 @@ export default function SleepPage() {
                     value={newEntry.room_temp}
                     onChange={(e) => setNewEntry({ ...newEntry, room_temp: e.target.value })}
                     placeholder={tempUnit === 'f' ? '65' : '18'}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    className="bg-lapis-surface-2 border-lapis-border text-lapis-text-primary placeholder:text-lapis-text-disabled"
                   />
                 </div>
-                <Button type="submit" className="w-full bg-white text-black hover:bg-white/90">
+                <Button type="submit" className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                   Save Entry
                 </Button>
               </form>
@@ -215,21 +217,21 @@ export default function SleepPage() {
         </div>
 
         <div className="mb-6">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Sleep History</h1>
-          <p className="text-white/50 text-sm">{entries.length} nights logged</p>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Sleep History</h1>
+          <p className="text-lapis-text-tertiary text-sm">{entries.length} nights logged</p>
         </div>
 
         {entries.length >= MIN_ENTRIES_FOR_TREND ? (
           <div className="grid gap-4 mb-6 lg:grid-cols-2">
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h3 className="text-lg font-medium text-white mb-4">Trend</h3>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h3 className="text-lg font-medium text-lapis-text-primary mb-4">Trend</h3>
               <SleepChart entries={entries.map((e) => ({ hoursSlept: e.hours_slept, date: e.date }))} />
             </div>
             <SleepInsightCard refreshKey={insightRefreshKey} />
           </div>
         ) : entries.length > 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 mb-6">
-            <p className="text-white/40 text-sm">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
+            <p className="text-lapis-text-tertiary text-sm">
               Log {MIN_ENTRIES_FOR_TREND - entries.length} more night{MIN_ENTRIES_FOR_TREND - entries.length === 1 ? '' : 's'} to see your trend and an
               AI insight.
             </p>
@@ -237,32 +239,40 @@ export default function SleepPage() {
         ) : null}
 
         {entries.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">No sleep entries yet</p>
-            <Button onClick={() => setIsDialogOpen(true)} variant="outline" className="border-white/10 text-white hover:bg-white/5">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <p className="text-lapis-text-tertiary mb-4">No sleep entries yet</p>
+            <Button onClick={() => setIsDialogOpen(true)} variant="outline" className="border-lapis-border text-lapis-text-primary hover:bg-lapis-surface-2">
               Log your first night
             </Button>
           </div>
         ) : (
           <div className="grid gap-3">
             {entries.map((entry) => (
-              <div key={entry.id} className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
+              <div
+                key={entry.id}
+                className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="text-3xl font-semibold text-white">
+                    <div className="font-data text-3xl font-medium tabular-nums text-lapis-text-primary">
                       {entry.hours_slept}
-                      <span className="text-lg font-normal text-white/40 ml-1">h</span>
+                      <span className="text-lg font-normal text-lapis-text-tertiary ml-1">h</span>
                     </div>
                     {entry.room_temp_c != null && (
-                      <div className="text-sm text-white/40">
+                      <div className="font-data text-sm tabular-nums text-lapis-text-tertiary">
                         {formatTemperature(entry.room_temp_c, tempUnit)}
                         {tempUnit === 'f' ? '°F' : '°C'} bedroom
                       </div>
                     )}
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="text-white font-medium">{formatDate(entry.date)}</div>
-                    <Button size="sm" variant="ghost" onClick={() => openDeleteModal(entry.id)} className="text-white/40 hover:text-white/60 hover:bg-white/5">
+                    <div className="text-lapis-text-primary font-medium">{formatDate(entry.date)}</div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openDeleteModal(entry.id)}
+                      className="text-lapis-text-tertiary hover:text-lapis-text-secondary hover:bg-lapis-surface-2"
+                    >
                       Delete
                     </Button>
                   </div>

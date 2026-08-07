@@ -107,21 +107,21 @@ export default function WorkoutsPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym/train" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/gym/train" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
               Workouts
             </h1>
-            <p className="text-white/50 text-sm">
+            <p className="text-lapis-text-tertiary text-sm">
               Track your training sessions
             </p>
           </div>
           <Link href="/gym/workouts/new">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-all">
               <Plus className="w-4 h-4" />
               <span className="text-sm font-medium">New Workout</span>
             </button>
@@ -130,13 +130,13 @@ export default function WorkoutsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
+            <div className="text-lapis-text-tertiary">Loading...</div>
           </div>
         ) : workouts.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">No workouts yet</p>
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <p className="text-lapis-text-tertiary mb-4">No workouts yet</p>
             <Link href="/gym/workouts/new">
-              <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
+              <button className="px-4 py-2 rounded-lapis-sm border border-lapis-border text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors">
                 Start your first workout
               </button>
             </Link>
@@ -152,35 +152,37 @@ export default function WorkoutsPage() {
                     href={`/gym/workouts/${workout.id}`}
                     className="block"
                   >
-                    <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200">
+                    <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-xl bg-white/5">
-                            <Calendar className="w-5 h-5 text-white/60" />
+                          <div className="p-3 rounded-lapis-md bg-lapis-surface-2">
+                            <Calendar className="w-5 h-5 text-lapis-text-secondary" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-lg font-medium text-white">
+                              <h3 className="text-lg font-medium text-lapis-text-primary">
                                 {workout.template_name || workout.workout_type || 'Workout'}
                               </h3>
                               {isComplete ? (
-                                <span className="px-2 py-0.5 rounded-full text-xs bg-white text-black font-medium">
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500/15 text-lapis-accent-400 font-medium">
                                   Completed
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/30 font-medium">
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-citrine/10 text-lapis-citrine border border-lapis-citrine/30 font-medium">
                                   In Progress
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 text-white/40 text-sm">
+                            <div className="flex items-center gap-3 text-lapis-text-tertiary text-sm">
                               <span>{formatDate(workout.date)}</span>
                               <span>•</span>
-                              <span>{workout.exercise_count} {workout.exercise_count === 1 ? 'exercise' : 'exercises'}</span>
+                              <span className="font-data tabular-nums">
+                                {workout.exercise_count} {workout.exercise_count === 1 ? 'exercise' : 'exercises'}
+                              </span>
                               {isComplete && (
                                 <>
                                   <span>•</span>
-                                  <span className="flex items-center gap-1">
+                                  <span className="font-data tabular-nums flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     {formatDuration(workout.started_at, workout.completed_at!)}
                                   </span>
@@ -189,7 +191,7 @@ export default function WorkoutsPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="text-white/30">
+                        <div className="text-lapis-text-disabled">
                           →
                         </div>
                       </div>
@@ -204,7 +206,7 @@ export default function WorkoutsPage() {
                 <button
                   onClick={handleLoadMore}
                   disabled={loadingMore}
-                  className="px-6 py-2.5 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-lapis-md border border-lapis-border text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors disabled:opacity-50"
                 >
                   {loadingMore ? 'Loading...' : 'Load More'}
                 </button>

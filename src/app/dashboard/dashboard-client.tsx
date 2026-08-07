@@ -267,13 +267,13 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse">
-            <div className="h-8 bg-white/10 rounded w-1/3 mb-4"></div>
-            <div className="h-4 bg-white/5 rounded w-1/4 mb-8"></div>
-            <div className="h-48 bg-white/5 rounded-2xl mb-4"></div>
+            <div className="h-8 bg-lapis-surface-2 rounded w-1/3 mb-4"></div>
+            <div className="h-4 bg-lapis-surface-1 rounded w-1/4 mb-8"></div>
+            <div className="h-48 bg-lapis-surface-1 rounded-lapis-lg mb-4"></div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div className="h-32 bg-white/5 rounded-2xl"></div>
-              <div className="h-32 bg-white/5 rounded-2xl"></div>
-              <div className="h-32 bg-white/5 rounded-2xl"></div>
+              <div className="h-32 bg-lapis-surface-1 rounded-lapis-lg"></div>
+              <div className="h-32 bg-lapis-surface-1 rounded-lapis-lg"></div>
+              <div className="h-32 bg-lapis-surface-1 rounded-lapis-lg"></div>
             </div>
           </div>
         </div>
@@ -286,13 +286,13 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Top Section */}
         <div className="mb-8">
-          <h1 className="text-4xl font-semibold tracking-tight text-white mb-2">
+          <h1 className="font-display italic text-4xl font-medium tracking-tight text-lapis-text-primary mb-2">
             {getGreeting()}, {userName}
           </h1>
-          <p className="text-white/40 text-lg mb-1">{getCurrentDate()}</p>
-          <p className="text-white/50 text-sm">{getRandomQuote()}</p>
+          <p className="text-lapis-text-tertiary text-lg mb-1">{getCurrentDate()}</p>
+          <p className="text-lapis-text-secondary text-sm">{getRandomQuote()}</p>
           {mesocycleStatus && (
-            <p className="text-white/40 text-sm mt-1">
+            <p className="text-lapis-text-tertiary text-sm mt-1">
               {mesocycleStatus.mesocycle.label ? `${mesocycleStatus.mesocycle.label} — ` : ''}
               {mesocycleStatus.isDeloadWeek ? 'Deload week' : `Week ${mesocycleStatus.currentWeek} of ${mesocycleStatus.mesocycle.lengthWeeks}`}
             </p>
@@ -301,24 +301,24 @@ export default function DashboardClient({ user }: DashboardClientProps) {
 
         {/* Today's Focus */}
         <div className="mb-6">
-          <div className="border border-white/10 rounded-3xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] p-8 backdrop-blur-sm">
-            <h2 className="text-2xl font-semibold text-white mb-6">Today's Focus</h2>
+          <div className="relative overflow-hidden border border-lapis-border rounded-lapis-xl bg-lapis-surface-1 p-8 before:content-[''] before:absolute before:top-0 before:left-8 before:right-8 before:h-[2px] before:bg-gradient-to-r before:from-lapis-gold-500 before:to-transparent">
+            <p className="font-data text-[10px] tracking-[0.14em] uppercase text-lapis-gold-500 mb-3">Today&apos;s Focus</p>
             {activeWorkout ? (
               <div>
-                <p className="text-white/60 text-lg mb-4">You have an active workout in progress</p>
+                <h2 className="font-display text-2xl font-semibold text-lapis-text-primary mb-6">You have an active workout in progress</h2>
                 <button
                   onClick={handleContinueWorkout}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-medium hover:bg-white/90 transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-lapis-accent-500 text-lapis-text-primary rounded-lapis-md font-medium hover:brightness-110 transition-all"
                 >
                   Continue Workout
                 </button>
               </div>
             ) : (
               <div>
-                <p className="text-white/60 text-lg mb-4">Ready to train?</p>
+                <h2 className="font-display text-2xl font-semibold text-lapis-text-primary mb-6">Ready to train?</h2>
                 <button
                   onClick={handleStartWorkout}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-medium hover:bg-white/90 transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-lapis-accent-500 text-lapis-text-primary rounded-lapis-md font-medium hover:brightness-110 transition-all"
                 >
                   <Dumbbell className="w-5 h-5" />
                   Start Workout
@@ -338,19 +338,19 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
           {/* Weekly Progress */}
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Flame className="w-5 h-5 text-white/60" />
-              <h3 className="text-lg font-medium text-white">Weekly Progress</h3>
+              <Flame className="w-5 h-5 text-lapis-text-tertiary" />
+              <h3 className="text-lg font-medium text-lapis-text-primary">Weekly Progress</h3>
             </div>
             <div className="mb-3">
               <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-3xl font-semibold text-white">{weeklyWorkouts}</span>
-                <span className="text-white/40">/ {weeklyGoal} workouts</span>
+                <span className="font-data text-3xl font-medium tabular-nums text-lapis-text-primary">{weeklyWorkouts}</span>
+                <span className="text-lapis-text-tertiary">/ {weeklyGoal} workouts</span>
               </div>
-              <div className="w-full bg-white/10 rounded-full h-2">
+              <div className="w-full bg-lapis-surface-3 rounded-full h-2">
                 <div
-                  className="bg-white rounded-full h-2 transition-all duration-300"
+                  className="bg-lapis-accent-500 rounded-full h-2 transition-all duration-300"
                   style={{ width: `${Math.min((weeklyWorkouts / weeklyGoal) * 100, 100)}%` }}
                 />
               </div>
@@ -358,35 +358,40 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           </div>
 
           {/* Current Weight */}
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Scale className="w-5 h-5 text-white/60" />
-              <h3 className="text-lg font-medium text-white">Current Weight</h3>
+              <Scale className="w-5 h-5 text-lapis-text-tertiary" />
+              <h3 className="text-lg font-medium text-lapis-text-primary">Current Weight</h3>
             </div>
             {latestWeight ? (
               <div>
                 <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-3xl font-semibold text-white">{latestWeight.weight}</span>
-                  <span className="text-white/40">kg</span>
+                  <span className="font-data text-3xl font-medium tabular-nums text-lapis-text-primary">{latestWeight.weight}</span>
+                  <span className="text-lapis-text-tertiary">kg</span>
                 </div>
                 {getWeightDifference() !== null && (
-                  <p className={`text-sm ${getWeightDifference()! > 0 ? 'text-green-400' : getWeightDifference()! < 0 ? 'text-red-400' : 'text-white/40'}`}>
-                    {getWeightDifference()! > 0 ? '+' : ''}{getWeightDifference()!.toFixed(1)} kg
+                  <p
+                    className={`font-data text-sm tabular-nums ${
+                      getWeightDifference()! > 0 ? 'text-lapis-garnet' : getWeightDifference()! < 0 ? 'text-lapis-jade' : 'text-lapis-text-tertiary'
+                    }`}
+                  >
+                    {getWeightDifference()! > 0 ? '+' : ''}
+                    {getWeightDifference()!.toFixed(1)} kg
                   </p>
                 )}
                 <button
                   onClick={handleUpdateWeight}
-                  className="mt-3 text-sm text-white/50 hover:text-white transition-colors"
+                  className="mt-3 text-sm text-lapis-text-tertiary hover:text-lapis-text-primary transition-colors"
                 >
                   Update Weight
                 </button>
               </div>
             ) : (
               <div>
-                <p className="text-white/40 text-sm mb-3">No weight entries yet</p>
+                <p className="text-lapis-text-tertiary text-sm mb-3">No weight entries yet</p>
                 <button
                   onClick={handleUpdateWeight}
-                  className="text-sm text-white/50 hover:text-white transition-colors"
+                  className="text-sm text-lapis-text-tertiary hover:text-lapis-text-primary transition-colors"
                 >
                   Add Weight
                 </button>
@@ -395,10 +400,10 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           </div>
 
           {/* Personal Records */}
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-white/60" />
-              <h3 className="text-lg font-medium text-white">Personal Records</h3>
+              <TrendingUp className="w-5 h-5 text-lapis-text-tertiary" />
+              <h3 className="text-lg font-medium text-lapis-text-primary">Personal Records</h3>
             </div>
             {personalRecords.length > 0 ? (
               <div className="space-y-3">
@@ -406,19 +411,21 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                   <Link
                     key={pr.exerciseLibraryId}
                     href={`/gym/exercises/${pr.exerciseLibraryId}`}
-                    className="block border-b border-white/5 pb-2 last:border-0 last:pb-0 hover:opacity-80 transition-opacity"
+                    className="block border-b border-lapis-border-subtle pb-2 last:border-0 last:pb-0 hover:opacity-80 transition-opacity"
                   >
-                    <p className="text-white font-medium">{pr.exercise_name}</p>
-                    <p className="text-white/60 text-sm">{pr.weight} × {pr.reps}</p>
-                    <p className="text-white/40 text-xs">{formatDate(pr.date)}</p>
+                    <p className="text-lapis-text-primary font-medium">{pr.exercise_name}</p>
+                    <p className="font-data text-lapis-text-secondary text-sm tabular-nums">
+                      {pr.weight} × {pr.reps}
+                    </p>
+                    <p className="text-lapis-text-tertiary text-xs">{formatDate(pr.date)}</p>
                   </Link>
                 ))}
-                <Link href="/gym/records" className="text-sm text-white/50 hover:text-white transition-colors block pt-1">
+                <Link href="/gym/records" className="text-sm text-lapis-text-tertiary hover:text-lapis-text-primary transition-colors block pt-1">
                   View all →
                 </Link>
               </div>
             ) : (
-              <p className="text-white/40 text-sm">No PRs yet</p>
+              <p className="text-lapis-text-tertiary text-sm">No PRs yet</p>
             )}
           </div>
         </div>
@@ -429,21 +436,21 @@ export default function DashboardClient({ user }: DashboardClientProps) {
             the Current Weight card's action, Calendar is now a top-level
             nav item). */}
         <div>
-          <h3 className="text-xl font-semibold text-white mb-4">Quick Actions</h3>
+          <h3 className="text-xl font-semibold text-lapis-text-primary mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-3">
             <Link
               href="/gym/exercises"
-              className="flex flex-col items-center gap-2 p-4 border border-white/10 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-200"
+              className="flex flex-col items-center gap-2 p-4 border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 hover:bg-lapis-surface-2 transition-all duration-200"
             >
-              <BookOpen className="w-6 h-6 text-white/60" />
-              <span className="text-sm text-white/80">Exercise Library</span>
+              <BookOpen className="w-6 h-6 text-lapis-text-secondary" />
+              <span className="text-sm text-lapis-text-secondary">Exercise Library</span>
             </Link>
             <Link
               href="/gym/templates"
-              className="flex flex-col items-center gap-2 p-4 border border-white/10 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] transition-all duration-200"
+              className="flex flex-col items-center gap-2 p-4 border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 hover:bg-lapis-surface-2 transition-all duration-200"
             >
-              <LayoutTemplate className="w-6 h-6 text-white/60" />
-              <span className="text-sm text-white/80">Templates</span>
+              <LayoutTemplate className="w-6 h-6 text-lapis-text-secondary" />
+              <span className="text-sm text-lapis-text-secondary">Templates</span>
             </Link>
           </div>
         </div>

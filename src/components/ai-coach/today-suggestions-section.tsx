@@ -81,25 +81,25 @@ export default function TodaySuggestionsSection() {
   }
 
   return (
-    <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+    <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-5 h-5 text-white/60" />
-        <h3 className="text-lg font-medium text-white">Today&apos;s Suggestions</h3>
+        <Sparkles className="w-5 h-5 text-lapis-gold-500" />
+        <h3 className="text-lg font-medium text-lapis-text-primary">Today&apos;s Suggestions</h3>
       </div>
 
       {state.status === 'loading' && (
         <div className="space-y-3 animate-pulse">
-          <div className="h-4 bg-white/5 rounded w-3/4"></div>
-          <div className="h-4 bg-white/5 rounded w-2/3"></div>
+          <div className="h-4 bg-lapis-surface-2 rounded w-3/4"></div>
+          <div className="h-4 bg-lapis-surface-2 rounded w-2/3"></div>
         </div>
       )}
 
       {state.status === 'error' && (
-        <p className="text-white/40 text-sm">Couldn&apos;t load today&apos;s suggestions. Try again later.</p>
+        <p className="text-lapis-text-tertiary text-sm">Couldn&apos;t load today&apos;s suggestions. Try again later.</p>
       )}
 
       {state.status === 'ok' && state.items.length === 0 && (
-        <p className="text-white/40 text-sm">Nothing urgent today — you&apos;re on track.</p>
+        <p className="text-lapis-text-tertiary text-sm">Nothing urgent today — you&apos;re on track.</p>
       )}
 
       {state.status === 'ok' && state.items.length > 0 && (
@@ -111,9 +111,9 @@ export default function TodaySuggestionsSection() {
             return (
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <p className="text-white/90 mb-1">{top.text}</p>
+                  <p className="text-lapis-text-primary mb-1">{top.text}</p>
                   {top.action && (
-                    <Link href={top.action.href} className="text-sm text-white/50 hover:text-white transition-colors">
+                    <Link href={top.action.href} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-primary transition-colors">
                       {top.action.label} →
                     </Link>
                   )}
@@ -122,7 +122,7 @@ export default function TodaySuggestionsSection() {
                   {canMarkDone && (
                     <button
                       onClick={() => handleDone(top)}
-                      className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                       title="Mark done"
                     >
                       <CheckCircle2 className="w-4 h-4" />
@@ -130,7 +130,7 @@ export default function TodaySuggestionsSection() {
                   )}
                   <button
                     onClick={() => handleDismiss(top.key)}
-                    className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white/60 transition-colors"
+                    className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                     title="Dismiss for today"
                   >
                     <X className="w-4 h-4" />
@@ -142,17 +142,17 @@ export default function TodaySuggestionsSection() {
 
           {/* Remaining suggestions - compact secondary stack */}
           {state.items.length > 1 && (
-            <div className="space-y-2 pt-1 border-t border-white/5">
+            <div className="space-y-2 pt-1 border-t border-lapis-border-subtle">
               {state.items.slice(1).map((item) => {
                 const canMarkDone = Boolean(item.sourceTable && item.sourceId)
                 return (
                   <div key={item.key} className="flex items-center justify-between gap-3 pt-2">
-                    <p className="text-white/60 text-sm flex-1">{item.text}</p>
+                    <p className="text-lapis-text-secondary text-sm flex-1">{item.text}</p>
                     <div className="flex items-center gap-1 shrink-0">
                       {canMarkDone && (
                         <button
                           onClick={() => handleDone(item)}
-                          className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/50 transition-colors"
+                          className="p-1.5 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-disabled hover:text-lapis-text-tertiary transition-colors"
                           title="Mark done"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
@@ -160,7 +160,7 @@ export default function TodaySuggestionsSection() {
                       )}
                       <button
                         onClick={() => handleDismiss(item.key)}
-                        className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white/50 transition-colors"
+                        className="p-1.5 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-disabled hover:text-lapis-text-tertiary transition-colors"
                         title="Dismiss for today"
                       >
                         <X className="w-3.5 h-3.5" />
