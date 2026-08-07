@@ -124,26 +124,26 @@ export default function TrainingSettingsPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/settings" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back to Settings
         </Link>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-8">Training</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-8">Training</h1>
 
         <div className="max-w-md">
           {loading ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <div className="h-10 bg-lapis-surface-2 rounded-lapis-sm animate-pulse" />
             </div>
           ) : (
             <form onSubmit={handleSave} className="space-y-6">
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-1">Weekly Workout Target</h2>
-                <p className="text-white/40 text-sm mb-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Weekly Workout Target</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
                   Used for your dashboard progress and daily suggestions.
                 </p>
                 <div className="space-y-2">
-                  <Label htmlFor="weekly-workout-goal" className="text-white/80">
+                  <Label htmlFor="weekly-workout-goal" className="text-lapis-text-secondary">
                     Workouts per week
                   </Label>
                   <Input
@@ -156,27 +156,27 @@ export default function TrainingSettingsPage() {
                       setWeeklyWorkoutGoal(e.target.value)
                       setSaved(false)
                     }}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
                 </div>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-1">Weight Tracking</h2>
-                <p className="text-white/40 text-sm mb-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Weight Tracking</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
                   Controls the units used across weight tracking, the trend graph, and the AI insight.
                 </p>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-white/80">Unit</Label>
+                    <Label className="text-lapis-text-secondary">Unit</Label>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => handleUnitChange('kg')}
-                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
                           weightUnit === 'kg'
-                            ? 'bg-white text-black'
-                            : 'bg-white/5 text-white/60 hover:bg-white/10'
+                            ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                            : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                         }`}
                       >
                         kg
@@ -184,10 +184,10 @@ export default function TrainingSettingsPage() {
                       <button
                         type="button"
                         onClick={() => handleUnitChange('lbs')}
-                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
                           weightUnit === 'lbs'
-                            ? 'bg-white text-black'
-                            : 'bg-white/5 text-white/60 hover:bg-white/10'
+                            ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                            : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                         }`}
                       >
                         lbs
@@ -195,7 +195,7 @@ export default function TrainingSettingsPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="goal-weight" className="text-white/80">
+                    <Label htmlFor="goal-weight" className="text-lapis-text-secondary">
                       Goal weight ({weightUnit}) — optional
                     </Label>
                     <Input
@@ -208,21 +208,21 @@ export default function TrainingSettingsPage() {
                         setSaved(false)
                       }}
                       placeholder={weightUnit === 'kg' ? '75.0' : '165.0'}
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-1">Training Phase</h2>
-                <p className="text-white/40 text-sm mb-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Training Phase</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
                   A placeholder until real nutrition/calorie tracking exists — helps the AI Coach
                   calibrate how aggressive its recommendations should be.
                 </p>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-white/80">Phase</Label>
+                    <Label className="text-lapis-text-secondary">Phase</Label>
                     <div className="flex gap-2">
                       {(['bulk', 'maintain', 'cut'] as const).map((phase) => (
                         <button
@@ -232,10 +232,10 @@ export default function TrainingSettingsPage() {
                             setTrainingPhase(phase)
                             setSaved(false)
                           }}
-                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
+                          className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium capitalize transition-colors ${
                             trainingPhase === phase
-                              ? 'bg-white text-black'
-                              : 'bg-white/5 text-white/60 hover:bg-white/10'
+                              ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                              : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                           }`}
                         >
                           {phase}
@@ -244,7 +244,7 @@ export default function TrainingSettingsPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-white/80">Intensity</Label>
+                    <Label className="text-lapis-text-secondary">Intensity</Label>
                     <div className="flex gap-2">
                       {(['mild', 'aggressive'] as const).map((intensity) => (
                         <button
@@ -254,10 +254,10 @@ export default function TrainingSettingsPage() {
                             setTrainingIntensity(intensity)
                             setSaved(false)
                           }}
-                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
+                          className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium capitalize transition-colors ${
                             trainingIntensity === intensity
-                              ? 'bg-white text-black'
-                              : 'bg-white/5 text-white/60 hover:bg-white/10'
+                              ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                              : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                           }`}
                         >
                           {intensity}
@@ -268,14 +268,14 @@ export default function TrainingSettingsPage() {
                 </div>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-1">Open Water Swim Season</h2>
-                <p className="text-white/40 text-sm mb-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Open Water Swim Season</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
                   Optional - only used to suggest when open-water-specific swim sessions are realistic for a multisport race. Leave blank if you&apos;re not sure; nothing is guessed on your behalf.
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="ow-season-start" className="text-white/80">
+                    <Label htmlFor="ow-season-start" className="text-lapis-text-secondary">
                       Season starts
                     </Label>
                     <select
@@ -285,20 +285,20 @@ export default function TrainingSettingsPage() {
                         setOpenWaterSeasonStart(e.target.value)
                         setSaved(false)
                       }}
-                      className="w-full bg-white/5 border border-white/10 text-white rounded-lg px-3 py-2 text-sm"
+                      className="w-full bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-3 py-2 text-sm"
                     >
-                      <option value="" className="bg-black">
+                      <option value="" className="bg-lapis-bg">
                         Not set
                       </option>
                       {MONTH_NAMES.map((name, i) => (
-                        <option key={i} value={i + 1} className="bg-black">
+                        <option key={i} value={i + 1} className="bg-lapis-bg">
                           {name}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ow-season-end" className="text-white/80">
+                    <Label htmlFor="ow-season-end" className="text-lapis-text-secondary">
                       Season ends
                     </Label>
                     <select
@@ -308,13 +308,13 @@ export default function TrainingSettingsPage() {
                         setOpenWaterSeasonEnd(e.target.value)
                         setSaved(false)
                       }}
-                      className="w-full bg-white/5 border border-white/10 text-white rounded-lg px-3 py-2 text-sm"
+                      className="w-full bg-lapis-surface-2 border border-lapis-border-subtle text-lapis-text-primary rounded-lapis-sm px-3 py-2 text-sm"
                     >
-                      <option value="" className="bg-black">
+                      <option value="" className="bg-lapis-bg">
                         Not set
                       </option>
                       {MONTH_NAMES.map((name, i) => (
-                        <option key={i} value={i + 1} className="bg-black">
+                        <option key={i} value={i + 1} className="bg-lapis-bg">
                           {name}
                         </option>
                       ))}
@@ -324,10 +324,10 @@ export default function TrainingSettingsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button type="submit" disabled={saving} className="bg-white text-black hover:bg-white/90">
+                <Button type="submit" disabled={saving} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
-                {saved && <span className="text-white/40 text-sm">Saved</span>}
+                {saved && <span className="text-lapis-text-tertiary text-sm">Saved</span>}
               </div>
             </form>
           )}

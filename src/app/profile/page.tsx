@@ -146,7 +146,7 @@ export default function ProfilePage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -156,20 +156,20 @@ export default function ProfilePage() {
     <AppLayout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Profile</h1>
-          <p className="text-white/50 text-sm">Your rank and the people you're sharing progress with</p>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Profile</h1>
+          <p className="text-lapis-text-tertiary text-sm">Your rank and the people you're sharing progress with</p>
         </div>
 
         {rankUpTier !== null && (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.04] p-4 mb-6 text-center">
-            <p className="text-white text-sm font-medium">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-2 p-4 mb-6 text-center">
+            <p className="text-lapis-text-primary text-sm font-medium">
               You've reached {rankTierLabel(rankUpTier)}
             </p>
           </div>
         )}
 
         {own && (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 mb-8">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-8">
             <div className="flex items-center gap-4">
               <div className="relative">
                 {own.avatar_url ? (
@@ -177,17 +177,17 @@ export default function ProfilePage() {
                   <img
                     src={own.avatar_url}
                     alt={own.display_name}
-                    className="w-20 h-20 rounded-full object-cover border border-white/10"
+                    className="w-20 h-20 rounded-full object-cover border border-lapis-border-subtle"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 text-2xl">
+                  <div className="w-20 h-20 rounded-full bg-lapis-surface-2 border border-lapis-border-subtle flex items-center justify-center text-lapis-text-tertiary text-2xl">
                     {own.display_name.charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
               <div className="flex-1">
-                <h2 className="text-xl font-medium text-white">{own.display_name}</h2>
-                <p className="text-white/50 text-sm">{rankTierLabel(own.rank)}</p>
+                <h2 className="text-xl font-medium text-lapis-text-primary">{own.display_name}</h2>
+                <p className="text-lapis-text-tertiary text-sm">{rankTierLabel(own.rank)}</p>
               </div>
               <div>
                 <input
@@ -202,7 +202,7 @@ export default function ProfilePage() {
                   variant="outline"
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-white/10 text-white hover:bg-white/5"
+                  className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2"
                 >
                   {uploading ? 'Uploading...' : 'Change photo'}
                 </Button>
@@ -211,11 +211,11 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-wide mb-4">
+        <h3 className="text-sm font-medium text-lapis-text-tertiary uppercase tracking-wide mb-4">
           Others
         </h3>
         {others.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-8 text-center text-white/40">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-8 text-center text-lapis-text-tertiary">
             No one else here yet
           </div>
         ) : (
@@ -223,23 +223,23 @@ export default function ProfilePage() {
             {others.map((profile) => (
               <div
                 key={profile.user_id}
-                className="border border-white/10 rounded-2xl bg-white/[0.02] p-4 flex items-center gap-3"
+                className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4 flex items-center gap-3"
               >
                 {profile.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={profile.avatar_url}
                     alt={profile.display_name}
-                    className="w-12 h-12 rounded-full object-cover border border-white/10"
+                    className="w-12 h-12 rounded-full object-cover border border-lapis-border-subtle"
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
+                  <div className="w-12 h-12 rounded-full bg-lapis-surface-2 border border-lapis-border-subtle flex items-center justify-center text-lapis-text-tertiary">
                     {profile.display_name.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <p className="text-white font-medium">{profile.display_name}</p>
-                  <p className="text-white/40 text-sm">{rankTierLabel(profile.rank)}</p>
+                  <p className="text-lapis-text-primary font-medium">{profile.display_name}</p>
+                  <p className="text-lapis-text-tertiary text-sm">{rankTierLabel(profile.rank)}</p>
                 </div>
               </div>
             ))}

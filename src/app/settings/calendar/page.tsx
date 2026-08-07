@@ -81,28 +81,28 @@ export default function CalendarSettingsPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/settings" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back to Settings
         </Link>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-8">Calendar</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-8">Calendar</h1>
 
         <div className="max-w-md">
           {loading ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <div className="h-10 bg-lapis-surface-2 rounded-lapis-sm animate-pulse" />
             </div>
           ) : (
             <form onSubmit={handleSave} className="space-y-6">
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-1">Day Schedule</h2>
-                <p className="text-white/40 text-sm mb-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Day Schedule</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
                   Bounds where the Calendar&apos;s day view opens by default - it never hides anything scheduled outside this range, it just decides
                   the default scroll position.
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="wake-time" className="text-white/80">
+                    <Label htmlFor="wake-time" className="text-lapis-text-secondary">
                       Wake time
                     </Label>
                     <Input
@@ -113,11 +113,11 @@ export default function CalendarSettingsPage() {
                         setWakeTime(e.target.value)
                         setSaved(false)
                       }}
-                      className="bg-white/5 border-white/10 text-white"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="sleep-time" className="text-white/80">
+                    <Label htmlFor="sleep-time" className="text-lapis-text-secondary">
                       Sleep time
                     </Label>
                     <Input
@@ -128,15 +128,15 @@ export default function CalendarSettingsPage() {
                         setSleepTime(e.target.value)
                         setSaved(false)
                       }}
-                      className="bg-white/5 border-white/10 text-white"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-1">Temperature Unit</h2>
-                <p className="text-white/40 text-sm mb-4">Used for bedroom temperature in Sleep tracking.</p>
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Temperature Unit</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">Used for bedroom temperature in Sleep tracking.</p>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -144,8 +144,8 @@ export default function CalendarSettingsPage() {
                       setTemperatureUnit('c')
                       setSaved(false)
                     }}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      temperatureUnit === 'c' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                    className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+                      temperatureUnit === 'c' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                     }`}
                   >
                     °C
@@ -156,8 +156,8 @@ export default function CalendarSettingsPage() {
                       setTemperatureUnit('f')
                       setSaved(false)
                     }}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      temperatureUnit === 'f' ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                    className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+                      temperatureUnit === 'f' ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                     }`}
                   >
                     °F
@@ -166,10 +166,10 @@ export default function CalendarSettingsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button type="submit" disabled={saving} className="bg-white text-black hover:bg-white/90">
+                <Button type="submit" disabled={saving} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
-                {saved && <span className="text-white/40 text-sm">Saved</span>}
+                {saved && <span className="text-lapis-text-tertiary text-sm">Saved</span>}
               </div>
             </form>
           )}

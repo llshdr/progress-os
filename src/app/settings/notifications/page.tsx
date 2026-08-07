@@ -68,22 +68,22 @@ export default function NotificationsSettingsPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/settings" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back to Settings
         </Link>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-8">Notifications</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-8">Notifications</h1>
 
         <div className="max-w-md">
           {loading ? (
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <div className="h-10 bg-lapis-surface-2 rounded-lapis-sm animate-pulse" />
             </div>
           ) : (
             <form onSubmit={handleSave} className="space-y-6">
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-1">Today&apos;s Suggestions</h2>
-                <p className="text-white/40 text-sm mb-4">
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Today&apos;s Suggestions</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
                   Show the AI-generated suggestions panel on your dashboard.
                 </p>
                 <div className="flex gap-2">
@@ -93,8 +93,8 @@ export default function NotificationsSettingsPage() {
                       setShowTodaySuggestions(true)
                       setSaved(false)
                     }}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      showTodaySuggestions ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                    className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+                      showTodaySuggestions ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                     }`}
                   >
                     Show
@@ -105,8 +105,8 @@ export default function NotificationsSettingsPage() {
                       setShowTodaySuggestions(false)
                       setSaved(false)
                     }}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      !showTodaySuggestions ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                    className={`flex-1 px-4 py-2 rounded-lapis-sm text-sm font-medium transition-colors ${
+                      !showTodaySuggestions ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
                     }`}
                   >
                     Hide
@@ -115,10 +115,10 @@ export default function NotificationsSettingsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button type="submit" disabled={saving} className="bg-white text-black hover:bg-white/90">
+                <Button type="submit" disabled={saving} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
-                {saved && <span className="text-white/40 text-sm">Saved</span>}
+                {saved && <span className="text-lapis-text-tertiary text-sm">Saved</span>}
               </div>
             </form>
           )}
