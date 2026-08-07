@@ -13,8 +13,8 @@ export function renderAppIcon(size: number) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#000000',
-          color: '#ffffff',
+          background: '#0A0C12',
+          color: '#F3F4F7',
           fontSize: size * 0.55,
           fontWeight: 700,
         }}
