@@ -33,20 +33,20 @@ export function ConfirmationModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="bg-[#1c1c1e] border border-white/10 text-white sm:max-w-md"
+        className="bg-[#1c1c1e] border border-lapis-border-subtle text-lapis-text-primary sm:max-w-md"
         showCloseButton={false}
       >
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold text-white">{title}</DialogTitle>
+          <DialogTitle className="text-lg font-semibold text-lapis-text-primary">{title}</DialogTitle>
           {description && (
-            <p className="text-sm text-white/60 mt-2">{description}</p>
+            <p className="text-sm text-lapis-text-secondary mt-2">{description}</p>
           )}
         </DialogHeader>
         <DialogFooter className="flex flex-row gap-3 sm:justify-end">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="flex-1 sm:flex-none border-white/10 text-white hover:bg-white/5"
+            className="flex-1 sm:flex-none border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2"
           >
             {cancelText}
           </Button>
@@ -54,8 +54,8 @@ export function ConfirmationModal({
             onClick={handleConfirm}
             className={`flex-1 sm:flex-none ${
               destructive
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : 'bg-white text-black hover:bg-white/90'
+                ? 'bg-lapis-garnet hover:brightness-110 text-lapis-text-primary'
+                : 'bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110'
             }`}
           >
             {confirmText}

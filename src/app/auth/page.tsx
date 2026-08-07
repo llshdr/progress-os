@@ -57,13 +57,13 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black p-4">
-      <div className="w-full max-w-md border border-white/10 rounded-2xl bg-white/[0.02] p-8">
+    <div className="min-h-screen flex items-center justify-center bg-lapis-bg p-4">
+      <div className="w-full max-w-md border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-8">
         <div className="space-y-1 mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-lapis-text-primary">
             {isSignUp ? 'Create account' : 'Welcome back'}
           </h1>
-          <p className="text-white/50 text-sm">
+          <p className="text-lapis-text-tertiary text-sm">
             {isSignUp
               ? 'Enter your details to get started'
               : 'Enter your credentials to access your account'}
@@ -71,7 +71,7 @@ export default function AuthPage() {
         </div>
         <form onSubmit={handleAuth} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-white/80">
+            <Label htmlFor="email" className="text-lapis-text-secondary">
               Email
             </Label>
             <Input
@@ -82,11 +82,11 @@ export default function AuthPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-white/80">
+            <Label htmlFor="password" className="text-lapis-text-secondary">
               Password
             </Label>
             <Input
@@ -98,12 +98,12 @@ export default function AuthPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
             />
           </div>
           {isSignUp && (
             <div className="space-y-2">
-              <Label htmlFor="inviteCode" className="text-white/80">
+              <Label htmlFor="inviteCode" className="text-lapis-text-secondary">
                 Invite code
               </Label>
               <Input
@@ -113,16 +113,16 @@ export default function AuthPage() {
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
               />
             </div>
           )}
           {error && (
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-lapis-garnet">{error}</p>
           )}
           <Button
             type="submit"
-            className="w-full bg-white text-black hover:bg-white/90"
+            className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110"
             disabled={loading}
           >
             {loading ? 'Loading...' : isSignUp ? 'Sign up' : 'Sign in'}
@@ -135,7 +135,7 @@ export default function AuthPage() {
               setIsSignUp(!isSignUp)
               setError(null)
             }}
-            className="text-sm text-white/40 hover:text-white/60 transition-colors"
+            className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
           >
             {isSignUp
               ? 'Already have an account? Sign in'

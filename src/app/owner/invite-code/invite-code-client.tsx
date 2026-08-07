@@ -56,35 +56,35 @@ export default function InviteCodeClient({ inviteCode }: { inviteCode: InviteCod
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/settings" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
             Invite Code
           </h1>
-          <p className="text-white/50 text-sm">
+          <p className="text-lapis-text-tertiary text-sm">
             Share this code with anyone you want to be able to create an account.
             Rotating it invalidates the old code immediately.
           </p>
         </div>
 
         {code === UNROTATED_SEED_CODE && (
-          <div className="border border-white/20 rounded-2xl bg-white/[0.04] p-4 mb-6">
-            <p className="text-white text-sm font-medium mb-1">Still on the default code</p>
-            <p className="text-white/50 text-xs">
+          <div className="border border-lapis-border-strong rounded-lapis-lg bg-lapis-surface-2 p-4 mb-6">
+            <p className="text-lapis-text-primary text-sm font-medium mb-1">Still on the default code</p>
+            <p className="text-lapis-text-tertiary text-xs">
               This is the placeholder code from setup, visible in the project&apos;s migration history.
               Generate a real code below before sharing signup with anyone.
             </p>
           </div>
         )}
 
-        <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-          <p className="text-white/40 text-xs mb-2">Current code</p>
-          <p className="text-2xl font-mono tracking-wider text-white mb-4">{code}</p>
+        <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+          <p className="text-lapis-text-tertiary text-xs mb-2">Current code</p>
+          <p className="text-2xl font-mono tracking-wider text-lapis-text-primary mb-4">{code}</p>
           {updatedAt && (
-            <p className="text-white/30 text-xs mb-6">
+            <p className="text-lapis-text-disabled text-xs mb-6">
               Last rotated {new Date(updatedAt).toLocaleString()}
             </p>
           )}
@@ -92,13 +92,13 @@ export default function InviteCodeClient({ inviteCode }: { inviteCode: InviteCod
             <Button
               onClick={handleCopy}
               variant="outline"
-              className="border-white/10 text-white hover:bg-white/5"
+              className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2"
             >
               {copied ? 'Copied' : 'Copy'}
             </Button>
             <Button
               onClick={() => setShowRotateModal(true)}
-              className="bg-white text-black hover:bg-white/90"
+              className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110"
             >
               Generate new code
             </Button>
