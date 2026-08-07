@@ -48,6 +48,15 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0A0C12",
+  // Next's own default (width=device-width, initial-scale=1, no zoom
+  // restriction) is what let pinch-zoom-out expose empty space beyond
+  // the app's own content - confirmed against this installed version's
+  // own docs (generate-viewport.md), not assumed. Explicit here so the
+  // app behaves like installed native software, not a zoomable page.
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

@@ -153,7 +153,13 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* Was a plain neutral gray, left untouched during the full retint
+     since remapping shadcn's own base tokens was deliberately out of
+     scope then. Now that every component's own explicit className has
+     been retinted, this is the one visible leftover - closing it with
+     the lapis-accent-400 hue (the lighter/hover accent variant, chosen
+     over the base 500 for a focus ring's own visibility). */
+  --ring: oklch(0.58 0.19 265);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -177,6 +183,6 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-sans bg-lapis-bg;
   }
 }
