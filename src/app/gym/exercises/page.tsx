@@ -6,6 +6,7 @@ import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Search, Star, Archive, Trash2, Pencil } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type Exercise = {
   id: string
@@ -288,9 +289,7 @@ export default function ExerciseLibraryPage() {
 
         {/* Exercise List */}
         {loading || searching ? (
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-lapis-text-tertiary">Loading...</div>
-          </div>
+          <PageSkeleton />
         ) : filteredExercises.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
             <p className="text-lapis-text-tertiary mb-4">

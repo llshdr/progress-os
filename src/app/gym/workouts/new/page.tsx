@@ -7,6 +7,7 @@ import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { getLocalDateString } from '@/lib/date'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type Template = {
   id: string
@@ -27,9 +28,7 @@ export default function NewWorkoutPage() {
     <Suspense
       fallback={
         <AppLayout>
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-lapis-text-tertiary">Loading...</div>
-          </div>
+          <PageSkeleton />
         </AppLayout>
       }
     >
@@ -208,8 +207,8 @@ function NewWorkoutPageInner() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <PageSkeleton />
         </div>
       </AppLayout>
     )

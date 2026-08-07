@@ -87,6 +87,7 @@ import SelfAssessmentForm from '@/components/races/self-assessment-form'
 import MultisportSelfAssessmentForm from '@/components/races/multisport-self-assessment-form'
 import ApproachSpectrum from '@/components/races/approach-spectrum'
 import type { ExperienceLevel } from '@/lib/race-plan/self-assessment'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type Race = {
   id: string
@@ -575,9 +576,7 @@ export default function RaceDetailPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import FoodFormFields from '@/components/nutrition/food-form-fields'
 import type { MealTag } from '@/lib/food-constants'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 export default function EditFoodPage() {
   const params = useParams()
@@ -77,9 +78,7 @@ export default function EditFoodPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { rankTierLabel } from '@/lib/rank'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type PublicProfile = {
   user_id: string
@@ -145,9 +146,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

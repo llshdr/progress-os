@@ -20,6 +20,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { displayToKg, formatWeight, kgToDisplay, type WeightUnit } from '@/lib/weight'
 import WeightChart from '@/components/weight/weight-chart'
 import WeightInsightCard from '@/components/weight/weight-insight-card'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type WeightEntry = {
   id: string
@@ -159,9 +160,7 @@ export default function WeightPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

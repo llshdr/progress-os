@@ -40,6 +40,7 @@ import TravelPrepDialog from '@/components/calendar/travel-prep-dialog'
 import HabitsCard from '@/components/calendar/habits-card'
 import type { Habit, HabitLog } from '@/lib/habits'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 // Every source below is fetched once per page load via the exact
 // function/query each feature already ships with - this page only
@@ -403,9 +404,7 @@ export default function CalendarPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

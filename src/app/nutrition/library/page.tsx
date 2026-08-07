@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Plus, Search, Archive, Trash2, Pencil } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { mealTagLabel } from '@/lib/food-constants'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type FoodTemplate = {
   id: string
@@ -129,9 +130,7 @@ export default function FoodLibraryPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-lapis-text-tertiary">Loading...</div>
-          </div>
+          <PageSkeleton />
         ) : filteredFoods.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
             <p className="text-lapis-text-tertiary mb-4">{searchQuery ? 'No foods found' : 'No saved foods yet'}</p>

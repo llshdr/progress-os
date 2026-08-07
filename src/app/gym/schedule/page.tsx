@@ -32,6 +32,7 @@ import {
   type ScheduleSlot,
 } from '@/lib/gym-schedule'
 import { getLocalWeekdayIndex } from '@/lib/date'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type TemplateOption = { id: string; name: string }
 type ScheduleMode = 'rotation' | 'calendar'
@@ -248,9 +249,7 @@ export default function SchedulePage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

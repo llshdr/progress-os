@@ -8,15 +8,14 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import MilestoneFormFields from '@/components/goals/milestone-form-fields'
 import type { ActionItemStatus } from '@/lib/goals'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 export default function NewMilestonePage() {
   return (
     <Suspense
       fallback={
         <AppLayout>
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-lapis-text-tertiary">Loading...</div>
-          </div>
+          <PageSkeleton />
         </AppLayout>
       }
     >

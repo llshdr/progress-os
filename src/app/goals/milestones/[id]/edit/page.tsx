@@ -10,6 +10,7 @@ import { Trash2 } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import MilestoneFormFields from '@/components/goals/milestone-form-fields'
 import type { ActionItemStatus } from '@/lib/goals'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 export default function EditMilestonePage() {
   const params = useParams()
@@ -104,9 +105,7 @@ export default function EditMilestonePage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

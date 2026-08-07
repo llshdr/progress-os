@@ -9,6 +9,7 @@ import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award, Pencil } from 
 import ExerciseCoachCard from '@/components/ai-coach/exercise-coach-card'
 import ExerciseProgressChart, { type ExerciseSessionPoint } from '@/components/gym/exercise-progress-chart'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type Exercise = {
   id: string
@@ -344,9 +345,7 @@ export default function ExerciseDetailPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

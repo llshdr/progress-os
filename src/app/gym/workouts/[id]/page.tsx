@@ -9,6 +9,7 @@ import { Plus, Check, Clock, ArrowLeft, Trash2, RotateCcw } from 'lucide-react'
 import SetLogger from '@/components/workout/set-logger'
 import CardioLogger from '@/components/workout/cardio-logger'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type Workout = {
   id: string
@@ -299,9 +300,7 @@ export default function CurrentWorkoutPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

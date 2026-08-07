@@ -20,6 +20,7 @@ import { celsiusToDisplay, displayToCelsius, formatTemperature, type Temperature
 import { getLocalDateString } from '@/lib/date'
 import SleepChart from '@/components/sleep/sleep-chart'
 import SleepInsightCard from '@/components/sleep/sleep-insight-card'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type SleepEntry = {
   id: string
@@ -136,9 +137,7 @@ export default function SleepPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

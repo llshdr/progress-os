@@ -10,6 +10,7 @@ import { Sparkles, Trash2 } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import GoalFormFields from '@/components/goals/goal-form-fields'
 import type { ActionItemStatus, GoalScope } from '@/lib/goals'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type LinkedMilestone = {
   id: string
@@ -141,9 +142,7 @@ export default function GoalDetailPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

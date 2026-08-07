@@ -9,6 +9,7 @@ import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import ExerciseVariantsManager from '@/components/gym/exercise-variants-manager'
 import type { ExerciseType } from '@/lib/exercise-constants'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 export default function EditExercisePage() {
   const params = useParams()
@@ -105,9 +106,7 @@ export default function EditExercisePage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

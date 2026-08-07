@@ -20,6 +20,7 @@ import {
 import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { MUSCLE_GROUPS, EXERCISE_TYPES, type ExerciseType } from '@/lib/exercise-constants'
 import { fetchCardioActivity, bucketWeeklyCardioDistance, type CardioActivity } from '@/lib/cardio-stats'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type ComputedStrength = { bestWeight: number; bestReps: number; estimated1RM: number; timesPerformed: number }
 type ManualStrength = { weight: number; reps: number; estimated1RM: number; date: string | null; note: string | null }
@@ -587,9 +588,7 @@ export default function RecordsPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-lapis-text-tertiary">Loading...</div>
-          </div>
+          <PageSkeleton />
         ) : (
           <>
             {availableMuscleGroups.length > 0 && (

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Clock, Calendar } from 'lucide-react'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type Workout = {
   id: string
@@ -129,9 +130,7 @@ export default function WorkoutsPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-lapis-text-tertiary">Loading...</div>
-          </div>
+          <PageSkeleton />
         ) : workouts.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
             <p className="text-lapis-text-tertiary mb-4">No workouts yet</p>

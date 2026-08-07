@@ -25,6 +25,7 @@ import {
 import Link from 'next/link'
 import { getLocalWeekStartString } from '@/lib/date'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type Goal = {
   id: string
@@ -160,9 +161,7 @@ export default function GoalsPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import ExerciseAlternativesManager from '@/components/gym/exercise-alternatives-manager'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 type Template = {
   id: string
@@ -258,9 +259,7 @@ export default function EditTemplatePage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }

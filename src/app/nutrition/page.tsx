@@ -24,6 +24,7 @@ import NutritionInsightCard from '@/components/nutrition/nutrition-insight-card'
 import type { CaloriePoint } from '@/lib/nutrition-trend'
 import MealTagPicker from '@/components/nutrition/meal-tag-picker'
 import { MEAL_TAGS, mealTagLabel, type MealTag } from '@/lib/food-constants'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 const MIN_ENTRIES_FOR_TREND = 3
 
@@ -394,9 +395,7 @@ export default function NutritionPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-lapis-text-tertiary">Loading...</div>
-        </div>
+        <PageSkeleton />
       </AppLayout>
     )
   }
