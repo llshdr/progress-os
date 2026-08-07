@@ -48,6 +48,58 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ─── Lapis design system tokens (Phase 0 infrastructure) ───────────────
+   Additive only - every name below is new and distinct from the shadcn
+   tokens in this file, so nothing currently rendered changes. Nothing
+   in @layer base or any component points at these yet; Phase 1 adopts
+   them screen-by-screen. See the design proposal for the full rationale
+   (deep ink-blue base, ultramarine accent, gold used sparingly,
+   gemstone-coded semantic colors). Dark-mode only by design - plain
+   values, not a :root/.dark pair, since there is no light variant.
+
+   --radius-lapis-* is deliberately its own scale, not a remap of
+   --radius/--radius-sm..4xl above: those already drive every rounded-2xl/
+   rounded-3xl currently in production (derived via the @theme inline
+   block below from a single --radius value), so touching them would be
+   a real, app-wide visual change today, not inert infrastructure.
+   Likewise --color-lapis-* stays separate from --primary/--background/
+   --card/etc rather than overwriting them in place - even though every
+   current Button/Input/Dialog usage overrides those tokens with an
+   explicit className (verified, not assumed), a blanket "remap shadcn's
+   own tokens now" would depend on that holding for every remaining
+   component this session hasn't individually read. Phase 1 remaps the
+   real tokens deliberately, alongside the reviewable visual change. */
+@theme {
+  --color-lapis-bg: #0A0C12;
+  --color-lapis-surface-1: #12151F;
+  --color-lapis-surface-2: #1A1E2C;
+  --color-lapis-surface-3: #20253A;
+  --color-lapis-border-subtle: rgba(154, 169, 214, .10);
+  --color-lapis-border: rgba(154, 169, 214, .16);
+  --color-lapis-border-strong: rgba(154, 169, 214, .26);
+  --color-lapis-text-primary: #F3F4F7;
+  --color-lapis-text-secondary: #A6ACC2;
+  --color-lapis-text-tertiary: #666E88;
+  --color-lapis-text-disabled: #454B60;
+  --color-lapis-accent-400: #5B72E3;
+  --color-lapis-accent-500: #2E4BD4;
+  --color-lapis-accent-600: #2438A8;
+  --color-lapis-gold-400: #E0BD74;
+  --color-lapis-gold-500: #C9A24B;
+  --color-lapis-jade: #3FAE82;
+  --color-lapis-citrine: #D9A23B;
+  --color-lapis-garnet: #C1484F;
+
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-body: var(--font-general-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-data: var(--font-jetbrains-mono), ui-monospace, "SF Mono", monospace;
+
+  --radius-lapis-sm: 8px;
+  --radius-lapis-md: 12px;
+  --radius-lapis-lg: 20px;
+  --radius-lapis-xl: 28px;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
