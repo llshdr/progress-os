@@ -10,6 +10,8 @@ import {
   MIN_BLOCK_HEIGHT,
   DAY_HEIGHT,
   SOURCE_STYLE,
+  SOURCE_ICON,
+  SOURCE_ICON_COLOR,
   HABIT_DONE_STYLE,
   timeStringToMinutes,
   type CalendarEntry,
@@ -253,8 +255,15 @@ export default function WeekView({
 
       {/* Phone - condensed agenda, no hourly grid at all: at this width
           a real grid has no room to render text in, so this is a
-          genuinely different (simpler) view rather than a squeezed one. */}
-      <div className="md:hidden space-y-3">
+          genuinely different (simpler) view rather than a squeezed one.
+          Each item gets its source's icon and color (the same identity
+          the desktop grid already carries via position and color alone -
+          a plain list needs both, since it has no geometry to lean on),
+          and an empty day collapses to a single slim row instead of a
+          full card, so a week's real shape - which days are actually
+          busy - reads at a glance instead of every day looking the same
+          size regardless of content. */}
+      <div className="md:hidden space-y-2">
         {weekDates.map((date) => {
           const items = itemsByDate.get(date) ?? []
           const sorted = [...items].sort((a, b) => {
@@ -266,6 +275,23 @@ export default function WeekView({
           const { weekday, day } = formatDayHeader(date)
           const isToday = date === today
 
+          if (sorted.length === 0) {
+            return (
+              <button
+                key={date}
+                onClick={() => onSelectDate(date)}
+                className={`w-full flex items-center justify-between px-4 py-2 rounded-lapis-md border transition-colors ${
+                  isToday ? 'border-lapis-accent-500/40 bg-lapis-accent-500/[0.06]' : 'border-lapis-border-subtle bg-lapis-surface-1/50'
+                }`}
+              >
+                <span className={`text-sm ${isToday ? 'text-lapis-accent-400 font-medium' : 'text-lapis-text-tertiary'}`}>
+                  {weekday} {day}
+                </span>
+                <span className="text-lapis-text-disabled text-xs">Nothing scheduled</span>
+              </button>
+            )
+          }
+
           return (
             <button
               key={date}
@@ -274,26 +300,29 @@ export default function WeekView({
                 isToday ? 'border-lapis-accent-500/40 bg-lapis-accent-500/[0.06]' : 'border-lapis-border-subtle bg-lapis-surface-1'
               }`}
             >
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2.5">
                 <span className={`text-sm font-medium ${isToday ? 'text-lapis-accent-400' : 'text-lapis-text-primary'}`}>
                   {weekday} {day}
                 </span>
                 {isToday && <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-lapis-accent-500/15 text-lapis-accent-400">Today</span>}
               </div>
-              {sorted.length === 0 ? (
-                <p className="text-lapis-text-disabled text-sm">Nothing scheduled</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {sorted.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2 text-sm">
+              <div className="space-y-2">
+                {sorted.map((item) => {
+                  const Icon = SOURCE_ICON[item.source]
+                  const isHabitDone = item.source === 'habit' && item.habitDoneToday
+                  return (
+                    <div key={item.id} className="flex items-center gap-2.5 text-sm">
+                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isHabitDone ? 'text-lapis-jade' : SOURCE_ICON_COLOR[item.source]}`} />
                       <span className="font-data tabular-nums text-lapis-text-tertiary text-xs w-11 shrink-0">
                         {item.startMinutes != null ? minutesToTimeString(item.startMinutes) : 'All day'}
                       </span>
-                      <span className="text-lapis-text-secondary truncate">{item.title}</span>
+                      <span className={`truncate ${isHabitDone ? 'text-lapis-text-tertiary line-through' : 'text-lapis-text-secondary'}`}>
+                        {item.title}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
+                  )
+                })}
+              </div>
             </button>
           )
         })}

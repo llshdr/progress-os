@@ -4,6 +4,7 @@
 // positioned/sized time-block when it has a time, and as an all-day
 // banner item when it doesn't - never a fabricated time.
 
+import { CalendarDays, Dumbbell, Flag, Target, CheckCircle2, type LucideIcon } from 'lucide-react'
 import { getLocalWeekdayIndex } from '@/lib/date'
 import { computeSlotForWeekday, slotDisplayName, type ScheduleSlot } from '@/lib/gym-schedule'
 import type { ActionItem } from '@/lib/goals'
@@ -120,6 +121,39 @@ export const SOURCE_STYLE: Record<TimedItemSource, string> = {
 // only source with a done/not-done state, so it's the only one that
 // needs a second style.
 export const HABIT_DONE_STYLE = 'bg-lapis-jade/40 border-lapis-jade/70 text-lapis-text-primary'
+
+// Same source identity as SOURCE_STYLE, in the two other shapes narrow
+// mobile renderings need it in: an icon (for the week-mode agenda list,
+// where a plain row has no geometry to lean on for identity) and a
+// solid dot color (for the day-mode 3-day peek columns, where even a
+// full icon doesn't fit). Centralized here rather than redefined per
+// component so all three calendar surfaces agree on what each source
+// looks like. Every class below is a full literal string (not built via
+// interpolation) so Tailwind's static scanner actually generates it.
+export const SOURCE_ICON: Record<TimedItemSource, LucideIcon> = {
+  entry: CalendarDays,
+  gym: Dumbbell,
+  races: Flag,
+  race_day: Flag,
+  goal: Target,
+  habit: CheckCircle2,
+}
+export const SOURCE_ICON_COLOR: Record<TimedItemSource, string> = {
+  entry: 'text-lapis-text-tertiary',
+  gym: 'text-lapis-accent-400',
+  races: 'text-lapis-citrine',
+  race_day: 'text-lapis-citrine',
+  goal: 'text-lapis-text-tertiary',
+  habit: 'text-lapis-jade',
+}
+export const SOURCE_DOT_COLOR: Record<TimedItemSource, string> = {
+  entry: 'bg-lapis-text-tertiary',
+  gym: 'bg-lapis-accent-400',
+  races: 'bg-lapis-citrine',
+  race_day: 'bg-lapis-citrine',
+  goal: 'bg-lapis-text-tertiary',
+  habit: 'bg-lapis-jade',
+}
 
 // Terse per-discipline tags, matching the style ZONE_GUIDANCE's own
 // "everything else is just easy/technique volume" framing already uses -

@@ -28,6 +28,7 @@ import {
   type PositionedItem,
 } from '@/lib/calendar'
 import WeekView from '@/components/calendar/week-view'
+import DayPeekColumn from '@/components/calendar/day-peek-column'
 import { fetchScheduleSlots, WEEKDAY_NAMES, type ScheduleSlot } from '@/lib/gym-schedule'
 import { fetchActiveActionItems, type ActionItem } from '@/lib/goals'
 import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
@@ -630,7 +631,36 @@ export default function CalendarPage() {
             </div>
           )}
 
-          <div ref={axisRef} className="relative border border-lapis-border-subtle rounded-lapis-lg overflow-y-auto" style={{ maxHeight: '65vh' }}>
+          {/* Mobile gets a 3-day mini grid (yesterday/today/tomorrow) instead
+              of a single isolated day - a lone day in a phone-width agenda
+              has no sense of "what's around it," which every mainstream
+              calendar app avoids by always showing neighboring days. The
+              center column below is the exact same interactive day-view
+              content rendered at every breakpoint (unchanged from before
+              this pass) - only the flanking peek columns are new, and they
+              collapse away entirely at md+ via their own wrapper's
+              md:hidden, so desktop is provably unchanged. Read-only by
+              design: tapping a peek column recenters the view on that day
+              rather than duplicating the center column's edit/toggle/start
+              interactions a second time. */}
+          <div className="flex gap-1.5">
+            <div className="md:hidden">
+              <DayPeekColumn
+                date={shiftDay(date, -1)}
+                today={today}
+                calendarEntries={calendarEntries}
+                goalItems={goalItems}
+                activeRace={activeRace}
+                scheduleMode={scheduleMode}
+                scheduleSlots={scheduleSlots}
+                raceWeekSlots={raceWeekSlots}
+                habits={habits}
+                habitLogs={habitLogs}
+                onSelect={setDate}
+              />
+            </div>
+
+            <div ref={axisRef} className="flex-1 min-w-0 relative border border-lapis-border-subtle rounded-lapis-lg overflow-y-auto" style={{ maxHeight: '65vh' }}>
             <div className="relative" style={{ height: DAY_HEIGHT }}>
               {/* Dimmed regions outside wake/sleep - a default emphasis, never a hard cutoff; anything scheduled here still shows in full. */}
               <div
@@ -694,6 +724,23 @@ export default function CalendarPage() {
                   )
                 })}
               </div>
+            </div>
+            </div>
+
+            <div className="md:hidden">
+              <DayPeekColumn
+                date={shiftDay(date, 1)}
+                today={today}
+                calendarEntries={calendarEntries}
+                goalItems={goalItems}
+                activeRace={activeRace}
+                scheduleMode={scheduleMode}
+                scheduleSlots={scheduleSlots}
+                raceWeekSlots={raceWeekSlots}
+                habits={habits}
+                habitLogs={habitLogs}
+                onSelect={setDate}
+              />
             </div>
           </div>
           </>
