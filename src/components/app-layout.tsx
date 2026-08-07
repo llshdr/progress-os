@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
-  LayoutDashboard,
+  Sun,
   Dumbbell,
   Apple,
   Target,
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 
 const navItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Today', href: '/dashboard', icon: Sun },
   { name: 'Gym', href: '/gym', icon: Dumbbell },
   { name: 'Nutrition', href: '/nutrition', icon: Apple },
   { name: 'Goals', href: '/goals', icon: Target },
@@ -60,13 +60,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 pb-20 md:pb-0">
+      <main className="flex-1 pb-24 md:pb-0">
         {children}
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t border-lapis-border-subtle bg-lapis-surface-1/90 backdrop-blur-xl">
-        <ul className="flex items-center justify-around py-2">
+      {/* Mobile Bottom Navigation - active state reuses the exact same
+          bg-lapis-accent-500/15 chip the desktop sidebar uses for its
+          active row, so both surfaces say "you are here" with the same
+          visual grammar instead of two different conventions. Extra
+          bottom padding accounts for the iOS home-indicator safe area -
+          without it, the bar sits flush against (or under) the gesture
+          bar on notched iPhones. */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t border-lapis-border-subtle bg-lapis-surface-1/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+        <ul className="flex items-center justify-around py-1.5">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
@@ -75,9 +81,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <li key={item.name}>
                 <Link
                   href={item.href}
-                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lapis-sm transition-colors ${
+                  className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lapis-sm transition-colors ${
                     isActive
-                      ? 'text-lapis-text-primary'
+                      ? 'bg-lapis-accent-500/15 text-lapis-text-primary'
                       : 'text-lapis-text-tertiary hover:text-lapis-text-secondary'
                   }`}
                 >
