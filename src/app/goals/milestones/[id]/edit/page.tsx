@@ -105,7 +105,7 @@ export default function EditMilestonePage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -115,20 +115,20 @@ export default function EditMilestonePage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
-          <Link href={backHref} className="text-white/40 hover:text-white/60 transition-colors">
+          <Link href={backHref} className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back
           </Link>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+            className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
             title="Delete"
           >
-            <Trash2 className="w-5 h-5 text-white/40" />
+            <Trash2 className="w-5 h-5 text-lapis-text-tertiary" />
           </button>
         </div>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Edit Milestone</h1>
-        <p className="text-white/50 text-sm mb-8">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Edit Milestone</h1>
+        <p className="text-lapis-text-tertiary text-sm mb-8">
           Updating the next action bumps this milestone's "last touched" time.
         </p>
 
@@ -152,7 +152,7 @@ export default function EditMilestonePage() {
           <Button
             onClick={handleUpdate}
             disabled={saving || !isValid}
-            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
+            className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
             {saving ? 'Saving...' : 'Update Milestone'}
           </Button>

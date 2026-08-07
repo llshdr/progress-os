@@ -15,7 +15,7 @@ export default function NewMilestonePage() {
       fallback={
         <AppLayout>
           <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
+            <div className="text-lapis-text-tertiary">Loading...</div>
           </div>
         </AppLayout>
       }
@@ -95,13 +95,13 @@ function NewMilestonePageInner() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link
           href={presetGoalId ? `/goals/${presetGoalId}` : '/goals'}
-          className="text-white/40 hover:text-white/60 transition-colors mb-6 block"
+          className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block"
         >
           ← Back
         </Link>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Add Milestone</h1>
-        <p className="text-white/50 text-sm mb-8">A concrete step, optionally in service of a goal</p>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Add Milestone</h1>
+        <p className="text-lapis-text-tertiary text-sm mb-8">A concrete step, optionally in service of a goal</p>
 
         <div className="max-w-2xl space-y-6">
           <MilestoneFormFields
@@ -123,7 +123,7 @@ function NewMilestonePageInner() {
           <Button
             onClick={handleCreate}
             disabled={loading || !isValid}
-            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
+            className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
             {loading ? 'Creating...' : 'Create Milestone'}
           </Button>

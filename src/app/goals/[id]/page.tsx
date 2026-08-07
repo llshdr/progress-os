@@ -142,7 +142,7 @@ export default function GoalDetailPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -152,20 +152,20 @@ export default function GoalDetailPage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
-          <Link href="/goals" className="text-white/40 hover:text-white/60 transition-colors">
+          <Link href="/goals" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back
           </Link>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+            className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
             title="Delete goal"
           >
-            <Trash2 className="w-5 h-5 text-white/40" />
+            <Trash2 className="w-5 h-5 text-lapis-text-tertiary" />
           </button>
         </div>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Edit Goal</h1>
-        <p className="text-white/50 text-sm mb-8">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Edit Goal</h1>
+        <p className="text-lapis-text-tertiary text-sm mb-8">
           Updating the next action bumps this goal's "last touched" time.
         </p>
 
@@ -187,22 +187,22 @@ export default function GoalDetailPage() {
             onScopeChange={setScope}
           />
 
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-white/40" />
-                <h2 className="text-lg font-medium text-white">Milestones</h2>
+                <Sparkles className="w-4 h-4 text-lapis-text-tertiary" />
+                <h2 className="text-lg font-medium text-lapis-text-primary">Milestones</h2>
               </div>
               <Link
                 href={`/goals/milestones/new?goalId=${params.id}`}
-                className="text-white/40 hover:text-white/60 text-xs"
+                className="text-lapis-text-tertiary hover:text-lapis-text-secondary text-xs"
               >
                 + Add manually
               </Link>
             </div>
 
             {linkedMilestones.length === 0 && (
-              <p className="text-white/40 text-sm mb-3">
+              <p className="text-lapis-text-tertiary text-sm mb-3">
                 Break this goal down into a few concrete milestones to work toward it.
               </p>
             )}
@@ -210,31 +210,31 @@ export default function GoalDetailPage() {
             {linkedMilestones.length > 0 && (
               <div className="space-y-3 mb-4">
                 {linkedMilestones.map((milestone) => (
-                  <div key={milestone.id} className="border border-white/10 rounded-xl bg-white/[0.02] p-4">
+                  <div key={milestone.id} className="border border-lapis-border-subtle rounded-lapis-md bg-lapis-surface-1 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-white font-medium text-sm">{milestone.title}</h3>
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                          <h3 className="text-lapis-text-primary font-medium text-sm">{milestone.title}</h3>
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                             {milestone.status}
                           </span>
                           {milestone.due_date && (
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                               Due {new Date(milestone.due_date).toLocaleDateString()}
                             </span>
                           )}
                         </div>
                         {milestone.description && (
-                          <p className="text-white/40 text-xs mb-1">{milestone.description}</p>
+                          <p className="text-lapis-text-tertiary text-xs mb-1">{milestone.description}</p>
                         )}
-                        <p className="text-white/70 text-xs">
-                          <span className="text-white/40">Next: </span>
-                          {milestone.next_action || <span className="text-white/30 italic">not set</span>}
+                        <p className="text-lapis-text-secondary text-xs">
+                          <span className="text-lapis-text-tertiary">Next: </span>
+                          {milestone.next_action || <span className="text-lapis-text-disabled italic">not set</span>}
                         </p>
                       </div>
                       <Link
                         href={`/goals/milestones/${milestone.id}/edit`}
-                        className="text-white/40 hover:text-white/60 text-xs shrink-0"
+                        className="text-lapis-text-tertiary hover:text-lapis-text-secondary text-xs shrink-0"
                       >
                         Edit
                       </Link>
@@ -249,7 +249,7 @@ export default function GoalDetailPage() {
               onClick={handleGeneratePlan}
               disabled={generatingPlan}
               variant="outline"
-              className="border-white/10 text-white hover:bg-white/5"
+              className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2"
             >
               {generatingPlan
                 ? 'Generating...'
@@ -257,13 +257,13 @@ export default function GoalDetailPage() {
                   ? 'Generate a plan'
                   : 'Add more milestones'}
             </Button>
-            {planError && <p className="text-sm text-red-400 mt-2">{planError}</p>}
+            {planError && <p className="text-sm text-lapis-garnet mt-2">{planError}</p>}
           </div>
 
           <Button
             onClick={handleUpdate}
             disabled={saving || !isValid}
-            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
+            className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
             {saving ? 'Saving...' : 'Update Goal'}
           </Button>

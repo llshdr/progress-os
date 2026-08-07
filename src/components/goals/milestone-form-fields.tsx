@@ -49,7 +49,7 @@ export default function MilestoneFormFields({
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="milestone-title" className="text-white/80">
+        <Label htmlFor="milestone-title" className="text-lapis-text-secondary">
           Title *
         </Label>
         <Input
@@ -58,12 +58,12 @@ export default function MilestoneFormFields({
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Build base mileage to 10k"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="milestone-description" className="text-white/80">
+        <Label htmlFor="milestone-description" className="text-lapis-text-secondary">
           Description (optional)
         </Label>
         <Textarea
@@ -72,21 +72,21 @@ export default function MilestoneFormFields({
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder="Scope, context, anything worth remembering..."
           rows={3}
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
         />
       </div>
 
       {goalOptions.length > 0 && (
         <div className="space-y-2">
-          <Label className="text-white/80">Linked goal (optional)</Label>
+          <Label className="text-lapis-text-secondary">Linked goal (optional)</Label>
           <Select
             value={goalId ?? NO_GOAL_VALUE}
             onValueChange={(value) => onGoalIdChange(value === NO_GOAL_VALUE ? null : value)}
           >
-            <SelectTrigger className="bg-white/5 border-white/10 text-white">
+            <SelectTrigger className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-black border-white/10">
+            <SelectContent className="bg-lapis-bg border-lapis-border-subtle">
               <SelectItem value={NO_GOAL_VALUE}>No linked goal</SelectItem>
               {goalOptions.map((goal) => (
                 <SelectItem key={goal.id} value={goal.id}>
@@ -99,7 +99,7 @@ export default function MilestoneFormFields({
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="milestone-next-action" className="text-white/80">
+        <Label htmlFor="milestone-next-action" className="text-lapis-text-secondary">
           Next action
         </Label>
         <Input
@@ -108,15 +108,15 @@ export default function MilestoneFormFields({
           value={nextAction}
           onChange={(e) => onNextActionChange(e.target.value)}
           placeholder="What's the single next concrete step?"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
         />
-        <p className="text-white/40 text-xs">
+        <p className="text-lapis-text-tertiary text-xs">
           You set this manually for now — the app isn&apos;t trying to infer it yet.
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="milestone-due-date" className="text-white/80">
+        <Label htmlFor="milestone-due-date" className="text-lapis-text-secondary">
           Due date (optional)
         </Label>
         <Input
@@ -124,17 +124,17 @@ export default function MilestoneFormFields({
           type="date"
           value={dueDate}
           onChange={(e) => onDueDateChange(e.target.value)}
-          className="bg-white/5 border-white/10 text-white"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
         />
       </div>
 
       <div className="space-y-2">
-        <Label className="text-white/80">Status</Label>
+        <Label className="text-lapis-text-secondary">Status</Label>
         <Select value={status} onValueChange={(value) => onStatusChange(value as ActionItemStatus)}>
-          <SelectTrigger className="bg-white/5 border-white/10 text-white">
+          <SelectTrigger className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-black border-white/10">
+          <SelectContent className="bg-lapis-bg border-lapis-border-subtle">
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="done">Done</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>

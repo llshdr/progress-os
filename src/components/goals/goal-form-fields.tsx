@@ -45,7 +45,7 @@ export default function GoalFormFields({
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="goal-title" className="text-white/80">
+        <Label htmlFor="goal-title" className="text-lapis-text-secondary">
           Title *
         </Label>
         <Input
@@ -54,12 +54,12 @@ export default function GoalFormFields({
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Launch the new website"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="goal-description" className="text-white/80">
+        <Label htmlFor="goal-description" className="text-lapis-text-secondary">
           Description (optional)
         </Label>
         <Textarea
@@ -68,12 +68,12 @@ export default function GoalFormFields({
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder="Why this matters, what done looks like..."
           rows={3}
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="goal-start-date" className="text-white/80">
+        <Label htmlFor="goal-start-date" className="text-lapis-text-secondary">
           Start date (optional)
         </Label>
         <Input
@@ -81,12 +81,12 @@ export default function GoalFormFields({
           type="date"
           value={startDate}
           onChange={(e) => onStartDateChange(e.target.value)}
-          className="bg-white/5 border-white/10 text-white"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="goal-target-date" className="text-white/80">
+        <Label htmlFor="goal-target-date" className="text-lapis-text-secondary">
           Target date (optional)
         </Label>
         <Input
@@ -94,15 +94,15 @@ export default function GoalFormFields({
           type="date"
           value={targetDate}
           onChange={(e) => onTargetDateChange(e.target.value)}
-          className="bg-white/5 border-white/10 text-white"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
         />
-        <p className="text-white/40 text-xs">
+        <p className="text-lapis-text-tertiary text-xs">
           Used to space out a generated plan&apos;s milestone due dates.
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="goal-next-action" className="text-white/80">
+        <Label htmlFor="goal-next-action" className="text-lapis-text-secondary">
           Next action
         </Label>
         <Input
@@ -111,20 +111,20 @@ export default function GoalFormFields({
           value={nextAction}
           onChange={(e) => onNextActionChange(e.target.value)}
           placeholder="What's the single next concrete step?"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
         />
-        <p className="text-white/40 text-xs">
+        <p className="text-lapis-text-tertiary text-xs">
           You set this manually for now — the app isn&apos;t trying to infer it yet.
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label className="text-white/80">Status</Label>
+        <Label className="text-lapis-text-secondary">Status</Label>
         <Select value={status} onValueChange={(value) => onStatusChange(value as ActionItemStatus)}>
-          <SelectTrigger className="bg-white/5 border-white/10 text-white">
+          <SelectTrigger className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-black border-white/10">
+          <SelectContent className="bg-lapis-bg border-lapis-border-subtle">
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="done">Done</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>
@@ -133,22 +133,22 @@ export default function GoalFormFields({
       </div>
 
       <div className="space-y-2">
-        <Label className="text-white/80">Scope (optional)</Label>
+        <Label className="text-lapis-text-secondary">Scope (optional)</Label>
         <Select
           value={scope ?? 'none'}
           onValueChange={(value) => onScopeChange(value === 'none' ? null : (value as GoalScope))}
         >
-          <SelectTrigger className="bg-white/5 border-white/10 text-white">
+          <SelectTrigger className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-black border-white/10">
+          <SelectContent className="bg-lapis-bg border-lapis-border-subtle">
             <SelectItem value="none">Not set</SelectItem>
             <SelectItem value="quick_win">{SCOPE_LABELS.quick_win}</SelectItem>
             <SelectItem value="milestone">{SCOPE_LABELS.milestone}</SelectItem>
             <SelectItem value="long_term">{SCOPE_LABELS.long_term}</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-white/40 text-xs">
+        <p className="text-lapis-text-tertiary text-xs">
           How big you consider this — affects your rank ceiling, not shown to anyone else.
         </p>
       </div>

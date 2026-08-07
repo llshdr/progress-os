@@ -135,23 +135,23 @@ export default function GoalsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-              <Target className="w-8 h-8 text-white/80" />
+            <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
+              <Target className="w-8 h-8 text-lapis-text-secondary" />
             </div>
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">Goals</h1>
-              <p className="text-white/50 text-sm">Your single next move on what matters most</p>
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">Goals</h1>
+              <p className="text-lapis-text-tertiary text-sm">Your single next move on what matters most</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/goals/new">
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors">
                 <Plus className="w-4 h-4" />
                 <span className="text-sm font-medium">Add Goal</span>
               </button>
             </Link>
             <Link href="/goals/milestones/new">
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/70 hover:bg-white/5 transition-colors text-sm">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-secondary hover:bg-lapis-surface-2 transition-colors text-sm">
                 <Plus className="w-4 h-4" />
                 Add Milestone
               </button>
@@ -162,8 +162,8 @@ export default function GoalsPage() {
         <div className="mb-8">
           <button
             onClick={() => setShowAll(!showAll)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              showAll ? 'bg-white/10 text-white border-white/20' : 'bg-white/5 text-white/60 border-white/10'
+            className={`flex items-center gap-2 px-4 py-2 rounded-lapis-sm transition-colors ${
+              showAll ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong' : 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle'
             } border`}
           >
             <span className="text-sm">Show done/archived</span>
@@ -172,19 +172,19 @@ export default function GoalsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
+            <div className="text-lapis-text-tertiary">Loading...</div>
           </div>
         ) : items.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">No active goals or milestones yet</p>
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <p className="text-lapis-text-tertiary mb-4">No active goals or milestones yet</p>
             <div className="flex items-center justify-center gap-3">
               <Link href="/goals/new">
-                <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
+                <button className="px-4 py-2 rounded-lapis-sm border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors">
                   Add a goal
                 </button>
               </Link>
               <Link href="/goals/milestones/new">
-                <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
+                <button className="px-4 py-2 rounded-lapis-sm border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors">
                   Add a milestone
                 </button>
               </Link>
@@ -199,21 +199,21 @@ export default function GoalsPage() {
               return (
                 <div
                   key={`${item.kind}-${item.id}`}
-                  className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
+                  className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                           {item.kind === 'goal' ? 'Goal' : 'Milestone'}
                         </span>
                         {showAll && (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                             {item.status}
                           </span>
                         )}
                         {daysUntilDue != null && (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                             {daysUntilDue < 0
                               ? `${Math.abs(daysUntilDue)}d overdue`
                               : daysUntilDue === 0
@@ -222,17 +222,17 @@ export default function GoalsPage() {
                           </span>
                         )}
                         {daysSinceTouched >= 7 && (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                             Untouched {daysSinceTouched}d
                           </span>
                         )}
                       </div>
-                      <Link href={item.editHref} className="text-lg font-medium text-white hover:text-white/80">
+                      <Link href={item.editHref} className="text-lg font-medium text-lapis-text-primary hover:text-lapis-text-secondary">
                         {item.title}
                       </Link>
-                      <p className="text-white/70 text-sm mt-1">
-                        <span className="text-white/40">Next: </span>
-                        {item.nextAction || <span className="text-white/30 italic">not set</span>}
+                      <p className="text-lapis-text-secondary text-sm mt-1">
+                        <span className="text-lapis-text-tertiary">Next: </span>
+                        {item.nextAction || <span className="text-lapis-text-disabled italic">not set</span>}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -240,34 +240,34 @@ export default function GoalsPage() {
                         <>
                           <button
                             onClick={() => setStatus(item, 'done')}
-                            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                            className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                             title="Mark done"
                           >
-                            <CheckCircle2 className="w-5 h-5 text-white/40" />
+                            <CheckCircle2 className="w-5 h-5 text-lapis-text-tertiary" />
                           </button>
                           <button
                             onClick={() => setStatus(item, 'archived')}
-                            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                            className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                             title="Archive"
                           >
-                            <Archive className="w-5 h-5 text-white/40" />
+                            <Archive className="w-5 h-5 text-lapis-text-tertiary" />
                           </button>
                         </>
                       ) : (
                         <button
                           onClick={() => setStatus(item, 'active')}
-                          className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                          className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                           title="Reactivate"
                         >
-                          <RotateCcw className="w-5 h-5 text-white/40" />
+                          <RotateCcw className="w-5 h-5 text-lapis-text-tertiary" />
                         </button>
                       )}
                       <button
                         onClick={() => openDeleteModal(item)}
-                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                         title="Delete"
                       >
-                        <Trash2 className="w-5 h-5 text-white/40" />
+                        <Trash2 className="w-5 h-5 text-lapis-text-tertiary" />
                       </button>
                     </div>
                   </div>
