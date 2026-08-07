@@ -91,6 +91,36 @@ export interface TimedItem {
   habitDoneToday?: boolean // 'habit' source only
 }
 
+// Shared rendering constants - both the day view and the week view
+// (components/calendar/week-view.tsx) style/size blocks identically, so
+// these live here once rather than being defined (and risking drifting)
+// in each renderer separately.
+
+export const PIXELS_PER_MINUTE = 1 // 60px per hour
+// Tall enough for a block's own two lines (title + time range) without
+// clipping - 28px only fit ~20px of content after padding, cutting off
+// the time line on any block 28 minutes or shorter.
+export const MIN_BLOCK_HEIGHT = 36
+export const DAY_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE
+
+// Categorical, not semantic - each source keeps a fixed, distinct hue
+// from the Lapis palette so they stay visually distinguishable, reusing
+// (not inventing) the existing accent/citrine/jade tokens: gym was
+// already blue, so it keeps the primary lapis accent; races keeps its
+// warm distinction via citrine; habits keep their green via jade.
+export const SOURCE_STYLE: Record<TimedItemSource, string> = {
+  entry: 'bg-lapis-surface-2 border-lapis-border-strong text-lapis-text-primary',
+  gym: 'bg-lapis-accent-500/10 border-lapis-accent-400/30 text-lapis-accent-400',
+  races: 'bg-lapis-citrine/10 border-lapis-citrine/30 text-lapis-citrine',
+  race_day: 'bg-lapis-surface-2 border-lapis-border-strong text-lapis-text-primary',
+  goal: 'bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-secondary',
+  habit: 'bg-lapis-jade/10 border-lapis-jade/30 text-lapis-jade',
+}
+// Brighter variant once a habit is logged for the displayed day - the
+// only source with a done/not-done state, so it's the only one that
+// needs a second style.
+export const HABIT_DONE_STYLE = 'bg-lapis-jade/40 border-lapis-jade/70 text-lapis-text-primary'
+
 // Terse per-discipline tags, matching the style ZONE_GUIDANCE's own
 // "everything else is just easy/technique volume" framing already uses -
 // only the roles worth calling out get a suffix.
@@ -238,17 +268,19 @@ export interface PositionedItem extends Omit<TimedItem, 'startMinutes' | 'endMin
 
 type TimedOnly = TimedItem & { startMinutes: number; endMinutes: number }
 
-export function layoutTimedItems(items: TimedItem[]): PositionedItem[] {
-  const timed = items.filter((i): i is TimedOnly => i.startMinutes != null && i.endMinutes != null)
-  const sorted = [...timed].sort((a, b) => a.startMinutes - b.startMinutes)
-
-  // Connected-component clustering via a running "cluster end"
-  // watermark: as long as the next item (in start-time order) starts
-  // before the cluster's max end-time so far, it joins the same
-  // cluster - this correctly chains A-overlaps-B-overlaps-C even when A
-  // and C don't directly overlap each other.
-  const clusters: TimedOnly[][] = []
-  let currentCluster: TimedOnly[] = []
+// Connected-component clustering via a running "cluster end" watermark:
+// as long as the next item (in start-time order) starts before the
+// cluster's max end-time so far, it joins the same cluster - this
+// correctly chains A-overlaps-B-overlaps-C even when A and C don't
+// directly overlap each other. Extracted out of layoutTimedItems so the
+// week view can reuse the exact same grouping (e.g. to decide which
+// overlapping items fold into a "+N" chip at narrower column widths)
+// without re-deriving it - layoutTimedItems's own behavior is unchanged,
+// this is a pure extraction.
+export function clusterOverlappingTimedItems<T extends { startMinutes: number; endMinutes: number }>(items: T[]): T[][] {
+  const sorted = [...items].sort((a, b) => a.startMinutes - b.startMinutes)
+  const clusters: T[][] = []
+  let currentCluster: T[] = []
   let clusterEnd = -Infinity
 
   for (const item of sorted) {
@@ -261,6 +293,12 @@ export function layoutTimedItems(items: TimedItem[]): PositionedItem[] {
     clusterEnd = Math.max(clusterEnd, item.endMinutes)
   }
   if (currentCluster.length > 0) clusters.push(currentCluster)
+  return clusters
+}
+
+export function layoutTimedItems(items: TimedItem[]): PositionedItem[] {
+  const timed = items.filter((i): i is TimedOnly => i.startMinutes != null && i.endMinutes != null)
+  const clusters = clusterOverlappingTimedItems(timed)
 
   const positioned: PositionedItem[] = []
   for (const cluster of clusters) {
