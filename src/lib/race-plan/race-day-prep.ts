@@ -45,6 +45,50 @@ export const PACKING_LISTS: Record<'multisport' | 'run_or_other', PackingList> =
   },
 }
 
+// ─── Race Prep Checklist defaults (Part C) ────────────────────────────
+// Real, trackable checklist items, seeded once per race from this static
+// content into race_checklist_items (see migration 065) - the user can
+// then check items off, delete any, and add their own custom ones. Two
+// categories: 'gear' (buy/pack) sourced directly from PACKING_LISTS
+// above, and 'test' (rehearse before race day), which has no existing
+// itemized equivalent - TRANSITION_GUIDANCE/FUELING_GUIDANCE below are
+// prose, not checklist items, so this is new content, kept small and
+// concrete rather than restating that prose.
+export const TEST_CHECKLIST_ITEMS: Record<RaceCategory, string[]> = {
+  multisport: [
+    'Race-day nutrition, tried in a real long session - not for the first time on race day',
+    'At least one session at your goal race pace',
+    'Every piece of race gear (wetsuit, shoes, on-bike nutrition) tested in training',
+    'A full-speed transition run-through',
+  ],
+  run: [
+    'Race-day nutrition, tried in a real long run - not for the first time on race day',
+    'At least one run at your goal race pace',
+    'Race-day shoes and gear, broken in and tested in training',
+  ],
+  other: [
+    'Race-day nutrition, tried in a real long session - not for the first time on race day',
+    'At least one session at your goal race pace',
+    'Race-day gear tested in training, not brand new on the day',
+  ],
+}
+
+// One-time seed set for a race with no checklist items yet - flattens
+// PACKING_LISTS' T1/T2/T3/bag grouping into plain 'gear' items (the
+// transition grouping matters for packing bags, not for a done/not-done
+// checklist) and pairs it with TEST_CHECKLIST_ITEMS above. Order is
+// preserved so the seeded list reads in the same sequence as the existing
+// Packing List card did.
+export function defaultChecklistItems(category: RaceCategory): { category: 'gear' | 'test'; title: string }[] {
+  const packingList = category === 'multisport' ? PACKING_LISTS.multisport : PACKING_LISTS.run_or_other
+  const gearTitles = [...(packingList.t1 ?? []), ...(packingList.t2 ?? []), ...(packingList.t3 ?? []), ...(packingList.bag ?? [])]
+
+  return [
+    ...gearTitles.map((title) => ({ category: 'gear' as const, title })),
+    ...TEST_CHECKLIST_ITEMS[category].map((title) => ({ category: 'test' as const, title })),
+  ]
+}
+
 // ─── Transition guidance (Phase A) ────────────────────────────────────
 // NOT full brick workouts (those are the endurance-slot brick sessions
 // themselves) - this is the gear-change/mechanical-fix layer attached to

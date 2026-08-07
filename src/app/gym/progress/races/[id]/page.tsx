@@ -29,7 +29,6 @@ import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/rac
 import { deriveCurrentFormLevel, deriveRunFormEvidence, TIER_ORDER } from '@/lib/race-plan/current-form'
 import { slotsForWeek, ZONE_GUIDANCE, thresholdPaceHint, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import {
-  PACKING_LISTS,
   FUELING_GUIDANCE,
   TRANSITION_GUIDANCE,
   RACE_DAY_CHECKPOINTS,
@@ -41,6 +40,7 @@ import { suggestMilestoneSessions } from '@/lib/race-plan/milestone-sessions'
 import { TYPE_LABEL } from '@/components/races/day-slot-display'
 import PhaseTemplateDialog from '@/components/races/phase-template-dialog'
 import WeekDayList from '@/components/races/week-day-list'
+import RaceChecklistCard from '@/components/races/race-checklist-card'
 import {
   emptySelfAssessmentFor,
   normalizeSelfAssessment,
@@ -599,7 +599,6 @@ export default function RaceDetailPage() {
   const daysUntil = daysBetween(race.race_date, today)
   const currentWeekStartDate = getLocalDateString(getLocalWeekStart())
   const category = raceCategoryFor(race.race_type)
-  const packingList = category === 'multisport' ? PACKING_LISTS.multisport : PACKING_LISTS.run_or_other
   const baselineLevel: ExperienceLevel = category === 'multisport' && selfAssessment.kind === 'multisport' ? experienceLevelFor(selfAssessment.pastMultisportExperience) : 'beginner'
   // Re-derived from real, sustained recent activity rather than trusting
   // the self-report forever - see current-form.ts. Only ever affects
@@ -1324,59 +1323,7 @@ export default function RaceDetailPage() {
               </div>
             ))}
 
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Packing List</h2>
-              <div className="grid gap-4 sm:grid-cols-3">
-                {packingList.t1 && (
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-2">T1 (Swim → Bike)</p>
-                    <ul className="space-y-1">
-                      {packingList.t1.map((item) => (
-                        <li key={item} className="text-lapis-text-secondary text-sm">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {packingList.t2 && (
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-2">T2 (Bike → Run)</p>
-                    <ul className="space-y-1">
-                      {packingList.t2.map((item) => (
-                        <li key={item} className="text-lapis-text-secondary text-sm">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {packingList.t3 && (
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-2">Special Needs (T3)</p>
-                    <ul className="space-y-1">
-                      {packingList.t3.map((item) => (
-                        <li key={item} className="text-lapis-text-secondary text-sm">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {packingList.bag && (
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-2">Race Day Bag</p>
-                    <ul className="space-y-1">
-                      {packingList.bag.map((item) => (
-                        <li key={item} className="text-lapis-text-secondary text-sm">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
+            <RaceChecklistCard raceId={race.id} category={category} />
 
             {fuelingPhaseSummaries.length > 0 && (
               <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">

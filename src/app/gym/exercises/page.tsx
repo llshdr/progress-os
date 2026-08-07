@@ -316,7 +316,16 @@ export default function ExerciseLibraryPage() {
                     <div className="flex-1 min-w-0">
                       <Link href={`/gym/exercises/${exercise.id}`}>
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-medium text-lapis-text-primary hover:text-lapis-text-secondary transition-colors truncate">
+                          {/* min-w-0 is required here, not just on the flex-1
+                              wrapper two levels up: this h3 is itself a flex
+                              item of the row below (title + favorite star +
+                              archived badge), and flex items default to
+                              min-width:auto - for nowrap text (which truncate
+                              sets) that's the FULL unwrapped text width, so
+                              without this the h3 refuses to shrink and the
+                              ellipsis never engages, pushing real overflow
+                              out through every ancestor up to the page. */}
+                          <h3 className="min-w-0 text-lg font-medium text-lapis-text-primary hover:text-lapis-text-secondary transition-colors truncate">
                             {exercise.name}
                           </h3>
                           {exercise.favorite && (

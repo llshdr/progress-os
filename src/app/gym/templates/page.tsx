@@ -217,7 +217,12 @@ export default function WorkoutTemplatesPage() {
                 <div className="flex items-start justify-between gap-4">
                   <Link href={`/gym/templates/${template.id}/edit`} className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-medium text-lapis-text-primary truncate">
+                      {/* min-w-0 needed on the h3 itself (not just the Link's
+                          flex-1 min-w-0 two levels up) - see the same fix and
+                          full reasoning in gym/exercises/page.tsx, where a
+                          long name actually triggered page-level horizontal
+                          overflow via this identical nested-flex pattern. */}
+                      <h3 className="min-w-0 text-lg font-medium text-lapis-text-primary truncate">
                         {template.name}
                       </h3>
                       {template.archived && (

@@ -160,7 +160,13 @@ export default function WorkoutsPage() {
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-lg font-medium text-lapis-text-primary truncate">
+                              {/* min-w-0 needed on the h3 itself (not just the
+                                  min-w-0 wrappers above) - see the same fix
+                                  and full reasoning in gym/exercises/page.tsx,
+                                  where this identical nested-flex pattern
+                                  actually triggered page-level horizontal
+                                  overflow on a long name. */}
+                              <h3 className="min-w-0 text-lg font-medium text-lapis-text-primary truncate">
                                 {workout.template_name || workout.workout_type || 'Workout'}
                               </h3>
                               {isComplete ? (
