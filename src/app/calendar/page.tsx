@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { CalendarDays, ArrowLeft, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
+import { CalendarDays, ArrowLeft, ChevronLeft, ChevronRight, Plus, Trash2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -45,7 +45,10 @@ import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-sec
 type ScheduleMode = 'rotation' | 'calendar'
 
 const PIXELS_PER_MINUTE = 1 // 60px per hour
-const MIN_BLOCK_HEIGHT = 28
+// Tall enough for a block's own two lines (title + time range) without
+// clipping - 28px only fit ~20px of content after padding, cutting off
+// the time line on any block 28 minutes or shorter.
+const MIN_BLOCK_HEIGHT = 36
 const DAY_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE
 
 // Categorical, not semantic - each source keeps a fixed, distinct hue
@@ -462,7 +465,7 @@ export default function CalendarPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link href="/dashboard" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" />
-          Back to Dashboard
+          Back to Today
         </Link>
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-6 mt-6">
@@ -577,31 +580,26 @@ export default function CalendarPage() {
                   {item.source === 'goal' ? `Due: ${item.title}` : item.title}
                 </span>
               )
-              return item.href ? (
-                <Link key={item.id} href={item.href} className="hover:opacity-80 transition-opacity">
-                  {content}
-                </Link>
-              ) : (
-                <div key={item.id} className="group relative inline-flex items-center">
-                  {content}
-                  {item.entry && (
-                    <span className="hidden group-hover:inline-flex items-center gap-0.5 ml-1">
-                      <button
-                        onClick={() => openEditDialog(item.entry!)}
-                        className="p-1 rounded hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => setEntryToDelete(item.entry!.id)}
-                        className="p-1 rounded hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                </div>
-              )
+              if (item.href) {
+                return (
+                  <Link key={item.id} href={item.href} className="hover:opacity-80 transition-opacity">
+                    {content}
+                  </Link>
+                )
+              }
+              // Directly tappable, same as a timed block - a hover-reveal
+              // edit affordance never fires on a touchscreen, so untimed
+              // entries had no way to open (and therefore no way to
+              // delete, via the dialog's own Delete button below) on
+              // mobile at all until this changed.
+              if (item.entry) {
+                return (
+                  <button key={item.id} onClick={() => openEditDialog(item.entry!)} className="hover:brightness-125 transition-all">
+                    {content}
+                  </button>
+                )
+              }
+              return <div key={item.id}>{content}</div>
             })}
           </div>
         )}
@@ -624,7 +622,10 @@ export default function CalendarPage() {
               </div>
             ))}
 
-            <div className="absolute left-14 right-2 top-0 bottom-0">
+            {/* Hour-label gutter shrinks on narrow screens (44px vs the
+                desktop 56px) - reclaims real width for the block area,
+                where overlap columns are already tightest. */}
+            <div className="absolute left-11 right-1 sm:left-14 sm:right-2 top-0 bottom-0">
               {positioned.map((item) => {
                 const top = item.startMinutes * PIXELS_PER_MINUTE
                 const height = Math.max(MIN_BLOCK_HEIGHT, (item.endMinutes - item.startMinutes) * PIXELS_PER_MINUTE)
@@ -650,7 +651,7 @@ export default function CalendarPage() {
                   <div
                     key={item.id}
                     onClick={clickable ? handleClick : undefined}
-                    className={`absolute rounded-lapis-sm border px-2 py-1 overflow-hidden text-xs ${
+                    className={`absolute rounded-lapis-sm border px-1.5 py-1 overflow-hidden text-xs ${
                       isHabit && item.habitDoneToday ? HABIT_DONE_STYLE : SOURCE_STYLE[item.source]
                     } ${clickable ? 'cursor-pointer hover:brightness-125' : ''}`}
                     style={{ top, height, left: `calc(${leftPct}% + 2px)`, width: `calc(${widthPct}% - 4px)` }}
@@ -849,6 +850,20 @@ export default function CalendarPage() {
             <Button onClick={handleSave} disabled={saving || !canSave} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
               {saving ? 'Saving...' : editingId ? 'Save Changes' : 'Add Entry'}
             </Button>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDialogOpen(false)
+                  setEntryToDelete(editingId)
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2 text-sm text-lapis-garnet hover:brightness-125 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Entry
+              </button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
