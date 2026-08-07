@@ -99,18 +99,18 @@ export default function NutritionChart({ points }: { points: CaloriePoint[] }) {
               key={`target-${i}`}
               d={d}
               fill="none"
-              stroke="rgba(255,255,255,0.35)"
+              stroke="var(--color-lapis-border-strong)"
               strokeWidth={1.5}
               strokeDasharray="2 3"
             />
           ))}
 
         {sorted.map((_, i) => (
-          <circle key={`raw-${i}`} cx={xForIndex(i)} cy={yForValue(rawValues[i])} r={2.5} fill="rgba(255,255,255,0.25)" />
+          <circle key={`raw-${i}`} cx={xForIndex(i)} cy={yForValue(rawValues[i])} r={2.5} fill="var(--color-lapis-text-secondary)" fillOpacity={0.4} />
         ))}
 
         {avgValues.length > 1 && (
-          <path d={avgPath} fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          <path d={avgPath} fill="none" stroke="var(--color-lapis-accent-500)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         )}
 
         {hoverIndex != null && (
@@ -120,33 +120,40 @@ export default function NutritionChart({ points }: { points: CaloriePoint[] }) {
               x2={xForIndex(hoverIndex)}
               y1={PADDING.top}
               y2={HEIGHT - PADDING.bottom}
-              stroke="rgba(255,255,255,0.15)"
+              stroke="var(--color-lapis-border)"
               strokeWidth={1}
             />
-            <circle cx={xForIndex(hoverIndex)} cy={yForValue(avgValues[hoverIndex])} r={4} fill="white" />
+            <circle
+              cx={xForIndex(hoverIndex)}
+              cy={yForValue(avgValues[hoverIndex])}
+              r={4}
+              fill="var(--color-lapis-bg)"
+              stroke="var(--color-lapis-accent-400)"
+              strokeWidth={2}
+            />
           </>
         )}
       </svg>
 
-      <div className="h-6 mt-2 text-sm text-white/70">
+      <div className="h-6 mt-2 text-sm text-lapis-text-secondary">
         {hoverIndex != null && sorted[hoverIndex] && (
           <>
             {formatDate(sorted[hoverIndex].date)} — trend {Math.round(avgValues[hoverIndex])} kcal
-            <span className="text-white/40"> (logged: {rawValues[hoverIndex]} kcal)</span>
+            <span className="text-lapis-text-tertiary"> (logged: {rawValues[hoverIndex]} kcal)</span>
           </>
         )}
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-white/40">
+      <div className="flex items-center gap-4 text-xs text-lapis-text-tertiary">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-2 h-2 rounded-full bg-white/25" /> Logged days
+          <span className="inline-block w-2 h-2 rounded-full bg-lapis-accent-500/25" /> Logged days
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-0.5 bg-white" /> 7-day trend
+          <span className="inline-block w-3 h-0.5 bg-lapis-accent-500" /> 7-day trend
         </span>
         {hasTargets && (
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 border-t border-dashed border-white/40" /> Target
+            <span className="inline-block w-3 border-t border-dashed border-lapis-border/40" /> Target
           </span>
         )}
       </div>

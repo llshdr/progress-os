@@ -55,12 +55,12 @@ export default function NewFoodPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/nutrition/library" className="text-white/40 hover:text-white/60 transition-colors mb-6 block">
+        <Link href="/nutrition/library" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
 
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Add Food</h1>
-        <p className="text-white/50 text-sm mb-8">Save a meal for one-click logging</p>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Add Food</h1>
+        <p className="text-lapis-text-tertiary text-sm mb-8">Save a meal for one-click logging</p>
 
         <div className="max-w-2xl space-y-6">
           <FoodFormFields
@@ -83,7 +83,7 @@ export default function NewFoodPage() {
           <Button
             onClick={handleCreate}
             disabled={loading || !isValid}
-            className="w-full bg-white text-black hover:bg-white/90 h-auto py-4 text-base font-medium"
+            className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
             {loading ? 'Creating...' : 'Create Food'}
           </Button>

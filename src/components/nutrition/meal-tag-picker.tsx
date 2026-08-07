@@ -21,8 +21,8 @@ export default function MealTagPicker({ value, onChange, allowClear = true }: Me
           onClick={() => onChange(allowClear && value === tag.value ? null : tag.value)}
           className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
             value === tag.value
-              ? 'bg-white text-black'
-              : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+              ? 'bg-lapis-accent-500 text-lapis-text-primary'
+              : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2'
           }`}
         >
           {tag.label}

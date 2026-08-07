@@ -44,7 +44,7 @@ export default function FoodFormFields({
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="food-name" className="text-white/80">
+        <Label htmlFor="food-name" className="text-lapis-text-secondary">
           Name *
         </Label>
         <Input
@@ -53,13 +53,13 @@ export default function FoodFormFields({
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
           placeholder="Chicken & Rice Bowl"
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="food-calories" className="text-white/80">
+          <Label htmlFor="food-calories" className="text-lapis-text-secondary">
             Calories *
           </Label>
           <Input
@@ -68,11 +68,11 @@ export default function FoodFormFields({
             value={calories}
             onChange={(e) => onCaloriesChange(e.target.value)}
             placeholder="650"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="food-protein" className="text-white/80">
+          <Label htmlFor="food-protein" className="text-lapis-text-secondary">
             Protein (g) *
           </Label>
           <Input
@@ -82,11 +82,11 @@ export default function FoodFormFields({
             value={protein}
             onChange={(e) => onProteinChange(e.target.value)}
             placeholder="45"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="food-fat" className="text-white/80">
+          <Label htmlFor="food-fat" className="text-lapis-text-secondary">
             Fat (g) *
           </Label>
           <Input
@@ -96,11 +96,11 @@ export default function FoodFormFields({
             value={fat}
             onChange={(e) => onFatChange(e.target.value)}
             placeholder="18"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="food-carbs" className="text-white/80">
+          <Label htmlFor="food-carbs" className="text-lapis-text-secondary">
             Carbs (g) *
           </Label>
           <Input
@@ -110,18 +110,18 @@ export default function FoodFormFields({
             value={carbs}
             onChange={(e) => onCarbsChange(e.target.value)}
             placeholder="70"
-            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label className="text-white/80">Default Meal (optional)</Label>
+        <Label className="text-lapis-text-secondary">Default Meal (optional)</Label>
         <MealTagPicker value={defaultMealTag} onChange={onDefaultMealTagChange} />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="food-ingredients" className="text-white/80">
+        <Label htmlFor="food-ingredients" className="text-lapis-text-secondary">
           Ingredients (optional)
         </Label>
         <Textarea
@@ -130,9 +130,9 @@ export default function FoodFormFields({
           onChange={(e) => onIngredientsChange(e.target.value)}
           placeholder="Chicken breast, rice, broccoli, olive oil..."
           rows={3}
-          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
         />
-        <p className="text-white/40 text-xs">
+        <p className="text-lapis-text-tertiary text-xs">
           Descriptive only — shown when logging and passed to the AI insight for context, never used in
           any calculation.
         </p>

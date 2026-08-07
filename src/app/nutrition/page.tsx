@@ -395,7 +395,7 @@ export default function NutritionPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-white/40">Loading...</div>
+          <div className="text-lapis-text-tertiary">Loading...</div>
         </div>
       </AppLayout>
     )
@@ -406,38 +406,38 @@ export default function NutritionPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-              <Apple className="w-8 h-8 text-white/80" />
+            <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
+              <Apple className="w-8 h-8 text-lapis-text-secondary" />
             </div>
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white mb-1">Nutrition</h1>
-              <p className="text-white/50 text-sm">Today&apos;s totals, logged manually</p>
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">Nutrition</h1>
+              <p className="text-lapis-text-tertiary text-sm">Today&apos;s totals, logged manually</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <Link href="/nutrition/library">
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/70 hover:bg-white/5 transition-colors text-sm">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-secondary hover:bg-lapis-surface-2 transition-colors text-sm">
                 <BookOpen className="w-4 h-4" />
                 Library
               </button>
             </Link>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger>
-              <Button onClick={openDialog} className="bg-white text-black hover:bg-white/90 text-sm">
+              <Button onClick={openDialog} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm">
                 {todayEntry ? 'Edit Today' : 'Log Today'}
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-black border-white/10 text-white max-h-[85vh] overflow-y-auto">
+            <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Log Today&apos;s Nutrition</DialogTitle>
-                <DialogDescription className="text-white/40">
+                <DialogDescription className="text-lapis-text-tertiary">
                   Copy your totals over from Lifesum (or wherever you track).
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="entry-date" className="text-white/80">
+                  <Label htmlFor="entry-date" className="text-lapis-text-secondary">
                     Date
                   </Label>
                   <Input
@@ -447,13 +447,13 @@ export default function NutritionPage() {
                     onChange={(e) => setForm({ ...form, date: e.target.value })}
                     required
                     max={today}
-                    className="bg-white/5 border-white/10 text-white"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="calories" className="text-white/80">
+                    <Label htmlFor="calories" className="text-lapis-text-secondary">
                       Calories
                     </Label>
                     <Input
@@ -463,11 +463,11 @@ export default function NutritionPage() {
                       onChange={(e) => setForm({ ...form, calories: e.target.value })}
                       required
                       placeholder="2100"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="protein" className="text-white/80">
+                    <Label htmlFor="protein" className="text-lapis-text-secondary">
                       Protein (g)
                     </Label>
                     <Input
@@ -478,11 +478,11 @@ export default function NutritionPage() {
                       onChange={(e) => setForm({ ...form, protein: e.target.value })}
                       required
                       placeholder="160"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fat" className="text-white/80">
+                    <Label htmlFor="fat" className="text-lapis-text-secondary">
                       Fat (g)
                     </Label>
                     <Input
@@ -493,11 +493,11 @@ export default function NutritionPage() {
                       onChange={(e) => setForm({ ...form, fat: e.target.value })}
                       required
                       placeholder="70"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="carbs" className="text-white/80">
+                    <Label htmlFor="carbs" className="text-lapis-text-secondary">
                       Carbs (g)
                     </Label>
                     <Input
@@ -508,14 +508,14 @@ export default function NutritionPage() {
                       onChange={(e) => setForm({ ...form, carbs: e.target.value })}
                       required
                       placeholder="220"
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                      className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                     />
                   </div>
                 </div>
 
-                <div className="border-t border-white/10 pt-4 space-y-4">
+                <div className="border-t border-lapis-border-subtle pt-4 space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="activity-adjustment" className="text-white/80">
+                    <Label htmlFor="activity-adjustment" className="text-lapis-text-secondary">
                       Extra activity today (optional)
                     </Label>
                     <div className="grid grid-cols-2 gap-2">
@@ -525,70 +525,70 @@ export default function NutritionPage() {
                         value={form.activityAdjustment}
                         onChange={(e) => setForm({ ...form, activityAdjustment: e.target.value })}
                         placeholder="+300 kcal"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                       />
                       <Input
                         type="text"
                         value={form.activityNote}
                         onChange={(e) => setForm({ ...form, activityNote: e.target.value })}
                         placeholder="e.g. extra cardio"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
                       />
                     </div>
                   </div>
                 </div>
 
                 {libraryFoods.length > 0 && (
-                  <div className="border-t border-white/10 pt-4 space-y-2">
-                    <Label className="text-white/80">Quick add from library</Label>
+                  <div className="border-t border-lapis-border-subtle pt-4 space-y-2">
+                    <Label className="text-lapis-text-secondary">Quick add from library</Label>
                     <div className="flex flex-wrap gap-2">
                       {libraryFoods.map((food) => (
                         <button
                           key={food.id}
                           type="button"
                           onClick={() => addFoodFromLibrary(food)}
-                          className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-left hover:bg-white/10 transition-colors"
+                          className="px-3 py-2 rounded-lapis-sm bg-lapis-surface-2 border border-lapis-border-subtle text-left hover:bg-lapis-surface-2 transition-colors"
                         >
-                          <span className="text-sm text-white">{food.name}</span>
-                          <span className="text-white/40 text-xs ml-2">{food.calories} kcal</span>
+                          <span className="text-sm text-lapis-text-primary">{food.name}</span>
+                          <span className="text-lapis-text-tertiary text-xs ml-2">{food.calories} kcal</span>
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
 
-                <div className="border-t border-white/10 pt-4 space-y-3">
+                <div className="border-t border-lapis-border-subtle pt-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-white/80">Food items (optional)</Label>
+                    <Label className="text-lapis-text-secondary">Food items (optional)</Label>
                     <button
                       type="button"
                       onClick={addFoodItemRow}
-                      className="flex items-center gap-1 text-sm text-white/60 hover:text-white transition-colors"
+                      className="flex items-center gap-1 text-sm text-lapis-text-secondary hover:text-lapis-text-primary transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       Add item
                     </button>
                   </div>
                   {form.items.map((item, index) => (
-                    <div key={index} className="border border-white/10 rounded-xl bg-white/[0.02] p-3 space-y-2">
+                    <div key={index} className="border border-lapis-border-subtle rounded-lapis-md bg-lapis-surface-1 p-3 space-y-2">
                       <div className="flex items-center gap-2">
                         <Input
                           type="text"
                           value={item.name}
                           onChange={(e) => updateFoodItemRow(index, 'name', e.target.value)}
                           placeholder="Food name"
-                          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 flex-1"
+                          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled flex-1"
                         />
                         <Input
                           type="time"
                           value={item.loggedAt}
                           onChange={(e) => updateFoodItemRow(index, 'loggedAt', e.target.value)}
-                          className="bg-white/5 border-white/10 text-white w-28"
+                          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary w-28"
                         />
                         <button
                           type="button"
                           onClick={() => removeFoodItemRow(index)}
-                          className="p-2 text-white/40 hover:text-white/70 transition-colors"
+                          className="p-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -598,14 +598,14 @@ export default function NutritionPage() {
                         onChange={(e) => updateFoodItemRow(index, 'ingredients', e.target.value)}
                         placeholder="Ingredients (optional)"
                         rows={2}
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 resize-none"
+                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled resize-none"
                       />
                       <MealTagPicker value={item.mealTag} onChange={(tag) => updateFoodItemMealTag(index, tag)} />
                     </div>
                   ))}
                 </div>
 
-                <Button type="submit" disabled={saving} className="w-full bg-white text-black hover:bg-white/90">
+                <Button type="submit" disabled={saving} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                   {saving ? 'Saving...' : 'Save Entry'}
                 </Button>
               </form>
@@ -615,10 +615,10 @@ export default function NutritionPage() {
         </div>
 
         {maintenanceCalories == null && (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 mb-6">
-            <p className="text-white/40 text-sm">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
+            <p className="text-lapis-text-tertiary text-sm">
               Set your maintenance calories in{' '}
-              <Link href="/settings/nutrition" className="text-white/70 hover:text-white underline">
+              <Link href="/settings/nutrition" className="text-lapis-text-secondary hover:text-lapis-text-primary underline">
                 Nutrition settings
               </Link>{' '}
               to see today&apos;s target alongside your logged totals.
@@ -628,22 +628,22 @@ export default function NutritionPage() {
 
         {allEntries.length >= MIN_ENTRIES_FOR_TREND ? (
           <div className="grid gap-4 mb-6 lg:grid-cols-2">
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h3 className="text-lg font-medium text-white mb-4">Trend</h3>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h3 className="text-lg font-medium text-lapis-text-primary mb-4">Trend</h3>
               <NutritionChart points={chartPoints} />
               {recentAverages && (
-                <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/10">
+                <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-lapis-border-subtle">
                   <div>
-                    <p className="text-xs text-white/40 mb-1">Avg Protein (7d)</p>
-                    <p className="text-sm font-semibold text-white">{recentAverages.protein.toFixed(0)}g</p>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Avg Protein (7d)</p>
+                    <p className="text-sm font-semibold text-lapis-text-primary">{recentAverages.protein.toFixed(0)}g</p>
                   </div>
                   <div>
-                    <p className="text-xs text-white/40 mb-1">Avg Fat (7d)</p>
-                    <p className="text-sm font-semibold text-white">{recentAverages.fat.toFixed(0)}g</p>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Avg Fat (7d)</p>
+                    <p className="text-sm font-semibold text-lapis-text-primary">{recentAverages.fat.toFixed(0)}g</p>
                   </div>
                   <div>
-                    <p className="text-xs text-white/40 mb-1">Avg Carbs (7d)</p>
-                    <p className="text-sm font-semibold text-white">{recentAverages.carbs.toFixed(0)}g</p>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Avg Carbs (7d)</p>
+                    <p className="text-sm font-semibold text-lapis-text-primary">{recentAverages.carbs.toFixed(0)}g</p>
                   </div>
                 </div>
               )}
@@ -651,8 +651,8 @@ export default function NutritionPage() {
             <NutritionInsightCard refreshKey={insightRefreshKey} />
           </div>
         ) : allEntries.length > 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 mb-6">
-            <p className="text-white/40 text-sm">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
+            <p className="text-lapis-text-tertiary text-sm">
               Log {MIN_ENTRIES_FOR_TREND - allEntries.length} more day
               {MIN_ENTRIES_FOR_TREND - allEntries.length === 1 ? '' : 's'} to see your trend and an AI insight.
             </p>
@@ -660,32 +660,32 @@ export default function NutritionPage() {
         ) : null}
 
         {!todayEntry ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">No entry logged for today yet</p>
-            <Button onClick={openDialog} variant="outline" className="border-white/10 text-white hover:bg-white/5">
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <p className="text-lapis-text-tertiary mb-4">No entry logged for today yet</p>
+            <Button onClick={openDialog} variant="outline" className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2">
               Log today&apos;s nutrition
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-              <h2 className="text-lg font-medium text-white mb-4">Today</h2>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Today</h2>
               <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-3xl font-semibold text-white">{todayEntry.calories}</span>
-                <span className="text-white/40">
+                <span className="text-3xl font-semibold text-lapis-text-primary">{todayEntry.calories}</span>
+                <span className="text-lapis-text-tertiary">
                   {effectiveTarget != null ? `/ ${effectiveTarget} kcal` : 'kcal'}
                 </span>
               </div>
               {effectiveTarget != null && (
-                <div className="w-full bg-white/10 rounded-full h-2 mb-1">
+                <div className="w-full bg-lapis-surface-2 rounded-full h-2 mb-1">
                   <div
-                    className="bg-white rounded-full h-2 transition-all duration-300"
+                    className="bg-lapis-accent-500 rounded-full h-2 transition-all duration-300"
                     style={{ width: `${Math.min((todayEntry.calories / effectiveTarget) * 100, 100)}%` }}
                   />
                 </div>
               )}
               {todayEntry.activity_adjustment_kcal != null && (
-                <p className="text-white/40 text-xs mt-2">
+                <p className="text-lapis-text-tertiary text-xs mt-2">
                   Includes {todayEntry.activity_adjustment_kcal > 0 ? '+' : ''}
                   {todayEntry.activity_adjustment_kcal} kcal today
                   {todayEntry.activity_note ? ` (${todayEntry.activity_note})` : ''}
@@ -694,37 +694,37 @@ export default function NutritionPage() {
 
               <div className="grid grid-cols-3 gap-4 mt-6">
                 <div>
-                  <p className="text-xs text-white/40 mb-1">Protein</p>
-                  <p className="text-lg font-semibold text-white">{todayEntry.protein_g}g</p>
+                  <p className="text-xs text-lapis-text-tertiary mb-1">Protein</p>
+                  <p className="text-lg font-semibold text-lapis-text-primary">{todayEntry.protein_g}g</p>
                 </div>
                 <div>
-                  <p className="text-xs text-white/40 mb-1">Fat</p>
-                  <p className="text-lg font-semibold text-white">{todayEntry.fat_g}g</p>
+                  <p className="text-xs text-lapis-text-tertiary mb-1">Fat</p>
+                  <p className="text-lg font-semibold text-lapis-text-primary">{todayEntry.fat_g}g</p>
                 </div>
                 <div>
-                  <p className="text-xs text-white/40 mb-1">Carbs</p>
-                  <p className="text-lg font-semibold text-white">{todayEntry.carbs_g}g</p>
+                  <p className="text-xs text-lapis-text-tertiary mb-1">Carbs</p>
+                  <p className="text-lg font-semibold text-lapis-text-primary">{todayEntry.carbs_g}g</p>
                 </div>
               </div>
             </div>
 
             {foodItems.length > 0 && (
-              <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-6">
-                <h2 className="text-lg font-medium text-white mb-4">Food Logged Today</h2>
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Food Logged Today</h2>
                 <div className="space-y-5">
                   {[...MEAL_TAGS.map((t) => t.value as string | null), null].map((tag) => {
                     const group = foodItems.filter((item) => (item.meal_tag ?? null) === tag)
                     if (group.length === 0) return null
                     return (
                       <div key={tag ?? 'untagged'}>
-                        <p className="text-white/40 text-xs uppercase tracking-wide mb-2">{mealTagLabel(tag)}</p>
+                        <p className="text-lapis-text-tertiary text-xs uppercase tracking-wide mb-2">{mealTagLabel(tag)}</p>
                         <div className="space-y-3">
                           {group.map((item) => (
-                            <div key={item.id} className="border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                            <div key={item.id} className="border-b border-lapis-border-subtle pb-3 last:border-0 last:pb-0">
                               <div className="flex items-center justify-between">
-                                <p className="text-white font-medium">{item.name}</p>
+                                <p className="text-lapis-text-primary font-medium">{item.name}</p>
                                 {item.logged_at && (
-                                  <p className="text-white/40 text-sm">
+                                  <p className="text-lapis-text-tertiary text-sm">
                                     {new Date(item.logged_at).toLocaleTimeString('en-US', {
                                       hour: 'numeric',
                                       minute: '2-digit',
@@ -732,7 +732,7 @@ export default function NutritionPage() {
                                   </p>
                                 )}
                               </div>
-                              {item.ingredients && <p className="text-white/40 text-sm mt-1">{item.ingredients}</p>}
+                              {item.ingredients && <p className="text-lapis-text-tertiary text-sm mt-1">{item.ingredients}</p>}
                             </div>
                           ))}
                         </div>

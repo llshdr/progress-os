@@ -94,11 +94,11 @@ export default function FoodLibraryPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">Food Library</h1>
-            <p className="text-white/50 text-sm">Saved meals for one-click logging</p>
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Food Library</h1>
+            <p className="text-lapis-text-tertiary text-sm">Saved meals for one-click logging</p>
           </div>
           <Link href="/nutrition/library/new">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black hover:bg-white/90 transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors">
               <Plus className="w-4 h-4" />
               <span className="text-sm font-medium">Add Food</span>
             </button>
@@ -107,20 +107,20 @@ export default function FoodLibraryPage() {
 
         <div className="space-y-4 mb-8">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-lapis-text-tertiary" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search foods..."
-              className="w-full bg-white/5 border-white/10 text-white rounded-xl pl-12 pr-4 py-3 placeholder:text-white/30"
+              className="w-full bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary rounded-lapis-md pl-12 pr-4 py-3 placeholder:text-lapis-text-disabled"
             />
           </div>
 
           <button
             onClick={() => setShowArchived(!showArchived)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              showArchived ? 'bg-white/10 text-white border-white/20' : 'bg-white/5 text-white/60 border-white/10'
+            className={`flex items-center gap-2 px-4 py-2 rounded-lapis-sm transition-colors ${
+              showArchived ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong' : 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle'
             } border`}
           >
             <Archive className="w-4 h-4" />
@@ -130,14 +130,14 @@ export default function FoodLibraryPage() {
 
         {loading ? (
           <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-white/40">Loading...</div>
+            <div className="text-lapis-text-tertiary">Loading...</div>
           </div>
         ) : filteredFoods.length === 0 ? (
-          <div className="border border-white/10 rounded-2xl bg-white/[0.02] p-12 text-center">
-            <p className="text-white/40 mb-4">{searchQuery ? 'No foods found' : 'No saved foods yet'}</p>
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
+            <p className="text-lapis-text-tertiary mb-4">{searchQuery ? 'No foods found' : 'No saved foods yet'}</p>
             {!searchQuery && (
               <Link href="/nutrition/library/new">
-                <button className="px-4 py-2 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
+                <button className="px-4 py-2 rounded-lapis-sm border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors">
                   Add your first food
                 </button>
               </Link>
@@ -148,24 +148,24 @@ export default function FoodLibraryPage() {
             {filteredFoods.map((food) => (
               <div
                 key={food.id}
-                className="border border-white/10 rounded-2xl bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-200"
+                className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-medium text-white">{food.name}</h3>
+                      <h3 className="text-lg font-medium text-lapis-text-primary">{food.name}</h3>
                       {food.default_meal_tag && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                           {mealTagLabel(food.default_meal_tag)}
                         </span>
                       )}
                       {food.archived && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-white/5 text-white/40 border border-white/10">
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                           Archived
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-2 text-white/40 text-sm">
+                    <div className="flex flex-wrap gap-2 text-lapis-text-tertiary text-sm">
                       <span>{food.calories} kcal</span>
                       <span>•</span>
                       <span>{food.protein_g}g protein</span>
@@ -178,21 +178,21 @@ export default function FoodLibraryPage() {
                   <div className="flex gap-2">
                     <Link
                       href={`/nutrition/library/${food.id}/edit`}
-                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                     >
-                      <Pencil className="w-5 h-5 text-white/40" />
+                      <Pencil className="w-5 h-5 text-lapis-text-tertiary" />
                     </Link>
                     <button
                       onClick={() => toggleArchive(food.id, food.archived)}
-                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                     >
-                      <Archive className="w-5 h-5 text-white/40" />
+                      <Archive className="w-5 h-5 text-lapis-text-tertiary" />
                     </button>
                     <button
                       onClick={() => openDeleteModal(food.id)}
-                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
                     >
-                      <Trash2 className="w-5 h-5 text-white/40" />
+                      <Trash2 className="w-5 h-5 text-lapis-text-tertiary" />
                     </button>
                   </div>
                 </div>
