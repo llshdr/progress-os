@@ -2,48 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getExerciseHistory } from './getExerciseHistory'
 import type { SuggestionCandidate } from './types'
 import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
+import { computeGymStreakWeeks } from '@/lib/gym-streak'
 
 const RECENT_EXERCISE_LIMIT = 3
 const STALL_SESSION_WINDOW = 3
 const STREAK_MIN_WEEKS = 2
-
-async function getStreakWeeks(
-  supabase: SupabaseClient,
-  userId: string,
-  weeklyGoal: number
-): Promise<number> {
-  const { data } = await supabase
-    .from('workouts')
-    .select('date')
-    .eq('user_id', userId)
-    .not('completed_at', 'is', null)
-    .order('date', { ascending: false })
-    .limit(200)
-
-  if (!data || data.length === 0) return 0
-
-  const counts = new Map<string, number>()
-  for (const row of data as { date: string }[]) {
-    const key = getLocalDateString(getLocalWeekStart(new Date(row.date)))
-    counts.set(key, (counts.get(key) ?? 0) + 1)
-  }
-
-  let streak = 0
-  const cursor = getLocalWeekStart(new Date())
-
-  while (true) {
-    const key = getLocalDateString(cursor)
-    const count = counts.get(key) ?? 0
-    if (count >= weeklyGoal) {
-      streak++
-      cursor.setDate(cursor.getDate() - 7)
-    } else {
-      break
-    }
-  }
-
-  return streak
-}
 
 interface RecentExerciseRef {
   exerciseLibraryId: string | null
@@ -165,7 +128,7 @@ export async function getGymSuggestionCandidates(
     })
   }
 
-  const streakWeeks = await getStreakWeeks(supabase, userId, weeklyGoal)
+  const streakWeeks = await computeGymStreakWeeks(supabase, userId, weeklyGoal)
   if (streakWeeks >= STREAK_MIN_WEEKS) {
     candidates.push({
       module: 'gym',

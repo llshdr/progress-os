@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { CalendarDays, ArrowLeft, ArrowUp, ArrowDown, Trash2, Plus, Play } from 'lucide-react'
+import { CalendarDays, ArrowLeft, GripVertical, Trash2, Plus, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -54,6 +54,9 @@ export default function SchedulePage() {
   const [customLabel, setCustomLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [slotToRemove, setSlotToRemove] = useState<string | null>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const supabase = createClient()
 
@@ -227,6 +230,45 @@ export default function SchedulePage() {
 
     setVolumeRefreshKey((k) => k + 1)
     fetchAll()
+  }
+
+  // Pointer Events (not native HTML5 draggable) so this works identically
+  // on touch and mouse - draggable/dragstart has no reliable touch support
+  // without a polyfill, which would silently regress the reorder on
+  // mobile, the primary surface this whole app has been built mobile-
+  // first for. setPointerCapture routes every subsequent move/up event to
+  // the handle itself even once the pointer leaves it, so no window-level
+  // listener is needed. Still ends in the exact same swapSlots(a, b)
+  // pairwise-swap call the arrows used - dropping slot A onto slot C
+  // exchanges only those two, nothing else shifts. That's deliberate, not
+  // a simplification: in calendar mode slot_order IS the weekday a slot
+  // is assigned to, so a "shift everyone over" reorder would silently
+  // reassign weekdays for slots the user never touched. Pairwise swap is
+  // the one semantic that's correct in both rotation and calendar mode.
+  const handleDragPointerDown = (e: React.PointerEvent<HTMLButtonElement>, index: number) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setDragIndex(index)
+    setDragOverIndex(index)
+  }
+
+  const handleDragPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (dragIndex == null) return
+    for (const [slotId, el] of rowRefs.current) {
+      const rect = el.getBoundingClientRect()
+      if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        const overIndex = slots.findIndex((s) => s.id === slotId)
+        if (overIndex !== -1) setDragOverIndex(overIndex)
+        break
+      }
+    }
+  }
+
+  const handleDragPointerUp = () => {
+    if (dragIndex != null && dragOverIndex != null && dragOverIndex !== dragIndex) {
+      swapSlots(dragIndex, dragOverIndex)
+    }
+    setDragIndex(null)
+    setDragOverIndex(null)
   }
 
   // Saves immediately, independent of any page-level Save action - same
@@ -455,8 +497,18 @@ export default function SchedulePage() {
               {slots.map((slot, index) => (
                 <div
                   key={slot.id}
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(slot.id, el)
+                    else rowRefs.current.delete(slot.id)
+                  }}
                   className={`border rounded-lapis-lg bg-lapis-surface-1 p-6 transition-all duration-200 ${
-                    slot.id === nextSlotId ? 'border-lapis-border-strong' : 'border-lapis-border-subtle'
+                    dragIndex === index
+                      ? 'border-lapis-accent-400 opacity-60'
+                      : dragOverIndex === index && dragIndex != null
+                        ? 'border-lapis-accent-400'
+                        : slot.id === nextSlotId
+                          ? 'border-lapis-border-strong'
+                          : 'border-lapis-border-subtle'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
@@ -510,20 +562,14 @@ export default function SchedulePage() {
                         </Link>
                       )}
                       <button
-                        onClick={() => swapSlots(index, index - 1)}
-                        disabled={index === 0}
-                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors disabled:opacity-20 disabled:hover:bg-transparent"
-                        title={scheduleMode === 'calendar' ? 'Move to previous day' : 'Move up'}
+                        onPointerDown={(e) => handleDragPointerDown(e, index)}
+                        onPointerMove={handleDragPointerMove}
+                        onPointerUp={handleDragPointerUp}
+                        onPointerCancel={handleDragPointerUp}
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors cursor-grab active:cursor-grabbing touch-none"
+                        title={scheduleMode === 'calendar' ? 'Drag to reassign day' : 'Drag to reorder'}
                       >
-                        <ArrowUp className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => swapSlots(index, index + 1)}
-                        disabled={index === slots.length - 1}
-                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors disabled:opacity-20 disabled:hover:bg-transparent"
-                        title={scheduleMode === 'calendar' ? 'Move to next day' : 'Move down'}
-                      >
-                        <ArrowDown className="w-4 h-4" />
+                        <GripVertical className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setSlotToRemove(slot.id)}

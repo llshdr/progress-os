@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award, Pencil, Footprints } from 'lucide-react'
 import ExerciseCoachCard from '@/components/ai-coach/exercise-coach-card'
 import ExerciseProgressChart, { type ExerciseSessionPoint } from '@/components/gym/exercise-progress-chart'
+import CardioProgressChart, { type CardioSessionPoint } from '@/components/gym/cardio-progress-chart'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
@@ -387,6 +388,12 @@ export default function ExerciseDetailPage() {
   const distinctVariants = new Set(chartSessions.map((s) => s.variantLabel ?? null))
   const hasMixedVariants = distinctVariants.size > 1
 
+  // Same "derived from already-fetched data, no extra query" precedent as
+  // chartSessions above - cardioEntries already has everything needed.
+  const cardioChartSessions: CardioSessionPoint[] = cardioEntries
+    .filter((entry) => entry.distanceKm > 0)
+    .map((entry) => ({ date: entry.date, distanceKm: entry.distanceKm, paceSecondsPerKm: entry.durationSeconds / entry.distanceKm }))
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -556,6 +563,18 @@ export default function ExerciseDetailPage() {
                   {cardioStatistics.bestPaceSecondsPerKm != null ? formatPace(cardioStatistics.bestPaceSecondsPerKm) : 'N/A'}
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pace Progress Section - the cardio equivalent of the strength
+            Progress chart above; previously cardio had zero trend view at
+            all, only the current-best statistics tiles. */}
+        {exercise.exercise_type === 'cardio' && cardioChartSessions.length >= 2 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Progress</h2>
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <CardioProgressChart sessions={cardioChartSessions} />
             </div>
           </div>
         )}

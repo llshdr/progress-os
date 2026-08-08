@@ -18,6 +18,7 @@ type Workout = {
   notes: string | null
   started_at: string
   completed_at: string | null
+  session_rir: number | null
   template_name?: string | null
 }
 
@@ -240,6 +241,15 @@ export default function CurrentWorkoutPage() {
     }
   }
 
+  // Saves immediately, same precedent as Schedule's "Usual time" input -
+  // optional and never blocks Complete/Reopen, editable before or after
+  // completion.
+  const handleSetSessionRir = async (value: number | null) => {
+    setWorkout((prev) => (prev ? { ...prev, session_rir: value } : prev))
+    const { error } = await supabase.from('workouts').update({ session_rir: value }).eq('id', params.id)
+    if (error) console.error('Error saving session RIR:', error)
+  }
+
   const handleReopenWorkout = async () => {
     const { error } = await supabase
       .from('workouts')
@@ -405,6 +415,34 @@ export default function CurrentWorkoutPage() {
               >
                 <Check className="w-4 h-4" />
                 <span className="text-sm font-medium">Complete</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Session RIR - optional, saves immediately, editable whether or
+            not the workout is completed yet. 0 = failure (no reps left),
+            10 = very easy - a single self-rating for the whole session,
+            not per-set. */}
+        <div className="mb-6">
+          <p className="text-lapis-text-tertiary text-xs mb-2">Session RIR (reps in reserve, optional)</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {Array.from({ length: 11 }, (_, i) => i).map((value) => (
+              <button
+                key={value}
+                onClick={() => handleSetSessionRir(value)}
+                className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                  workout.session_rir === value
+                    ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                    : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-3'
+                }`}
+              >
+                {value}
+              </button>
+            ))}
+            {workout.session_rir != null && (
+              <button onClick={() => handleSetSessionRir(null)} className="text-lapis-text-disabled hover:text-lapis-text-tertiary text-xs px-2">
+                Clear
               </button>
             )}
           </div>

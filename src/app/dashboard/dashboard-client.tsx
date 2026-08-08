@@ -10,6 +10,7 @@ import Link from 'next/link'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
 import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
+import { computeGymStreakWeeks } from '@/lib/gym-streak'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 interface DashboardClientProps {
@@ -45,6 +46,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(null)
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
   const [weeklyGoal, setWeeklyGoal] = useState(5)
+  const [streakWeeks, setStreakWeeks] = useState(0)
   const [showTodaySuggestions, setShowTodaySuggestions] = useState(true)
   const [latestWeight, setLatestWeight] = useState<WeightEntry | null>(null)
   const [previousWeight, setPreviousWeight] = useState<WeightEntry | null>(null)
@@ -119,6 +121,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       setWeeklyWorkouts(count || 0)
 
       // Fetch weekly goal from user settings (default to 5)
+      let resolvedWeeklyGoal = 5
       try {
         const { data: settings } = await supabase
           .from('user_settings')
@@ -126,13 +129,21 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           .eq('user_id', user.id)
           .single()
 
-        setWeeklyGoal(settings?.weekly_workout_goal || 5)
+        resolvedWeeklyGoal = settings?.weekly_workout_goal || 5
+        setWeeklyGoal(resolvedWeeklyGoal)
         setShowTodaySuggestions(settings?.show_today_suggestions ?? true)
       } catch (settingsError) {
         // Settings table might not exist yet, use default
         setWeeklyGoal(5)
         setShowTodaySuggestions(true)
       }
+
+      // Same computation the Today-suggestion sentence already uses
+      // (gymSuggestions.ts) - extracted into a shared function so the two
+      // never quietly disagree. Needs the resolved goal, not the weeklyGoal
+      // state (which may not have flushed yet), so it's called with the
+      // local variable above.
+      setStreakWeeks(await computeGymStreakWeeks(supabase, user.id, resolvedWeeklyGoal))
 
       // Active training block, if any - reuses the exact same derivation
       // the gym Schedule page's MesocycleCard already uses, just a
@@ -347,6 +358,13 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                 />
               </div>
             </div>
+            {/* Same 2-week floor the Today-suggestion sentence already
+                uses (STREAK_MIN_WEEKS in gymSuggestions.ts) - a 1-week
+                "streak" isn't really a streak yet, so both surfaces stay
+                quiet until it means something. */}
+            {streakWeeks >= 2 && (
+              <p className="text-lapis-text-tertiary text-xs">{streakWeeks} weeks in a row hitting your target</p>
+            )}
           </div>
 
           {/* Current Weight */}

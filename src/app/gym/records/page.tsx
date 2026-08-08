@@ -46,7 +46,23 @@ type CardioRecord = {
 
 type LibraryExercise = { id: string; name: string; exercise_type: string }
 
+type LoadWindow = { sessionCount: number; avgRir: number | null }
+
 const RECENT_LIMIT = 20
+
+// Two honest, separate signals - frequency and average self-rated
+// intensity - rather than one fabricated composite "load score" that
+// would imply a precision neither number actually has on its own.
+function computeLoadWindow(workouts: { date: string; session_rir: number | null }[], days: number, today: Date): LoadWindow {
+  const cutoff = new Date(today)
+  cutoff.setDate(cutoff.getDate() - days)
+  const inWindow = workouts.filter((w) => new Date(w.date) > cutoff)
+  const rirValues = inWindow.map((w) => w.session_rir).filter((v): v is number => v != null)
+  return {
+    sessionCount: inWindow.length,
+    avgRir: rirValues.length > 0 ? rirValues.reduce((sum, v) => sum + v, 0) / rirValues.length : null,
+  }
+}
 
 function formatPace(secondsPerKm: number): string {
   const minutes = Math.floor(secondsPerKm / 60)
@@ -70,6 +86,7 @@ export default function RecordsPage() {
   const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([])
   const [cardioActivity, setCardioActivity] = useState<CardioActivity[]>([])
   const [cardioMuscleGroupById, setCardioMuscleGroupById] = useState<Map<string, string>>(new Map())
+  const [loadStats, setLoadStats] = useState<{ sevenDay: LoadWindow; twentyEightDay: LoadWindow } | null>(null)
   const [loading, setLoading] = useState(true)
   const [muscleFilter, setMuscleFilter] = useState<string | null>(null)
 
@@ -143,6 +160,7 @@ export default function RecordsPage() {
       { data: cardioLogs, error: cardioError },
       { data: manualPrs, error: manualError },
       cardioActivityData,
+      { data: recentWorkouts, error: workoutsError },
     ] = await Promise.all([
       supabase.from('sets').select('exercise_id, weight, reps'),
       supabase.from('cardio_logs').select('exercise_id, distance_km, duration_seconds'),
@@ -151,11 +169,21 @@ export default function RecordsPage() {
         .select('exercise_library_id, exercise_name, exercise_type, weight, reps, distance_km, duration_seconds, recorded_date, note')
         .eq('user_id', user.id),
       fetchCardioActivity(supabase),
+      supabase.from('workouts').select('date, session_rir').eq('user_id', user.id).not('completed_at', 'is', null),
     ])
 
     if (setsError) console.error('Error fetching sets:', setsError)
     if (cardioError) console.error('Error fetching cardio logs:', cardioError)
     if (manualError) console.error('Error fetching manual PRs:', manualError)
+    if (workoutsError) console.error('Error fetching workouts for load stats:', workoutsError)
+
+    if (recentWorkouts) {
+      const today = new Date()
+      setLoadStats({
+        sevenDay: computeLoadWindow(recentWorkouts, 7, today),
+        twentyEightDay: computeLoadWindow(recentWorkouts, 28, today),
+      })
+    }
 
     setCardioActivity(cardioActivityData)
 
@@ -591,6 +619,32 @@ export default function RecordsPage() {
           <PageSkeleton />
         ) : (
           <>
+            {loadStats && (loadStats.sevenDay.sessionCount > 0 || loadStats.twentyEightDay.sessionCount > 0) && (
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-8">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Training Load</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
+                  Two separate signals, not one combined score - session count for frequency, session RIR for how
+                  hard those sessions felt.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Last 7 days</p>
+                    <p className="text-lapis-text-primary font-semibold">{loadStats.sevenDay.sessionCount} sessions</p>
+                    {loadStats.sevenDay.avgRir != null && (
+                      <p className="text-lapis-text-tertiary text-xs mt-0.5">Avg RIR {loadStats.sevenDay.avgRir.toFixed(1)}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Last 28 days</p>
+                    <p className="text-lapis-text-primary font-semibold">{loadStats.twentyEightDay.sessionCount} sessions</p>
+                    {loadStats.twentyEightDay.avgRir != null && (
+                      <p className="text-lapis-text-tertiary text-xs mt-0.5">Avg RIR {loadStats.twentyEightDay.avgRir.toFixed(1)}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {availableMuscleGroups.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-8">
                 <button
@@ -677,6 +731,11 @@ export default function RecordsPage() {
                             </div>
                           </div>
                         </div>
+                        {/* The full 1RM-over-time trend already lives on the
+                            exercise detail page this card links to
+                            (ExerciseProgressChart) - this just makes that
+                            reachable-by-click fact visible instead of silent. */}
+                        {record.computed && <p className="text-lapis-text-disabled text-xs mt-3">View progress over time →</p>}
                       </div>
                     )
 
@@ -772,6 +831,9 @@ export default function RecordsPage() {
                             </div>
                           </div>
                         </div>
+                        {/* Pace-over-time trend lives on the exercise detail
+                            page this card links to (CardioProgressChart). */}
+                        {record.computed && <p className="text-lapis-text-disabled text-xs mt-3">View pace trend over time →</p>}
                       </div>
                     )
 
