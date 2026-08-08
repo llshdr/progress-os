@@ -179,9 +179,10 @@ const RUN_QUESTIONS: AssessmentQuestion[] = [
   },
   {
     id: 'recentTimeTrial',
-    label: 'A recent race or time-trial result, if you have one',
+    label: 'Your baseline time trial (recommended)',
     type: 'time',
-    helpText: 'Optional — a distance and time from any run you pushed the pace on recently.',
+    helpText:
+      'Optional, but worth doing if you can — a real recent race or a run where you pushed the pace. This becomes your baseline, and the reminder every ~12 weeks measures your progress against it.',
   },
   {
     id: 'limiters',
@@ -271,9 +272,10 @@ export function questionsForDiscipline(discipline: Discipline): DisciplineQuesti
     },
     {
       id: 'recentTimeTrial',
-      label: `A recent ${label} time trial, if you have one`,
+      label: `Your baseline ${label} time trial (recommended)`,
       type: 'time',
-      helpText: 'Optional — a distance and time from any session you pushed the pace on recently.',
+      helpText:
+        'Optional, but worth doing if you can — a real recent session where you pushed the pace. This becomes your baseline, and the reminder every ~12 weeks measures your progress against it.',
     },
     {
       id: 'limiters',

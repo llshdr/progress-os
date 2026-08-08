@@ -282,6 +282,10 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
 
   return (
     <div className="space-y-8">
+      <p className="text-lapis-text-tertiary text-sm">
+        If you can, take a real easy-to-moderate time trial this week in each discipline and log it below. This becomes your baseline, giving the plan
+        (and the periodic retest reminder later on) a real starting reference point instead of just a self-rated guess.
+      </p>
       {(['swim', 'bike', 'run'] as Discipline[]).map((discipline) => (
         <div key={discipline} className="space-y-5 border-t border-lapis-border-subtle pt-6 first:border-t-0 first:pt-0">
           <h3 className="text-lapis-text-primary font-medium">{DISCIPLINE_LABELS[discipline]}</h3>

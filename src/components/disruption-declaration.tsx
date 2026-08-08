@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DISRUPTION_GUIDANCE } from '@/lib/disruptions'
 import { describeMesocycleOverlap, type Mesocycle } from '@/lib/mesocycle'
 
-export type DisruptionReason = 'travel' | 'illness' | 'other'
+export type DisruptionReason = 'travel' | 'illness' | 'injury' | 'other'
 
 export interface TrainingDisruption {
   id: string
@@ -32,6 +32,7 @@ interface Props {
 const REASON_OPTIONS: { value: DisruptionReason; label: string }[] = [
   { value: 'travel', label: 'Travel' },
   { value: 'illness', label: 'Illness' },
+  { value: 'injury', label: 'Injury' },
   { value: 'other', label: 'Other' },
 ]
 

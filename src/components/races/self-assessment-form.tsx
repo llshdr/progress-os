@@ -188,6 +188,12 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
 
   return (
     <div className="space-y-6">
+      {category === 'run' && (
+        <p className="text-lapis-text-tertiary text-sm">
+          If you can, take a real easy-to-moderate time trial this week and log it below — a 5k or 10k at a pushed pace works well. This becomes your
+          baseline, giving the plan (and the periodic retest reminder later on) a real starting reference point instead of just a self-rated guess.
+        </p>
+      )}
       {questions.map((q) => (
         <div key={q.id} className="space-y-2">
           <Label className="text-lapis-text-secondary">{q.label}</Label>

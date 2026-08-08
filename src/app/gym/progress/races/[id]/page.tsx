@@ -30,6 +30,7 @@ import { deriveCurrentFormLevel, deriveRunFormEvidence, TIER_ORDER } from '@/lib
 import { slotsForWeek, ZONE_GUIDANCE, thresholdPaceHint, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import {
   FUELING_GUIDANCE,
+  HYDRATION_GUIDANCE,
   TRANSITION_GUIDANCE,
   RACE_DAY_CHECKPOINTS,
   summarizeSeasonMismatch,
@@ -1352,6 +1353,10 @@ export default function RaceDetailPage() {
                     <p className="text-xs text-lapis-text-tertiary mb-1">Fueling</p>
                     <p className="text-lapis-text-secondary text-sm">{FUELING_GUIDANCE}</p>
                   </div>
+                  <div>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Hydration</p>
+                    <p className="text-lapis-text-secondary text-sm">{HYDRATION_GUIDANCE}</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -1806,6 +1811,10 @@ export default function RaceDetailPage() {
                           <span className="text-lapis-text-secondary">{PHASE_LABELS[line.phase]}:</span> {line.summary}
                         </p>
                       ))}
+                    </div>
+                    <div className="pt-4 mt-4 border-t border-lapis-border-subtle mb-4">
+                      <p className="text-xs text-lapis-text-tertiary mb-1">Hydration</p>
+                      <p className="text-lapis-text-secondary text-sm leading-relaxed">{HYDRATION_GUIDANCE}</p>
                     </div>
                     <Link href="/nutrition" className="text-sm text-lapis-text-secondary hover:text-lapis-text-primary underline underline-offset-2">
                       Log an Intra-Workout entry →

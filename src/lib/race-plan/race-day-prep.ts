@@ -124,6 +124,14 @@ export const TRANSITION_GUIDANCE: Record<TrainingPhase, { short: string; full: s
 export const FUELING_GUIDANCE =
   'For efforts over ~60-75 minutes: roughly 30-60g carbs/hour. Beyond ~2.5 hours - your longest key/brick sessions - that commonly rises to 60-90g/hour with a mixed glucose-fructose source. Log what you actually take in as an "Intra-Workout" entry in Nutrition so you can see what you tolerate well before race day. If you use caffeine regularly, tapering it down in the 3-4 days before race day is a commonly-cited way to restore its performance boost for race day itself - a reduction, not necessarily a full cutout. In the 2-3 days before race day, commonly-cited carb-loading guidance means shifting your diet toward more carbohydrate than usual (without necessarily eating more overall) to fill glycogen stores - separate from the per-hour fueling above, which is about during the race itself.'
 
+// A separate block from FUELING_GUIDANCE (carbs) rather than folded into
+// it - a fourth distinct topic in the same paragraph stops being
+// skimmable. Same "cite a real, widely-established reference point,
+// don't personalize what we can't know" discipline as the rest of this
+// feature. Shown in the same spots FUELING_GUIDANCE already is.
+export const HYDRATION_GUIDANCE =
+  "Sweat loss above ~2% of body mass is a commonly-cited point where endurance performance measurably declines - worth knowing your rough sweat rate from a long session (weigh before/after, account for fluid intake) rather than guessing. Drink to thirst, not on a fixed schedule 'as much as possible' - real, documented cases of exercise-associated hyponatremia (dangerously low blood sodium from overdrinking) exist at the far end of that advice, and thirst-based hydration is the safer, commonly-cited approach for most athletes. For sodium, roughly 300-600mg/hour during long sessions is a commonly-cited starting range (more if you're a heavy/salty sweater) - same as fueling, test what you tolerate in training as an Intra-Workout entry, never for the first time on race day."
+
 // ─── Open-water seasonality (Phase C) ─────────────────────────────────
 // Deliberately sourced from the athlete's own stated season, never an
 // app-maintained regional table - this app has no real data on any
