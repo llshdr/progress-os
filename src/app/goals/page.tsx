@@ -167,11 +167,11 @@ export default function GoalsPage() {
             <div>
               <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">Goals</h1>
               <p className="text-lapis-text-tertiary text-sm">Your single next move on what matters most</p>
-              {/* Reciprocal of the note on /gym/goals - that page's
-                  week-scoped weekly_goals table is a separate, older system
-                  from this one, not silently duplicated or hidden. */}
+              {/* /gym/goals is now just a this-week, quick_win-scoped view
+                  of this same table (see migration 070) - a genuinely
+                  useful filtered view, not a separate system anymore. */}
               <Link href="/gym/goals" className="text-lapis-text-disabled hover:text-lapis-text-tertiary text-xs underline underline-offset-2">
-                Week-by-week gym goals live separately →
+                This week's quick-win goals →
               </Link>
             </div>
           </div>

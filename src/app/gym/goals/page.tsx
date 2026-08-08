@@ -8,13 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,25 +19,33 @@ import Link from 'next/link'
 import { getLocalWeekStartString } from '@/lib/date'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
-import { Target } from 'lucide-react'
+import { Target, CheckCircle2, Archive, RotateCcw, Trash2 } from 'lucide-react'
+import type { ActionItemStatus } from '@/lib/goals'
 
 type Goal = {
   id: string
   title: string
   description: string | null
-  category: 'fitness' | 'business' | 'productivity' | 'self_improvement'
-  status: 'pending' | 'in_progress' | 'completed'
+  status: ActionItemStatus
+}
+
+// This week's quick-win goals - a target_date-filtered view of the main
+// `goals` table (scope='quick_win'), not a separate table anymore.
+// weekly_goals (migration 001) is fully retired: migration 070 copied its
+// remaining 'fitness' rows into `goals`, completing what migration 024
+// already did for the other three categories. No new weekly_goals row is
+// ever written from here again.
+function weekEndDate(weekStart: string): string {
+  const d = new Date(weekStart + 'T00:00:00')
+  d.setDate(d.getDate() + 6)
+  return d.toISOString().slice(0, 10)
 }
 
 export default function GoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [newGoal, setNewGoal] = useState({
-    title: '',
-    description: '',
-    category: 'fitness' as Goal['category'],
-  })
+  const [newGoal, setNewGoal] = useState({ title: '', description: '' })
   const [showDeleteGoalModal, setShowDeleteGoalModal] = useState(false)
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null)
   const supabase = createClient()
@@ -59,12 +60,14 @@ export default function GoalsPage() {
     } = await supabase.auth.getUser()
     if (!user) return
 
-    const weekStart = getWeekStart()
+    const weekStart = getLocalWeekStartString()
     const { data, error } = await supabase
-      .from('weekly_goals')
-      .select('*')
+      .from('goals')
+      .select('id, title, description, status')
       .eq('user_id', user.id)
-      .eq('week_start_date', weekStart)
+      .eq('scope', 'quick_win')
+      .gte('target_date', weekStart)
+      .lte('target_date', weekEndDate(weekStart))
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -75,13 +78,6 @@ export default function GoalsPage() {
     setLoading(false)
   }
 
-  const getWeekStart = () => {
-    // Monday-start week (ISO-style) - now the shared app-wide convention,
-    // not just this feature's own. Was already correct here before the
-    // rest of the app followed suit.
-    return getLocalWeekStartString()
-  }
-
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault()
     const {
@@ -89,28 +85,28 @@ export default function GoalsPage() {
     } = await supabase.auth.getUser()
     if (!user) return
 
-    const { error } = await supabase.from('weekly_goals').insert({
+    const weekStart = getLocalWeekStartString()
+    const { error } = await supabase.from('goals').insert({
       user_id: user.id,
       title: newGoal.title,
       description: newGoal.description || null,
-      category: newGoal.category,
-      week_start_date: getWeekStart(),
+      status: 'active',
+      scope: 'quick_win',
+      start_date: weekStart,
+      target_date: weekEndDate(weekStart),
     })
 
     if (error) {
       console.error('Error adding goal:', error)
     } else {
-      setNewGoal({ title: '', description: '', category: 'fitness' })
+      setNewGoal({ title: '', description: '' })
       setIsDialogOpen(false)
       fetchGoals()
     }
   }
 
-  const handleUpdateStatus = async (goalId: string, status: Goal['status']) => {
-    const { error } = await supabase
-      .from('weekly_goals')
-      .update({ status })
-      .eq('id', goalId)
+  const handleUpdateStatus = async (goalId: string, status: ActionItemStatus) => {
+    const { error } = await supabase.from('goals').update({ status }).eq('id', goalId)
 
     if (error) {
       console.error('Error updating goal:', error)
@@ -122,10 +118,7 @@ export default function GoalsPage() {
   const handleDeleteGoal = async () => {
     if (!goalToDelete) return
 
-    const { error } = await supabase
-      .from('weekly_goals')
-      .delete()
-      .eq('id', goalToDelete)
+    const { error } = await supabase.from('goals').delete().eq('id', goalToDelete)
 
     if (error) {
       console.error('Error deleting goal:', error)
@@ -138,36 +131,6 @@ export default function GoalsPage() {
   const openDeleteGoalModal = (goalId: string) => {
     setGoalToDelete(goalId)
     setShowDeleteGoalModal(true)
-  }
-
-  // Every branch used to return the same neutral string regardless of
-  // input - the lookup structure existed but never actually
-  // differentiated anything. fitness (the one real, supported category)
-  // gets the accent tint; the three explicitly-placeholder categories
-  // stay neutral, honestly reflecting that they don't have a real
-  // distinguishing feature yet rather than inventing arbitrary hues for
-  // categories with no dedicated module.
-  const getCategoryColor = (category: Goal['category']) => {
-    const colors = {
-      fitness: 'bg-lapis-accent-500/10 text-lapis-accent-400 border-lapis-accent-400/30',
-      business: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
-      productivity: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
-      self_improvement: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
-    }
-    return colors[category]
-  }
-
-  // Same Completed/In-Progress color pairing gym/workouts already uses for
-  // its own status badges (bg-lapis-accent-500/15 text-lapis-accent-400 /
-  // bg-lapis-citrine/10 text-lapis-citrine) - reused here rather than
-  // invented fresh, so "completed" reads the same color across the app.
-  const getStatusColor = (status: Goal['status']) => {
-    const colors = {
-      pending: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
-      in_progress: 'bg-lapis-citrine/10 text-lapis-citrine border-lapis-citrine/30',
-      completed: 'bg-lapis-accent-500/15 text-lapis-accent-400 border-lapis-accent-400/30',
-    }
-    return colors[status]
   }
 
   if (loading) {
@@ -213,36 +176,6 @@ export default function GoalsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="text-lapis-text-secondary">Category</Label>
-                  <Select
-                    value={newGoal.category}
-                    onValueChange={(value) =>
-                      setNewGoal({
-                        ...newGoal,
-                        category: value as Goal['category'],
-                      })
-                    }
-                  >
-                    <SelectTrigger className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-lapis-bg border-lapis-border-subtle">
-                      <SelectItem value="fitness">Fitness</SelectItem>
-                      <SelectItem value="business">Business</SelectItem>
-                      <SelectItem value="productivity">Productivity</SelectItem>
-                      <SelectItem value="self_improvement">
-                        Self Improvement
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {newGoal.category !== 'fitness' && (
-                    <p className="text-lapis-text-disabled text-xs">
-                      Business/Productivity/Self-improvement are placeholder categories until a
-                      dedicated module exists — these goals only live here for now.
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="description" className="text-lapis-text-secondary">Description (optional)</Label>
                   <Textarea
                     id="description"
@@ -273,20 +206,18 @@ export default function GoalsPage() {
               Weekly Goals
             </h1>
             <p className="text-lapis-text-tertiary text-sm">
-              {goals.filter((g) => g.status === 'completed').length} of {goals.length} completed
+              {goals.filter((g) => g.status === 'done').length} of {goals.length} completed
             </p>
           </div>
         </div>
 
-        {/* This page tracks week-scoped goals in a separate, older table -
-            genuinely disconnected from the main Goals module (different
-            status model, no shared schema) rather than silently duplicating
-            or hiding that split from the user. */}
+        {/* Same table as the main Goals module now (scope='quick_win',
+            filtered to this week) - not a separate system anymore. */}
         <Link
           href="/goals"
           className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary underline underline-offset-2 mb-6 inline-block"
         >
-          Longer-term goals with milestones and due dates live in the main Goals module →
+          See every goal, including longer-term ones, on the main Goals page →
         </Link>
 
         <div className="grid gap-3">
@@ -310,22 +241,6 @@ export default function GoalsPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium border ${getCategoryColor(
-                          goal.category
-                        )}`}
-                      >
-                        {goal.category}
-                      </span>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                          goal.status
-                        )}`}
-                      >
-                        {goal.status.replace('_', ' ')}
-                      </span>
-                    </div>
                     <h3 className="text-lg font-medium text-lapis-text-primary mb-1">
                       {goal.title}
                     </h3>
@@ -334,38 +249,44 @@ export default function GoalsPage() {
                         {goal.description}
                       </p>
                     )}
-                    {goal.category !== 'fitness' && (
-                      <p className="text-lapis-text-disabled text-xs mt-2">
-                        Placeholder category — no dedicated module yet.
-                      </p>
-                    )}
                   </div>
-                  <div className="flex gap-2">
-                    {goal.status !== 'completed' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          handleUpdateStatus(
-                            goal.id,
-                            goal.status === 'pending'
-                              ? 'in_progress'
-                              : 'completed'
-                          )
-                        }
-                        className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2"
+                  {/* Same mark-done/archive/reactivate icons the main Goals
+                      page already uses - one status model now, one set of
+                      actions for it. */}
+                  <div className="flex gap-2 shrink-0">
+                    {goal.status === 'active' ? (
+                      <>
+                        <button
+                          onClick={() => handleUpdateStatus(goal.id, 'done')}
+                          className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
+                          title="Mark done"
+                        >
+                          <CheckCircle2 className="w-5 h-5 text-lapis-text-tertiary" />
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(goal.id, 'archived')}
+                          className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
+                          title="Archive"
+                        >
+                          <Archive className="w-5 h-5 text-lapis-text-tertiary" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => handleUpdateStatus(goal.id, 'active')}
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
+                        title="Reactivate"
                       >
-                        {goal.status === 'pending' ? 'Start' : 'Complete'}
-                      </Button>
+                        <RotateCcw className="w-5 h-5 text-lapis-text-tertiary" />
+                      </button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                    <button
                       onClick={() => openDeleteGoalModal(goal.id)}
-                      className="text-lapis-text-tertiary hover:text-lapis-text-secondary hover:bg-lapis-surface-2"
+                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
+                      title="Delete"
                     >
-                      Delete
-                    </Button>
+                      <Trash2 className="w-5 h-5 text-lapis-text-tertiary" />
+                    </button>
                   </div>
                 </div>
               </div>

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { rankTierLabel, computeRankBreakdown, type RankBreakdown, type ModuleName } from '@/lib/rank'
+import RankSparkline, { type RankHistoryPoint } from '@/components/profile/rank-sparkline'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Users } from 'lucide-react'
 
@@ -61,6 +62,7 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false)
   const [rankUpTier, setRankUpTier] = useState<number | null>(null)
   const [breakdown, setBreakdown] = useState<RankBreakdown | null>(null)
+  const [rankHistory, setRankHistory] = useState<RankHistoryPoint[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -90,6 +92,7 @@ export default function ProfilePage() {
       setOwn(ownRow)
       await checkRankUp(user.id, ownRow.rank)
       await fetchBreakdown(user.id)
+      await fetchRankHistory(user.id)
     }
 
     const { data: othersRows, error: othersError } = await supabase
@@ -141,6 +144,22 @@ export default function ProfilePage() {
         (nutritionRows ?? []).map((n) => n.date as string)
       )
     )
+  }
+
+  // One row per genuine tier change (see migration 071) - never a row per
+  // recompute, so this is naturally small and needs no date window.
+  const fetchRankHistory = async (uid: string) => {
+    const { data, error } = await supabase
+      .from('rank_history')
+      .select('rank, recorded_at')
+      .eq('user_id', uid)
+      .order('recorded_at', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching rank history:', error)
+      return
+    }
+    setRankHistory((data ?? []).map((r) => ({ rank: r.rank, recordedAt: r.recorded_at })))
   }
 
   const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -239,6 +258,13 @@ export default function ProfilePage() {
                 </Button>
               </div>
             </div>
+          </div>
+        )}
+
+        {rankHistory.length >= 2 && (
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-8">
+            <h3 className="text-sm font-medium text-lapis-text-tertiary uppercase tracking-wide mb-3">Rank History</h3>
+            <RankSparkline history={rankHistory} />
           </div>
         )}
 
