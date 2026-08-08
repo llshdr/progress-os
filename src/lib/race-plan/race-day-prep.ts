@@ -122,7 +122,7 @@ export const TRANSITION_GUIDANCE: Record<TrainingPhase, { short: string; full: s
 // need fueling" signal, rather than modeling session duration from
 // scratch.
 export const FUELING_GUIDANCE =
-  'For efforts over ~60-75 minutes: roughly 30-60g carbs/hour. Beyond ~2.5 hours - your longest key/brick sessions - that commonly rises to 60-90g/hour with a mixed glucose-fructose source. Log what you actually take in as an "Intra-Workout" entry in Nutrition so you can see what you tolerate well before race day. If you use caffeine regularly, tapering it down in the 3-4 days before race day is a commonly-cited way to restore its performance boost for race day itself - a reduction, not necessarily a full cutout.'
+  'For efforts over ~60-75 minutes: roughly 30-60g carbs/hour. Beyond ~2.5 hours - your longest key/brick sessions - that commonly rises to 60-90g/hour with a mixed glucose-fructose source. Log what you actually take in as an "Intra-Workout" entry in Nutrition so you can see what you tolerate well before race day. If you use caffeine regularly, tapering it down in the 3-4 days before race day is a commonly-cited way to restore its performance boost for race day itself - a reduction, not necessarily a full cutout. In the 2-3 days before race day, commonly-cited carb-loading guidance means shifting your diet toward more carbohydrate than usual (without necessarily eating more overall) to fill glycogen stores - separate from the per-hour fueling above, which is about during the race itself.'
 
 // ─── Open-water seasonality (Phase C) ─────────────────────────────────
 // Deliberately sourced from the athlete's own stated season, never an
@@ -199,3 +199,57 @@ export const RACE_DAY_CHECKPOINTS: Record<RaceCategory, { label: string; notes: 
 // explaining why this block is being shown before "Base Phase" at all.
 export const ACCLIMATION_GUIDANCE =
   "This block isn't about building fitness yet - it's about getting your body and schedule used to training across three disciplines plus strength. Keep everything easy; the real ramp starts once this block ends."
+
+// ─── Race simulation guidance ──────────────────────────────────────────
+// Shown once, on the single week flagged isSimulationWeek (see
+// periodization.ts) - a full dress rehearsal a few weeks before Taper
+// begins, distinct from the routine weekly brick (bike-to-run
+// transition practice) this feature already has. Deliberately does NOT
+// claim a precise "70-80% effort" pace number - that's not a linear
+// conversion from race pace and this feature doesn't fabricate that kind
+// of precision elsewhere; instead it points at the already-displayed
+// easy/race pace targets as the honest reference points.
+export const RACE_SIMULATION_GUIDANCE =
+  "This week's key session and brick are your race simulation - shorten them and aim for a pace between your easy and race-pace targets above, not full race effort, while treating everything else exactly like race day: your real race-day gear, and the nutrition you've been logging as Intra-Workout entries. Bricks here are bike-to-run only, so a full three-discipline rehearsal means fitting in a shortened swim nearby on your own."
+
+// ─── Mental prep / pacing strategy ─────────────────────────────────────
+// Text-only, alongside the existing pacing numbers on the Race Day Plan
+// card - not a new computation, just naming a known hard point and one
+// concrete cue, same "cite a real, honest practice" discipline as this
+// file's other guidance.
+export const MENTAL_PREP_GUIDANCE: Record<RaceCategory, string> = {
+  multisport: 'The run leg is where most Ironman days are won or lost - fatigue and mental fade typically hit hardest in the back half of the marathon, not the swim or bike. Decide on one simple cue now, not mid-race: breaking the remaining distance into small chunks, a short mantra, or focusing on form and the next aid station rather than the finish line.',
+  run: "The hardest mental stretch is typically the back third of the race, once early adrenaline fades and the finish still feels far off. Decide on one simple cue now: breaking the remaining distance into small chunks, a short mantra, or focusing on your next landmark rather than the finish line.",
+  other: 'Know your hardest stretch before race day and have one simple cue ready for it - breaking the remaining effort into small chunks, a short mantra, or focusing on the next checkpoint rather than the finish.',
+}
+
+// ─── Running injury-prevention / mobility guidance ─────────────────────
+// Running carries the highest injury risk of the three disciplines - the
+// same real, sourced fact day-template.ts already cites internally to
+// justify scheduling decisions (routing threshold work away from run for
+// muscle-focused approaches), finally surfaced to the athlete directly
+// instead of only ever used behind the scenes. Phase-keyed, same
+// rendering slot as STRENGTH_SEQUENCING_NOTES/PHASE_NUTRITION_GUIDANCE
+// (periodization.ts / nutrition-phase.ts) - one more line in an existing
+// per-phase block, not a new card. Applies to Acclimation weeks too
+// (still phase: 'base' underneath) - if anything, building the habit
+// before real volume starts is the ideal time to start it.
+export const RUN_INJURY_PREVENTION_GUIDANCE: Record<TrainingPhase, string> = {
+  base: 'Running carries the highest injury risk of the three disciplines - build a simple mobility/prehab habit now (hips, calves, ankles) while volume is still low, before it has to compete for time with harder training later.',
+  build: "Run volume and intensity are both climbing here, which is exactly when running injuries tend to show up - keep the mobility work from Base going rather than dropping it for extra volume.",
+  peak: 'This is peak run load for the cycle - any nagging tightness or pain is worth addressing now, not pushing through, since there is limited time left to recover before race day.',
+  taper: "Back off intensity, not just volume, on any lingering niggle here - there's no fitness left to gain this close to race day that's worth risking a DNS over.",
+}
+
+// ─── Post-race recovery ────────────────────────────────────────────────
+// Shown once race day has passed (race.race_date < today) - the app
+// previously only ever looked forward to race day, never past it. Scaled
+// by category since a blanket "4-6 weeks" would be dishonestly long for
+// a 5k and dishonestly short for a full-distance race; the "day per mile
+// raced" heuristic below is specifically a running-recovery citation, not
+// stretched to cover triathlon's mixed-discipline mileage.
+export const POST_RACE_RECOVERY_GUIDANCE: Record<RaceCategory, string> = {
+  multisport: "Give yourself real recovery time before jumping back into structured training - commonly-cited guidance suggests at least 1-2 weeks of easy movement only, with a full return to hard training taking 4-6 weeks after a full-distance race. It's normal for motivation and energy to dip for a while after a goal this big; that's part of recovering, not a setback.",
+  run: "Give yourself real recovery time before jumping back into structured training - a commonly-cited rule of thumb is roughly a day of easy recovery per mile raced (a few days for a 5k/10k, longer for a marathon or beyond). It's normal for motivation to dip for a while after a big goal race; that's part of recovering, not a setback.",
+  other: "Give yourself real recovery time before jumping back into structured training, scaled to how hard this effort was - a few easy days at minimum, longer after a bigger effort. It's normal for motivation to dip for a while after a big goal; that's part of recovering, not a setback.",
+}

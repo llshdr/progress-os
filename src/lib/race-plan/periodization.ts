@@ -42,6 +42,15 @@ export interface TrainingWeekSkeleton {
   // a different TrainingPhase value. Always false for every existing
   // week/plan (purely additive).
   isAcclimation: boolean
+  // True for the single week flagged as a full race-simulation dress
+  // rehearsal (see MIN_WEEKS_FOR_SIMULATION_WEEK below) - same
+  // DISPLAY-only precedent as isAcclimation: this week's own km/sessions/
+  // phase are whatever normal generation already produced for it, never
+  // recomputed to a new "70-80% effort" number (that conversion isn't
+  // physiologically linear and isn't something this feature fabricates
+  // precision for elsewhere). Purely additive; false for every week
+  // unless explicitly flagged.
+  isSimulationWeek: boolean
 }
 
 const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
@@ -279,6 +288,7 @@ function computeAcclimationWeeks(
       targetCardioSessions: totalSessions,
       targetStrengthSessions,
       isAcclimation: true,
+      isSimulationWeek: false,
     }
   })
 }
@@ -576,6 +586,19 @@ export function describeMuscleImpact(
 // All date/phase/number arithmetic lives here, never in the AI prompt -
 // the model only ever writes the per-week focus_note and overview text on
 // top of these already-decided numbers (see race-plan/route.ts).
+// Real coaching guidance places a full race-simulation dress rehearsal
+// (shorter distances, ~70-80% race effort, real race-day gear/nutrition)
+// a few weeks before Taper begins - flagged here as a single week within
+// the existing phase system, never a new phase value or a schema/
+// scheduling change (see isSimulationWeek's own comment above). Only
+// offered on a long enough runway that flagging one week doesn't crowd
+// an already-tight Peak/Taper sequence - same "long enough runway" bar
+// MIN_WEEKS_FOR_MILESTONE already established for milestone sessions
+// (milestone-sessions.ts), independently named/valued here rather than
+// importing across modules for one shared number.
+const MIN_WEEKS_FOR_SIMULATION_WEEK = 24
+const SIMULATION_WEEKS_BEFORE_TAPER = 2
+
 export function computeTrainingWeeks(
   raceDate: string,
   approach: RaceApproach,
@@ -672,6 +695,15 @@ export function computeTrainingWeeks(
 
   let taperIndex = 0
 
+  // Index within `phases` (not the acclimation-inclusive final array) of
+  // the flagged simulation week - a plain find-and-flag against the
+  // already-decided phase sequence, never a change to the ramp/recovery
+  // math above it. Only ever lands on a real Build/Peak week (never
+  // Taper itself, since SIMULATION_WEEKS_BEFORE_TAPER >= 1 keeps it
+  // strictly before the taper block starts).
+  const simulationWeekIndex =
+    totalWeeks >= MIN_WEEKS_FOR_SIMULATION_WEEK ? phases.length - allocation.taper - SIMULATION_WEEKS_BEFORE_TAPER : -1
+
   return [...acclimationWeeks, ...phases.map((phase, i) => {
     const weekStart = new Date(startMonday)
     weekStart.setDate(weekStart.getDate() + i * 7)
@@ -710,6 +742,16 @@ export function computeTrainingWeeks(
 
     if (phase === 'taper') taperIndex += 1
 
-    return { weekStartDate, phase, disciplines, brickSessions, targetCardioKm, targetCardioSessions, targetStrengthSessions, isAcclimation: false }
+    return {
+      weekStartDate,
+      phase,
+      disciplines,
+      brickSessions,
+      targetCardioKm,
+      targetCardioSessions,
+      targetStrengthSessions,
+      isAcclimation: false,
+      isSimulationWeek: i === simulationWeekIndex,
+    }
   })]
 }

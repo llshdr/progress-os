@@ -34,6 +34,10 @@ import {
   RACE_DAY_CHECKPOINTS,
   summarizeSeasonMismatch,
   ACCLIMATION_GUIDANCE,
+  RACE_SIMULATION_GUIDANCE,
+  MENTAL_PREP_GUIDANCE,
+  RUN_INJURY_PREVENTION_GUIDANCE,
+  POST_RACE_RECOVERY_GUIDANCE,
 } from '@/lib/race-plan/race-day-prep'
 import { DISRUPTION_GUIDANCE } from '@/lib/disruptions'
 import { suggestMilestoneSessions } from '@/lib/race-plan/milestone-sessions'
@@ -110,6 +114,7 @@ type PlanWeek = {
   targetStrengthSessions: number
   focusNote: string
   isAcclimation: boolean
+  isSimulationWeek: boolean
 }
 
 type Plan = {
@@ -1465,7 +1470,10 @@ export default function RaceDetailPage() {
                           )}
                           {group.isAcclimation && <p className="text-lapis-text-tertiary text-xs mb-1">{ACCLIMATION_GUIDANCE}</p>}
                           <p className="text-lapis-text-tertiary text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
-                          <p className="text-lapis-text-tertiary text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
+                          <p className="text-lapis-text-tertiary text-xs mb-1">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
+                          {category !== 'other' && (
+                            <p className="text-lapis-text-tertiary text-xs mb-3">{RUN_INJURY_PREVENTION_GUIDANCE[group.phase]}</p>
+                          )}
                           <div className="grid gap-3">
                             {group.weeks.map((week, weekIndex) => {
                               const isCurrentWeek = week.weekStartDate === currentWeekStartDate
@@ -1487,6 +1495,11 @@ export default function RaceDetailPage() {
                                       {!!week.brickSessions && (
                                         <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
                                           {week.brickSessions} brick
+                                        </span>
+                                      )}
+                                      {week.isSimulationWeek && (
+                                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-citrine/10 text-lapis-citrine border border-lapis-citrine/30">
+                                          Race Simulation
                                         </span>
                                       )}
                                     </div>
@@ -1522,6 +1535,9 @@ export default function RaceDetailPage() {
                                     )}
                                   </div>
                                   <p className="text-lapis-text-tertiary text-sm">{week.focusNote}</p>
+                                  {week.isSimulationWeek && (
+                                    <p className="text-lapis-citrine/80 text-xs mt-2">{RACE_SIMULATION_GUIDANCE}</p>
+                                  )}
 
                                   {phaseTemplate && (
                                     <>
@@ -1710,6 +1726,13 @@ export default function RaceDetailPage() {
                   </div>
                 )}
 
+                {race.race_date <= today && (
+                  <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                    <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Recovery</h2>
+                    <p className="text-lapis-text-secondary text-sm">{POST_RACE_RECOVERY_GUIDANCE[category]}</p>
+                  </div>
+                )}
+
                 {muscleImpact.length > 0 && (
                   <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
                     <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Muscle Impact</h2>
@@ -1784,6 +1807,11 @@ export default function RaceDetailPage() {
                           distance won't quite reach your goal time on its own - that's expected, not a shortfall.
                         </p>
                       )}
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-lapis-text-tertiary mb-1">Mental Prep</p>
+                      <p className="text-lapis-text-secondary text-sm">{MENTAL_PREP_GUIDANCE[category]}</p>
                     </div>
 
                     {category === 'multisport' && (
