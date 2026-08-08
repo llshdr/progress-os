@@ -315,7 +315,7 @@ export default function ExerciseLibraryPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <Link href={`/gym/exercises/${exercise.id}`}>
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
                           {/* min-w-0 is required here, not just on the flex-1
                               wrapper two levels up: this h3 is itself a flex
                               item of the row below (title + favorite star +
@@ -324,7 +324,19 @@ export default function ExerciseLibraryPage() {
                               sets) that's the FULL unwrapped text width, so
                               without this the h3 refuses to shrink and the
                               ellipsis never engages, pushing real overflow
-                              out through every ancestor up to the page. */}
+                              out through every ancestor up to the page.
+
+                              flex-wrap on the row (above) is the second half
+                              of that fix: the star icon and "Archived" badge
+                              are intentionally shrink-0 (squishing an icon or
+                              a text pill looks worse than wrapping), so on a
+                              narrow phone with both present there may not be
+                              room for all three on one line even with h3
+                              fully collapsed. flex-wrap lets the badge (and
+                              star, if needed) drop to a second line instead
+                              of overflowing - invisible in the common case,
+                              since wrapping only activates when content
+                              doesn't fit. */}
                           <h3 className="min-w-0 text-lg font-medium text-lapis-text-primary hover:text-lapis-text-secondary transition-colors truncate">
                             {exercise.name}
                           </h3>

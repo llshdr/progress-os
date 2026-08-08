@@ -179,8 +179,15 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* overflow-x-hidden is a containment backstop, not a fix for any one bug:
+     nothing else in the layout chain (main, page wrappers, html) clips
+     horizontal overflow, so content that refuses to shrink anywhere in the
+     app has an unobstructed path to becoming real page-level horizontal
+     scroll (confirmed via the Exercise Library investigation). No part of
+     this app relies on intentional horizontal scrolling (checked app-wide
+     for overflow-x-auto/scroll - none exist), so this is safe globally. */
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
   }
   html {
     @apply font-sans bg-lapis-bg;
