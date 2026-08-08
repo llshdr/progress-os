@@ -10,6 +10,7 @@ import Link from 'next/link'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
 import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 interface DashboardClientProps {
   user: User
@@ -266,16 +267,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     return (
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-lapis-surface-2 rounded w-1/3 mb-4"></div>
-            <div className="h-4 bg-lapis-surface-1 rounded w-1/4 mb-8"></div>
-            <div className="h-48 bg-lapis-surface-1 rounded-lapis-lg mb-4"></div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div className="h-32 bg-lapis-surface-1 rounded-lapis-lg"></div>
-              <div className="h-32 bg-lapis-surface-1 rounded-lapis-lg"></div>
-              <div className="h-32 bg-lapis-surface-1 rounded-lapis-lg"></div>
-            </div>
-          </div>
+          <PageSkeleton />
         </div>
       </AppLayout>
     )

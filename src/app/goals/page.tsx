@@ -10,6 +10,7 @@ import {
   fetchActiveActionItems,
   sortActionItems,
   daysBetween,
+  goalCompletionRate,
   type ActionItem,
   type ActionItemStatus,
 } from '@/lib/goals'
@@ -23,11 +24,28 @@ export default function GoalsPage() {
   const [itemToDelete, setItemToDelete] = useState<ActionItem | null>(null)
   const [linkedMilestoneCount, setLinkedMilestoneCount] = useState(0)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  // Independent of the showAll toggle - the completion-rate summary always
+  // reflects every goal regardless of which subset is currently listed
+  // below it.
+  const [goalStatuses, setGoalStatuses] = useState<ActionItemStatus[]>([])
   const supabase = createClient()
 
   useEffect(() => {
     fetchItems()
   }, [showAll])
+
+  useEffect(() => {
+    fetchGoalStatuses()
+  }, [])
+
+  const fetchGoalStatuses = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('goals').select('status').eq('user_id', user.id)
+    setGoalStatuses((data ?? []).map((g) => g.status as ActionItemStatus))
+  }
 
   // "Show done/archived" swaps between the default urgency-sorted active
   // view (fetchActiveActionItems, unchanged - shared with the dashboard/
@@ -98,6 +116,7 @@ export default function GoalsPage() {
       console.error(`Error updating ${item.kind} status:`, error)
     } else {
       fetchItems()
+      if (item.kind === 'goal') fetchGoalStatuses()
     }
   }
 
@@ -125,11 +144,15 @@ export default function GoalsPage() {
       console.error(`Error deleting ${itemToDelete.kind}:`, error)
     } else {
       fetchItems()
+      if (itemToDelete.kind === 'goal') fetchGoalStatuses()
     }
     setItemToDelete(null)
   }
 
   const today = getLocalDateString()
+  const completionRate = goalCompletionRate(goalStatuses)
+  const doneGoalCount = goalStatuses.filter((s) => s === 'done').length
+  const resolvedGoalCount = goalStatuses.filter((s) => s === 'done' || s === 'archived').length
 
   return (
     <AppLayout>
@@ -142,6 +165,12 @@ export default function GoalsPage() {
             <div>
               <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">Goals</h1>
               <p className="text-lapis-text-tertiary text-sm">Your single next move on what matters most</p>
+              {/* Reciprocal of the note on /gym/goals - that page's
+                  week-scoped weekly_goals table is a separate, older system
+                  from this one, not silently duplicated or hidden. */}
+              <Link href="/gym/goals" className="text-lapis-text-disabled hover:text-lapis-text-tertiary text-xs underline underline-offset-2">
+                Week-by-week gym goals live separately →
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -159,6 +188,27 @@ export default function GoalsPage() {
             </Link>
           </div>
         </div>
+
+        {/* Same completion-rate math (done/(done+archived), goals only)
+            recompute_user_rank already uses server-side for the rank tier -
+            shown here so it's never a mystery number that only shows up as
+            a tier label on Profile. */}
+        {completionRate != null && (
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
+            <div className="flex items-baseline justify-between mb-2">
+              <p className="text-sm text-lapis-text-secondary">Goal completion rate</p>
+              <p className="text-lapis-text-tertiary text-xs">
+                {doneGoalCount} of {resolvedGoalCount} resolved goal{resolvedGoalCount === 1 ? '' : 's'} done
+              </p>
+            </div>
+            <div className="w-full bg-lapis-surface-3 rounded-full h-2">
+              <div
+                className="bg-lapis-accent-500 rounded-full h-2 transition-all duration-300"
+                style={{ width: `${Math.round(completionRate * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="mb-8">
           <button

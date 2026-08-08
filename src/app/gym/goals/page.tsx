@@ -140,9 +140,16 @@ export default function GoalsPage() {
     setShowDeleteGoalModal(true)
   }
 
+  // Every branch used to return the same neutral string regardless of
+  // input - the lookup structure existed but never actually
+  // differentiated anything. fitness (the one real, supported category)
+  // gets the accent tint; the three explicitly-placeholder categories
+  // stay neutral, honestly reflecting that they don't have a real
+  // distinguishing feature yet rather than inventing arbitrary hues for
+  // categories with no dedicated module.
   const getCategoryColor = (category: Goal['category']) => {
     const colors = {
-      fitness: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
+      fitness: 'bg-lapis-accent-500/10 text-lapis-accent-400 border-lapis-accent-400/30',
       business: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
       productivity: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
       self_improvement: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
@@ -150,11 +157,15 @@ export default function GoalsPage() {
     return colors[category]
   }
 
+  // Same Completed/In-Progress color pairing gym/workouts already uses for
+  // its own status badges (bg-lapis-accent-500/15 text-lapis-accent-400 /
+  // bg-lapis-citrine/10 text-lapis-citrine) - reused here rather than
+  // invented fresh, so "completed" reads the same color across the app.
   const getStatusColor = (status: Goal['status']) => {
     const colors = {
       pending: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
-      in_progress: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
-      completed: 'bg-lapis-surface-2 text-lapis-text-secondary border-lapis-border-subtle',
+      in_progress: 'bg-lapis-citrine/10 text-lapis-citrine border-lapis-citrine/30',
+      completed: 'bg-lapis-accent-500/15 text-lapis-accent-400 border-lapis-accent-400/30',
     }
     return colors[status]
   }
@@ -253,14 +264,30 @@ export default function GoalsPage() {
           </Dialog>
         </div>
 
-        <div className="mb-6">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
-            Weekly Goals
-          </h1>
-          <p className="text-lapis-text-tertiary text-sm">
-            {goals.filter((g) => g.status === 'completed').length} of {goals.length} completed
-          </p>
+        <div className="flex items-center gap-4 mb-2">
+          <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
+            <Target className="w-8 h-8 text-lapis-text-secondary" />
+          </div>
+          <div>
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">
+              Weekly Goals
+            </h1>
+            <p className="text-lapis-text-tertiary text-sm">
+              {goals.filter((g) => g.status === 'completed').length} of {goals.length} completed
+            </p>
+          </div>
         </div>
+
+        {/* This page tracks week-scoped goals in a separate, older table -
+            genuinely disconnected from the main Goals module (different
+            status model, no shared schema) rather than silently duplicating
+            or hiding that split from the user. */}
+        <Link
+          href="/goals"
+          className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary underline underline-offset-2 mb-6 inline-block"
+        >
+          Longer-term goals with milestones and due dates live in the main Goals module →
+        </Link>
 
         <div className="grid gap-3">
           {goals.length === 0 ? (

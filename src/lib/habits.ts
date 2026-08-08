@@ -29,3 +29,16 @@ export function habitAppliesToDate(habit: Habit, date: string): boolean {
 export function isHabitLoggedOnDate(logs: HabitLog[], habitId: string, date: string): boolean {
   return logs.some((l) => l.habitId === habitId && l.date === date)
 }
+
+// Purely informational, gentle re-engagement signal - never a streak or
+// "you're behind" framing (habits are deliberately excluded from
+// streak-style mechanics, see migration 063's own note on habit_logs).
+// Null when there's no log yet at all, since "no data yet" and "logged
+// today" are different states and shouldn't render the same way.
+export function daysSinceLastLog(logs: HabitLog[], habitId: string, today: string): number | null {
+  const habitLogDates = logs.filter((l) => l.habitId === habitId).map((l) => l.date)
+  if (habitLogDates.length === 0) return null
+  const mostRecent = habitLogDates.reduce((latest, date) => (date > latest ? date : latest))
+  const msPerDay = 1000 * 60 * 60 * 24
+  return Math.round((new Date(today).getTime() - new Date(mostRecent).getTime()) / msPerDay)
+}

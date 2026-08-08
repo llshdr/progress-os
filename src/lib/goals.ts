@@ -28,6 +28,19 @@ export function sortActionItems(items: ActionItem[]): ActionItem[] {
   return [...withDate, ...withoutDate]
 }
 
+// Same completion-rate math recompute_user_rank (migration 042) already
+// computes server-side for the rank tier - goals only, never milestones,
+// matching that exact definition rather than inventing a second one that
+// could quietly disagree with what actually drives rank. done+archived
+// === 0 returns null (nothing resolved yet), not 0 - "no data yet" and
+// "genuinely 0% complete" read very differently on a progress bar.
+export function goalCompletionRate(statuses: ActionItemStatus[]): number | null {
+  const done = statuses.filter((s) => s === 'done').length
+  const archived = statuses.filter((s) => s === 'archived').length
+  if (done + archived === 0) return null
+  return done / (done + archived)
+}
+
 // Whole-day difference, `a - b`, using calendar dates (not timestamps) so a
 // few hours' difference near midnight never off-by-ones the count.
 export function daysBetween(a: string, b: string): number {

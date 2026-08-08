@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { WEEKDAY_NAMES } from '@/lib/gym-schedule'
-import type { Habit } from '@/lib/habits'
+import { getLocalDateString } from '@/lib/date'
+import { daysSinceLastLog, type Habit, type HabitLog } from '@/lib/habits'
 
 interface Props {
   habits: Habit[]
+  habitLogs: HabitLog[]
   onChanged: () => void
 }
 
@@ -20,7 +22,8 @@ interface Props {
 // view's timed block/all-day pill (see calendar/page.tsx), not here -
 // this card is only for defining what a habit is, same split as
 // DisruptionDeclaration (declare) vs. the Calendar day view (act).
-export default function HabitsCard({ habits, onChanged }: Props) {
+export default function HabitsCard({ habits, habitLogs, onChanged }: Props) {
+  const today = getLocalDateString()
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -183,27 +186,37 @@ export default function HabitsCard({ habits, onChanged }: Props) {
         <p className="text-lapis-text-tertiary text-sm">None yet.</p>
       ) : (
         <div className="space-y-3">
-          {habits.map((habit) => (
-            <div key={habit.id} className="border border-lapis-border-subtle rounded-lapis-md p-3 flex items-center justify-between gap-2">
-              <div>
-                <p className="text-lapis-text-primary text-sm">{habit.name}</p>
-                <p className="text-lapis-text-tertiary text-xs mt-0.5">
-                  {habit.recurrenceWeekdays && habit.recurrenceWeekdays.length > 0
-                    ? habit.recurrenceWeekdays.map((d) => WEEKDAY_NAMES[d].slice(0, 3)).join(', ')
-                    : 'Every day'}
-                  {habit.usualTime && ` · ${habit.usualTime.slice(0, 5)}`}
-                </p>
+          {habits.map((habit) => {
+            // Only surfaced once the gap is genuinely notable (3+ days) -
+            // a habit logged yesterday or the day before doesn't need a
+            // callout, and one never logged at all (brand new) has nothing
+            // useful to say yet. Deliberately neutral/tertiary color, same
+            // as the schedule caption beneath it - never a warning color,
+            // since this is an observation, not a lapse.
+            const gap = daysSinceLastLog(habitLogs, habit.id, today)
+            return (
+              <div key={habit.id} className="border border-lapis-border-subtle rounded-lapis-md p-3 flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-lapis-text-primary text-sm">{habit.name}</p>
+                  <p className="text-lapis-text-tertiary text-xs mt-0.5">
+                    {habit.recurrenceWeekdays && habit.recurrenceWeekdays.length > 0
+                      ? habit.recurrenceWeekdays.map((d) => WEEKDAY_NAMES[d].slice(0, 3)).join(', ')
+                      : 'Every day'}
+                    {habit.usualTime && ` · ${habit.usualTime.slice(0, 5)}`}
+                    {gap != null && gap >= 3 && ` · Last logged ${gap}d ago`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button onClick={() => openEditDialog(habit)} className="text-lapis-text-disabled hover:text-lapis-text-secondary text-xs transition-colors">
+                    Edit
+                  </button>
+                  <button onClick={() => handleDelete(habit.id)} className="text-lapis-text-disabled hover:text-lapis-text-secondary text-xs transition-colors">
+                    Remove
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <button onClick={() => openEditDialog(habit)} className="text-lapis-text-disabled hover:text-lapis-text-secondary text-xs transition-colors">
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(habit.id)} className="text-lapis-text-disabled hover:text-lapis-text-secondary text-xs transition-colors">
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

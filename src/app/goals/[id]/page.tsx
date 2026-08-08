@@ -200,6 +200,28 @@ export default function GoalDetailPage() {
               </Link>
             </div>
 
+            {/* Plain done/total across every linked milestone regardless of
+                status - a more intuitive "how far along is this goal"
+                reading than the rank formula's done/(done+archived), which
+                deliberately excludes still-active items from the
+                denominator (right for a rate, wrong for "progress so far"). */}
+            {linkedMilestones.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-baseline justify-between mb-2">
+                  <p className="text-xs text-lapis-text-tertiary">Progress</p>
+                  <p className="text-lapis-text-tertiary text-xs">
+                    {linkedMilestones.filter((m) => m.status === 'done').length} of {linkedMilestones.length} done
+                  </p>
+                </div>
+                <div className="w-full bg-lapis-surface-3 rounded-full h-2">
+                  <div
+                    className="bg-lapis-accent-500 rounded-full h-2 transition-all duration-300"
+                    style={{ width: `${Math.round((linkedMilestones.filter((m) => m.status === 'done').length / linkedMilestones.length) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {linkedMilestones.length === 0 && (
               <p className="text-lapis-text-tertiary text-sm mb-3">
                 Break this goal down into a few concrete milestones to work toward it.

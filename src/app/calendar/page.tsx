@@ -747,7 +747,7 @@ export default function CalendarPage() {
         )}
 
         <div className="mt-6">
-          <HabitsCard habits={habits} onChanged={refetchHabits} />
+          <HabitsCard habits={habits} habitLogs={habitLogs} onChanged={refetchHabits} />
         </div>
 
         <div className="mt-6">
