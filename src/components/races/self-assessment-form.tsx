@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { questionsForCategory, type RaceCategory, type SimpleSelfAssessment, type AssessmentQuestion } from '@/lib/race-plan/self-assessment'
+import { getLocalDateString } from '@/lib/date'
 
 interface SelfAssessmentFormProps {
   category: RaceCategory
@@ -120,7 +121,10 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
         if (!distanceKm && !timeSeconds) {
           patch({ recentTimeTrial: null })
         } else {
-          patch({ recentTimeTrial: { distanceKm, timeSeconds } })
+          // Stamped on every real edit (this only fires from an input's
+          // onChange) - see retest-reminder.ts, which needs a real date to
+          // measure staleness from.
+          patch({ recentTimeTrial: { distanceKm, timeSeconds, recordedAt: getLocalDateString() } })
         }
       }
 

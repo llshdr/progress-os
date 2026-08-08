@@ -70,7 +70,8 @@ import {
   type DisciplineActivityFacts,
 } from '@/lib/race-plan/discipline-weakness'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
-import { resolvePeakPaceTargets, resolveEasyPaceTargets, TYPICAL_TRANSITION_SECONDS } from '@/lib/race-plan/pace-targets'
+import { resolvePeakPaceTargets, resolveEasyPaceTargets, TYPICAL_TRANSITION_SECONDS, estimateWeeklyTrainingHours } from '@/lib/race-plan/pace-targets'
+import { findMostOverdueRetest, type RetestCandidate } from '@/lib/race-plan/retest-reminder'
 import { resolveRealZone2Pace, computePaceGaps, describePaceGap, type PaceGap } from '@/lib/race-plan/goal-achievability'
 import { assessBenchmarkCompliance, type BenchmarkFlag, type DisruptionRange } from '@/lib/race-plan/benchmark-verification'
 import DisruptionDeclaration, { formatDateRange, type TrainingDisruption } from '@/components/disruption-declaration'
@@ -884,6 +885,42 @@ export default function RaceDetailPage() {
       ? assessNutritionPhaseTension(currentPlanPhase, snapshot.trainingPhase, snapshot.trainingIntensity, snapshot.maintenanceCalories)
       : null
 
+  // Proactive re-test nudge (~12 weeks) - a real benchmark test (time
+  // trial), not the passive logged-activity read deriveCurrentFormLevel
+  // already does. Only surfaced once a plan exists, same as the flags
+  // above - anchored to trainingStartDate so it can still fire for a
+  // discipline that's never been tested at all.
+  const retestCandidates: RetestCandidate[] =
+    category === 'multisport' && selfAssessment.kind === 'multisport'
+      ? (['swim', 'bike', 'run'] as Discipline[]).map((d) => ({
+          label: d,
+          recordedAt: (selfAssessment as MultisportSelfAssessment)[d].recentTimeTrial?.recordedAt ?? null,
+        }))
+      : selfAssessment.kind === 'simple'
+        ? [{ label: null, recordedAt: (selfAssessment as SimpleSelfAssessment).recentTimeTrial?.recordedAt ?? null }]
+        : []
+  const retestReminder = plan ? findMostOverdueRetest(retestCandidates, race.trainingStartDate, today) : null
+  const retestLabel = retestReminder?.label ? ` ${DISCIPLINE_LABELS[retestReminder.label]}` : ''
+  const retestMessage = retestReminder
+    ? retestReminder.everRecorded
+      ? `It's been ${retestReminder.weeksSince}+ weeks since your last${retestLabel} benchmark test. A fresh time trial (5k/10k run, 800m swim, FTP test) confirms this plan still matches your real fitness.`
+      : `You're ${retestReminder.weeksSince}+ weeks into training without a logged${retestLabel} benchmark test. A time trial now gives the plan a real number to check itself against.`
+    : null
+
+  // Estimated peak-week hours (see estimateWeeklyTrainingHours) vs. what
+  // the athlete said they can realistically commit - only meaningful once
+  // a plan exists to measure, and only for multisport (the only category
+  // with per-discipline pace targets to convert km into hours).
+  const availableWeeklyHours = selfAssessment.kind === 'multisport' ? selfAssessment.availableWeeklyHours : null
+  const peakWeeklyHours =
+    category === 'multisport' && plan && easyPaceTargets
+      ? Math.max(...plan.weeks.map((w) => estimateWeeklyTrainingHours(w, easyPaceTargets) ?? 0))
+      : null
+  const weeklyHoursFlag =
+    peakWeeklyHours != null && availableWeeklyHours != null && peakWeeklyHours > availableWeeklyHours
+      ? `Your plan's peak week asks for roughly ${peakWeeklyHours.toFixed(1)}h; you said you have about ${availableWeeklyHours}h/week available. Build/Peak will be the tightest squeeze - a more muscle-leaning approach trims cardio volume, or a longer runway spreads the same volume out.`
+      : null
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1326,16 +1363,25 @@ export default function RaceDetailPage() {
                   )}
                   <p className="text-lapis-text-secondary text-sm leading-relaxed mb-4">{plan.overview}</p>
                   {seasonMismatchNote && <p className="text-lapis-text-tertiary text-xs mb-4">{seasonMismatchNote}</p>}
+                  {retestMessage && (
+                    <p className="text-lapis-text-tertiary text-xs mb-4">
+                      {retestMessage}{' '}
+                      <button onClick={() => setStep('assessment')} className="underline underline-offset-2 hover:text-lapis-text-secondary">
+                        Log a fresh benchmark →
+                      </button>
+                    </p>
+                  )}
 
                   <div className="pt-4 border-t border-lapis-border-subtle">
                     <p className="text-xs text-lapis-text-tertiary mb-1">Strength Emphasis</p>
                     <p className="text-lapis-text-primary text-sm">{describeStrengthEmphasis(plan.approach, snapshot.strength.recentSessionsPerWeek)}</p>
                   </div>
 
-                  {nutritionTensionFlag && (
-                    <div className="mt-4 border border-lapis-citrine/20 rounded-lapis-lg bg-lapis-citrine/[0.04] p-4">
+                  {(nutritionTensionFlag || weeklyHoursFlag) && (
+                    <div className="mt-4 border border-lapis-citrine/20 rounded-lapis-lg bg-lapis-citrine/[0.04] p-4 space-y-2">
                       <p className="text-lapis-citrine/80 text-sm font-medium mb-1">Worth double-checking</p>
-                      <p className="text-lapis-citrine/60 text-xs">{nutritionTensionFlag}</p>
+                      {nutritionTensionFlag && <p className="text-lapis-citrine/60 text-xs">{nutritionTensionFlag}</p>}
+                      {weeklyHoursFlag && <p className="text-lapis-citrine/60 text-xs">{weeklyHoursFlag}</p>}
                     </div>
                   )}
                 </div>

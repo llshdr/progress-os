@@ -122,7 +122,7 @@ export const TRANSITION_GUIDANCE: Record<TrainingPhase, { short: string; full: s
 // need fueling" signal, rather than modeling session duration from
 // scratch.
 export const FUELING_GUIDANCE =
-  'For efforts over ~60-75 minutes: roughly 30-60g carbs/hour. Beyond ~2.5 hours - your longest key/brick sessions - that commonly rises to 60-90g/hour with a mixed glucose-fructose source. Log what you actually take in as an "Intra-Workout" entry in Nutrition so you can see what you tolerate well before race day.'
+  'For efforts over ~60-75 minutes: roughly 30-60g carbs/hour. Beyond ~2.5 hours - your longest key/brick sessions - that commonly rises to 60-90g/hour with a mixed glucose-fructose source. Log what you actually take in as an "Intra-Workout" entry in Nutrition so you can see what you tolerate well before race day. If you use caffeine regularly, tapering it down in the 3-4 days before race day is a commonly-cited way to restore its performance boost for race day itself - a reduction, not necessarily a full cutout.'
 
 // ─── Open-water seasonality (Phase C) ─────────────────────────────────
 // Deliberately sourced from the athlete's own stated season, never an

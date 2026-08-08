@@ -1,6 +1,6 @@
 import type { RaceType } from '@/lib/race-constants'
 import type { Discipline, DisciplineAssessment } from '@/lib/race-plan/self-assessment'
-import type { TrainingPhase } from '@/lib/race-plan/periodization'
+import type { TrainingPhase, DisciplineTarget } from '@/lib/race-plan/periodization'
 import type { SlotProgression } from '@/lib/race-plan/day-template'
 import { RACE_LEG_DISTANCE_KM, TYPICAL_ELAPSED_FRACTION, type ProjectedRaceTimeRange } from '@/lib/race-plan/finish-time'
 import type { DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
@@ -144,4 +144,26 @@ export function paceTargetForWeek(
 
   const progress = Math.min(1, weekIndexWithinPhase / Math.max(1, progression.rampWeeks))
   return easyPaceSecPerKm + (peakPaceSecPerKm - easyPaceSecPerKm) * progress
+}
+
+// Flat estimate for one strength session - the same ~45-minute figure
+// already cited in periodization.ts's LEVEL_PEAK_KM sourcing comment
+// ("one SEPARATE ~45-minute strength session"), not a new number.
+const STRENGTH_SESSION_HOURS = 0.75
+
+// Rough weekly training-time estimate for one plan week, used only to
+// flag when a plan's peak week exceeds the athlete's stated available
+// hours (MultisportSelfAssessment.availableWeeklyHours). Cardio km is
+// converted at the EASY pace baseline, not race pace - the overwhelming
+// majority of a week's volume is easy effort (see resolveEasyPaceBaseline
+// above), so that's the honest basis for a time estimate, not the fastest
+// one. Deliberately an estimate, not session-by-session modeling - same
+// "cite an estimate honestly" precedent as FALLBACK_EASY_PACE_SLOWDOWN.
+export function estimateWeeklyTrainingHours(
+  week: { disciplines: Record<Discipline, DisciplineTarget> | null; targetStrengthSessions: number },
+  easyPaceTargets: Record<Discipline, number> | null
+): number | null {
+  if (!week.disciplines || !easyPaceTargets) return null
+  const cardioHours = DISCIPLINES.reduce((sum, d) => sum + (week.disciplines![d].km * easyPaceTargets[d]) / 3600, 0)
+  return cardioHours + week.targetStrengthSessions * STRENGTH_SESSION_HOURS
 }

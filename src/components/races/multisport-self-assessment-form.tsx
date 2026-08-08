@@ -12,6 +12,7 @@ import {
 } from '@/lib/race-plan/self-assessment'
 import type { DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
 import { DISCIPLINE_PACE_UNIT, toSecPerKm, fromSecPerKm, formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
+import { getLocalDateString } from '@/lib/date'
 
 interface MultisportSelfAssessmentFormProps {
   value: MultisportSelfAssessment
@@ -222,7 +223,12 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
       const m = partial.minutes ?? minutes
       const s = partial.seconds ?? seconds
       const timeSeconds = h * 3600 + m * 60 + s
-      patchDiscipline(discipline, { recentTimeTrial: !distanceKm && !timeSeconds ? null : { distanceKm, timeSeconds } })
+      // Stamped on every real edit (this only fires from an input's
+      // onChange) - see retest-reminder.ts, which needs a real date to
+      // measure staleness from.
+      patchDiscipline(discipline, {
+        recentTimeTrial: !distanceKm && !timeSeconds ? null : { distanceKm, timeSeconds, recordedAt: getLocalDateString() },
+      })
     }
 
     return (
@@ -321,6 +327,24 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
                 {opt.label}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-lapis-text-secondary">Roughly how many hours/week can you realistically commit?</Label>
+          <p className="text-lapis-text-tertiary text-xs">
+            Optional - around work/family, not your absolute max. Used only to flag it if the generated plan's peak week asks for more than this.
+          </p>
+          <div className="flex items-center gap-2 max-w-xs">
+            <Input
+              type="number"
+              step="0.5"
+              value={value.availableWeeklyHours ?? ''}
+              onChange={(e) => onChange({ ...value, availableWeeklyHours: e.target.value ? parseFloat(e.target.value) : null })}
+              placeholder="e.g. 10"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
+            />
+            <span className="text-lapis-text-tertiary text-sm">hours/week</span>
           </div>
         </div>
 

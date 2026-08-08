@@ -22,7 +22,14 @@ export interface DisciplineAssessment {
   // pace-units.ts) so it compares directly against logged-activity pace.
   comfortableEffort: { paceSecPerKm: number; sustainedMinutes: number } | null
   longestRecentSessionKm: number | null
-  recentTimeTrial: { distanceKm: number; timeSeconds: number } | null
+  // recordedAt (stamped when the value is entered/edited - see
+  // self-assessment-form.tsx/multisport-self-assessment-form.tsx) is what
+  // makes the periodic re-test reminder (retest-reminder.ts) possible at
+  // all - without a date, the app has no way to know if this time trial
+  // is 2 weeks or 8 months old. Optional/nullable for old stored rows
+  // that predate this field - normalizeSelfAssessment doesn't need to
+  // special-case it, missing just reads as null.
+  recentTimeTrial: { distanceKm: number; timeSeconds: number; recordedAt: string | null } | null
   limiters: string[]
 }
 
@@ -44,6 +51,13 @@ export interface MultisportSelfAssessment {
   run: DisciplineAssessment
   perceivedStrength: 1 | 2 | 3 | 4 | 5 | null
   pastMultisportExperience: 'none' | 'sprint' | 'olympic' | 'half_iron' | 'full_iron' | 'other' | null
+  // Realistic hours/week the athlete can commit around work/family - used
+  // only to flag when a generated plan's peak week exceeds it (see
+  // estimateWeeklyTrainingHours in pace-targets.ts). Multisport-only for
+  // now: it's the only category with per-discipline pace targets and a
+  // sourced peak-hours envelope (LEVEL_PEAK_KM's comment) to compute
+  // against.
+  availableWeeklyHours: number | null
   notes: string | null
 }
 
@@ -73,7 +87,7 @@ export interface SimpleSelfAssessment {
   kind: 'simple'
   perceivedFitness: 1 | 2 | 3 | 4 | 5 | null
   longestRecentDistanceKm: number | null
-  recentTimeTrial: { distanceKm: number; timeSeconds: number } | null
+  recentTimeTrial: { distanceKm: number; timeSeconds: number; recordedAt: string | null } | null
   limiters: string[]
   notes: string | null
 }
@@ -96,6 +110,7 @@ export const EMPTY_MULTISPORT_SELF_ASSESSMENT: MultisportSelfAssessment = {
   run: { ...EMPTY_DISCIPLINE_ASSESSMENT },
   perceivedStrength: null,
   pastMultisportExperience: null,
+  availableWeeklyHours: null,
   notes: null,
 }
 
