@@ -5,6 +5,7 @@ import { computeSleepMovingAverage } from '@/lib/sleep-trend'
 
 interface SleepChartProps {
   entries: { hoursSlept: number; date: string }[]
+  goalHours?: number | null
 }
 
 const WIDTH = 600
@@ -12,11 +13,13 @@ const HEIGHT = 220
 const PADDING = { top: 16, right: 12, bottom: 16, left: 12 }
 
 // Same SVG structure as WeightChart (raw points + 7-day moving-average
-// line) - hours has no single-number "goal" the way weight does, so
-// there's no dashed reference line here; the recommended-range comparison
-// lives entirely in the text insight (see SleepInsightCard), not the
-// graph. Assumes at least 2 entries, same precondition as WeightChart.
-export default function SleepChart({ entries }: SleepChartProps) {
+// line + optional dashed goal line) - the goal line only renders once the
+// athlete sets one (Settings > Calendar > Goal Sleep Hours); without it
+// this renders exactly as it always has. The recommended-range comparison
+// still lives in the text insight too (see SleepInsightCard) - the goal
+// line is a personal target, not a substitute for that general guidance.
+// Assumes at least 2 entries, same precondition as WeightChart.
+export default function SleepChart({ entries, goalHours }: SleepChartProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
@@ -26,8 +29,9 @@ export default function SleepChart({ entries }: SleepChartProps) {
 
   const rawValues = sorted.map((e) => e.hoursSlept)
   const avgValues = movingAverage.map((p) => p.averageHours)
+  const goalValue = goalHours ?? null
 
-  const allValues = [...rawValues, ...avgValues]
+  const allValues = [...rawValues, ...avgValues, ...(goalValue != null ? [goalValue] : [])]
   const minValue = Math.min(...allValues)
   const maxValue = Math.max(...allValues)
   const valueRange = maxValue - minValue || 1
@@ -43,6 +47,8 @@ export default function SleepChart({ entries }: SleepChartProps) {
     PADDING.top + plotHeight - ((v - (minValue - yPad)) / (valueRange + yPad * 2)) * plotHeight
 
   const linePath = avgValues.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xForIndex(i)} ${yForValue(v)}`).join(' ')
+
+  const goalY = goalValue != null ? yForValue(goalValue) : null
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const svg = svgRef.current
@@ -74,6 +80,18 @@ export default function SleepChart({ entries }: SleepChartProps) {
         onPointerMove={handlePointerMove}
         onPointerLeave={() => setHoverIndex(null)}
       >
+        {goalY != null && (
+          <line
+            x1={PADDING.left}
+            x2={WIDTH - PADDING.right}
+            y1={goalY}
+            y2={goalY}
+            stroke="var(--color-lapis-border-strong)"
+            strokeWidth={1}
+            strokeDasharray="4 4"
+          />
+        )}
+
         {sorted.map((_, i) => (
           <circle key={`raw-${i}`} cx={xForIndex(i)} cy={yForValue(rawValues[i])} r={2.5} fill="var(--color-lapis-text-secondary)" fillOpacity={0.4} />
         ))}
@@ -127,6 +145,11 @@ export default function SleepChart({ entries }: SleepChartProps) {
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-0.5 bg-lapis-accent-500" /> 7-day trend
         </span>
+        {goalValue != null && (
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 border-t border-dashed border-lapis-border/40" /> Goal
+          </span>
+        )}
       </div>
     </div>
   )

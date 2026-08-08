@@ -90,6 +90,8 @@ export default function CalendarPage() {
   const [habitLogs, setHabitLogs] = useState<HabitLog[]>([])
   const [wakeTime, setWakeTime] = useState('06:00:00')
   const [sleepTime, setSleepTime] = useState('23:00:00')
+  const [sleepEntries, setSleepEntries] = useState<{ date: string; hoursSlept: number }[]>([])
+  const [goalSleepHours, setGoalSleepHours] = useState<number | null>(null)
   const [travelPrepEntryId, setTravelPrepEntryId] = useState<string | null>(null)
   const [welcomeBackDismissed, setWelcomeBackDismissed] = useState(false)
   const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(null)
@@ -154,8 +156,13 @@ export default function CalendarPage() {
       habitsResult,
       habitLogsResult,
       activeWorkoutResult,
+      sleepResult,
     ] = await Promise.all([
-      supabase.from('user_settings').select('schedule_mode, wake_time, sleep_time, show_today_suggestions').eq('user_id', user.id).maybeSingle(),
+      supabase
+        .from('user_settings')
+        .select('schedule_mode, wake_time, sleep_time, show_today_suggestions, goal_sleep_hours')
+        .eq('user_id', user.id)
+        .maybeSingle(),
       fetchScheduleSlots(supabase, user.id),
       supabase
         .from('races')
@@ -187,14 +194,20 @@ export default function CalendarPage() {
       // powers the day timeline's gym block acting as a real Start/
       // Continue Workout trigger, not just a read-only label.
       supabase.from('workouts').select('id').eq('user_id', user.id).is('completed_at', null).order('started_at', { ascending: false }).limit(1).maybeSingle(),
+      // No date window - same "fetch it all, filter per-day client-side"
+      // precedent habit_logs already uses (one row/night stays small for
+      // years).
+      supabase.from('sleep_entries').select('date, hours_slept').eq('user_id', user.id),
     ])
 
     setScheduleMode(settingsResult.data?.schedule_mode === 'calendar' ? 'calendar' : 'rotation')
     if (settingsResult.data?.wake_time) setWakeTime(settingsResult.data.wake_time)
     if (settingsResult.data?.sleep_time) setSleepTime(settingsResult.data.sleep_time)
     setShowTodaySuggestions(settingsResult.data?.show_today_suggestions ?? true)
+    setGoalSleepHours(settingsResult.data?.goal_sleep_hours ?? null)
     setActiveWorkoutId(activeWorkoutResult.data?.id ?? null)
     setScheduleSlots(slots)
+    setSleepEntries((sleepResult.data ?? []).map((r: any) => ({ date: r.date, hoursSlept: r.hours_slept })))
 
     const raceRow = raceResult.data
     if (raceRow) {
@@ -422,6 +435,14 @@ export default function CalendarPage() {
 
   const mesocycleStatus: CurrentMesocycleStatus | null = selectActiveMesocycle(mesocycles, date)
 
+  // Only flagged when a real, user-set goal exists (Settings > Calendar >
+  // Goal Sleep Hours) and the night falls meaningfully short of it (1+
+  // hour) - no fixed clinical threshold invented here, this app has no
+  // basis to assert what's "enough" sleep for someone it knows nothing
+  // else about (same reasoning SleepChart's own goal-line is gated on).
+  const sleepEntryForDate = sleepEntries.find((e) => e.date === date)
+  const isBadSleepNight = goalSleepHours != null && sleepEntryForDate != null && sleepEntryForDate.hoursSlept <= goalSleepHours - 1
+
   // A short, naturally-expiring window (not a stored "dismissed" flag) -
   // shows a soft nudge for a few days after a declared disruption ends,
   // then just stops applying on its own. No migration needed.
@@ -530,6 +551,9 @@ export default function CalendarPage() {
                   ? 'Deload week'
                   : `Week ${mesocycleStatus.currentWeek} of ${mesocycleStatus.mesocycle.lengthWeeks}`}
               </p>
+            )}
+            {viewMode === 'day' && isBadSleepNight && (
+              <p className="text-lapis-citrine/70 text-xs mt-1">Slept {sleepEntryForDate!.hoursSlept}h, below your {goalSleepHours}h goal</p>
             )}
           </div>
           <div className="flex items-center gap-2">

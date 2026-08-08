@@ -19,6 +19,7 @@ export default function CalendarSettingsPage() {
   const [wakeTime, setWakeTime] = useState('06:00')
   const [sleepTime, setSleepTime] = useState('23:00')
   const [temperatureUnit, setTemperatureUnit] = useState<TemperatureUnit>('c')
+  const [goalSleepHours, setGoalSleepHours] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -39,13 +40,14 @@ export default function CalendarSettingsPage() {
 
     const { data } = await supabase
       .from('user_settings')
-      .select('wake_time, sleep_time, temperature_unit')
+      .select('wake_time, sleep_time, temperature_unit, goal_sleep_hours')
       .eq('user_id', user.id)
       .maybeSingle()
 
     if (data?.wake_time) setWakeTime(data.wake_time.slice(0, 5))
     if (data?.sleep_time) setSleepTime(data.sleep_time.slice(0, 5))
     setTemperatureUnit(data?.temperature_unit === 'f' ? 'f' : 'c')
+    if (data?.goal_sleep_hours != null) setGoalSleepHours(String(data.goal_sleep_hours))
     setLoading(false)
   }
 
@@ -66,6 +68,7 @@ export default function CalendarSettingsPage() {
         wake_time: wakeTime || '06:00',
         sleep_time: sleepTime || '23:00',
         temperature_unit: temperatureUnit,
+        goal_sleep_hours: goalSleepHours ? parseFloat(goalSleepHours) : null,
       },
       { onConflict: 'user_id' }
     )
@@ -163,6 +166,26 @@ export default function CalendarSettingsPage() {
                     °F
                   </button>
                 </div>
+              </div>
+
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Goal Sleep Hours</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
+                  Optional - shows as a reference line on the Sleep trend chart. Leave blank to hide it.
+                </p>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="24"
+                  value={goalSleepHours}
+                  onChange={(e) => {
+                    setGoalSleepHours(e.target.value)
+                    setSaved(false)
+                  }}
+                  placeholder="8"
+                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled max-w-[120px]"
+                />
               </div>
 
               <div className="flex items-center gap-3">

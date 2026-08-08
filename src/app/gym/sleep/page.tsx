@@ -20,6 +20,7 @@ import { celsiusToDisplay, displayToCelsius, formatTemperature, type Temperature
 import { getLocalDateString } from '@/lib/date'
 import SleepChart from '@/components/sleep/sleep-chart'
 import SleepInsightCard from '@/components/sleep/sleep-insight-card'
+import { computeSleepPerformanceCorrelation, MIN_NIGHTS_PER_BUCKET, type NextDayWorkout, type SleepPerformanceCorrelation } from '@/lib/sleep-performance'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Moon } from 'lucide-react'
 
@@ -37,6 +38,7 @@ const MIN_ENTRIES_FOR_TREND = 3
 export default function SleepPage() {
   const [entries, setEntries] = useState<SleepEntry[]>([])
   const [tempUnit, setTempUnit] = useState<TemperatureUnit>('c')
+  const [goalSleepHours, setGoalSleepHours] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newEntry, setNewEntry] = useState({
@@ -47,6 +49,7 @@ export default function SleepPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null)
   const [insightRefreshKey, setInsightRefreshKey] = useState(0)
+  const [performanceCorrelation, setPerformanceCorrelation] = useState<SleepPerformanceCorrelation | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -54,14 +57,49 @@ export default function SleepPage() {
     fetchSettings()
   }, [])
 
+  useEffect(() => {
+    if (entries.length > 0) fetchPerformanceCorrelation()
+  }, [entries])
+
+  // Separate from fetchEntries so a fresh add/delete of a sleep entry
+  // re-triggers this via the entries-length effect above without needing
+  // its own explicit call at every mutation site.
+  const fetchPerformanceCorrelation = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data } = await supabase.from('workouts').select('date, session_rir').eq('user_id', user.id).not('completed_at', 'is', null)
+
+    const workoutsByDate = new Map<string, NextDayWorkout>()
+    for (const w of data ?? []) {
+      // A date can have more than one completed workout - keep whichever
+      // has an RIR logged if there's a choice, since that's strictly more
+      // informative than an unrated duplicate.
+      const existing = workoutsByDate.get(w.date)
+      if (!existing || (existing.sessionRir == null && w.session_rir != null)) {
+        workoutsByDate.set(w.date, { date: w.date, sessionRir: w.session_rir })
+      }
+    }
+
+    setPerformanceCorrelation(
+      computeSleepPerformanceCorrelation(
+        entries.map((e) => ({ date: e.date, hoursSlept: e.hours_slept })),
+        workoutsByDate
+      )
+    )
+  }
+
   const fetchSettings = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data } = await supabase.from('user_settings').select('temperature_unit').eq('user_id', user.id).maybeSingle()
+    const { data } = await supabase.from('user_settings').select('temperature_unit, goal_sleep_hours').eq('user_id', user.id).maybeSingle()
     setTempUnit(data?.temperature_unit === 'f' ? 'f' : 'c')
+    setGoalSleepHours(data?.goal_sleep_hours ?? null)
   }
 
   const fetchEntries = async () => {
@@ -134,6 +172,13 @@ export default function SleepPage() {
     const date = new Date(dateString + 'T00:00:00')
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
+
+  // Client-side aggregation over already-fetched entries, same "quick win"
+  // pattern as the goal completion-rate summary on /goals - no new query.
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const recentEntries = entries.filter((e) => new Date(e.date + 'T00:00:00') > sevenDaysAgo)
+  const weeklyAverage = recentEntries.length > 0 ? recentEntries.reduce((sum, e) => sum + e.hours_slept, 0) / recentEntries.length : null
 
   if (loading) {
     return (
@@ -218,14 +263,22 @@ export default function SleepPage() {
 
         <div className="mb-6">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Sleep History</h1>
-          <p className="text-lapis-text-tertiary text-sm">{entries.length} nights logged</p>
+          <p className="text-lapis-text-tertiary text-sm">
+            {entries.length} nights logged
+            {weeklyAverage != null && (
+              <span>
+                {' '}
+                · <span className="font-data tabular-nums">{weeklyAverage.toFixed(1)}h</span> avg, last 7 days
+              </span>
+            )}
+          </p>
         </div>
 
         {entries.length >= MIN_ENTRIES_FOR_TREND ? (
           <div className="grid gap-4 mb-6 lg:grid-cols-2">
             <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
               <h3 className="text-lg font-medium text-lapis-text-primary mb-4">Trend</h3>
-              <SleepChart entries={entries.map((e) => ({ hoursSlept: e.hours_slept, date: e.date }))} />
+              <SleepChart entries={entries.map((e) => ({ hoursSlept: e.hours_slept, date: e.date }))} goalHours={goalSleepHours} />
             </div>
             <SleepInsightCard refreshKey={insightRefreshKey} />
           </div>
@@ -237,6 +290,46 @@ export default function SleepPage() {
             </p>
           </div>
         ) : null}
+
+        {performanceCorrelation &&
+          performanceCorrelation.belowAverage.nightCount >= MIN_NIGHTS_PER_BUCKET &&
+          performanceCorrelation.aboveOrAtAverage.nightCount >= MIN_NIGHTS_PER_BUCKET && (
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
+              <h3 className="text-lg font-medium text-lapis-text-primary mb-1">Sleep &amp; Next-Day Training</h3>
+              <p className="text-lapis-text-tertiary text-sm mb-4">
+                Nights split against your own average ({performanceCorrelation.personalAverageHours.toFixed(1)}h) - not a fixed target, just what&apos;s
+                typical for you.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-lapis-text-tertiary mb-1">
+                    Below average ({performanceCorrelation.belowAverage.nightCount} nights)
+                  </p>
+                  <p className="text-lapis-text-primary font-semibold">
+                    {Math.round(performanceCorrelation.belowAverage.nextDayWorkoutRate * 100)}% trained next day
+                  </p>
+                  {performanceCorrelation.belowAverage.avgNextDaySessionRir != null && (
+                    <p className="text-lapis-text-tertiary text-xs mt-0.5">
+                      Avg RIR {performanceCorrelation.belowAverage.avgNextDaySessionRir.toFixed(1)}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-lapis-text-tertiary mb-1">
+                    At/above average ({performanceCorrelation.aboveOrAtAverage.nightCount} nights)
+                  </p>
+                  <p className="text-lapis-text-primary font-semibold">
+                    {Math.round(performanceCorrelation.aboveOrAtAverage.nextDayWorkoutRate * 100)}% trained next day
+                  </p>
+                  {performanceCorrelation.aboveOrAtAverage.avgNextDaySessionRir != null && (
+                    <p className="text-lapis-text-tertiary text-xs mt-0.5">
+                      Avg RIR {performanceCorrelation.aboveOrAtAverage.avgNextDaySessionRir.toFixed(1)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
         {entries.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
