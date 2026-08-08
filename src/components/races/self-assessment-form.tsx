@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { questionsForCategory, type RaceCategory, type SimpleSelfAssessment, type AssessmentQuestion } from '@/lib/race-plan/self-assessment'
 import { getLocalDateString } from '@/lib/date'
+import { checkSessionDistancePlausibility, checkTimeTrialPlausibility } from '@/lib/race-plan/assessment-plausibility'
 
 interface SelfAssessmentFormProps {
   category: RaceCategory
@@ -91,17 +92,21 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
 
     if (q.type === 'distance') {
       const current = value[q.id] as number | null
+      const plausibilityWarning = q.id === 'longestRecentDistanceKm' ? checkSessionDistancePlausibility('run', current) : null
       return (
-        <div className="flex items-center gap-2 max-w-xs">
-          <Input
-            type="number"
-            step="0.1"
-            value={current ?? ''}
-            onChange={(e) => patch({ [q.id]: e.target.value ? parseFloat(e.target.value) : null } as Partial<SimpleSelfAssessment>)}
-            placeholder="e.g. 5"
-            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
-          />
-          <span className="text-lapis-text-tertiary text-sm">km</span>
+        <div>
+          <div className="flex items-center gap-2 max-w-xs">
+            <Input
+              type="number"
+              step="0.1"
+              value={current ?? ''}
+              onChange={(e) => patch({ [q.id]: e.target.value ? parseFloat(e.target.value) : null } as Partial<SimpleSelfAssessment>)}
+              placeholder="e.g. 5"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
+            />
+            <span className="text-lapis-text-tertiary text-sm">km</span>
+          </div>
+          {plausibilityWarning && <p className="text-lapis-citrine text-xs mt-1">{plausibilityWarning}</p>}
         </div>
       )
     }
@@ -128,38 +133,43 @@ export default function SelfAssessmentForm({ category, value, onChange }: SelfAs
         }
       }
 
+      const plausibilityWarning = checkTimeTrialPlausibility('run', current)
+
       return (
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            type="number"
-            step="0.1"
-            value={current?.distanceKm ?? ''}
-            onChange={(e) => update({ distanceKm: e.target.value ? parseFloat(e.target.value) : 0 })}
-            placeholder="km"
-            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-24"
-          />
-          <span className="text-lapis-text-tertiary text-sm">in</span>
-          <Input
-            type="number"
-            value={hours || ''}
-            onChange={(e) => update({ hours: e.target.value ? parseInt(e.target.value, 10) : 0 })}
-            placeholder="hh"
-            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
-          />
-          <Input
-            type="number"
-            value={minutes || ''}
-            onChange={(e) => update({ minutes: e.target.value ? parseInt(e.target.value, 10) : 0 })}
-            placeholder="mm"
-            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
-          />
-          <Input
-            type="number"
-            value={seconds || ''}
-            onChange={(e) => update({ seconds: e.target.value ? parseInt(e.target.value, 10) : 0 })}
-            placeholder="ss"
-            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
-          />
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="number"
+              step="0.1"
+              value={current?.distanceKm ?? ''}
+              onChange={(e) => update({ distanceKm: e.target.value ? parseFloat(e.target.value) : 0 })}
+              placeholder="km"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-24"
+            />
+            <span className="text-lapis-text-tertiary text-sm">in</span>
+            <Input
+              type="number"
+              value={hours || ''}
+              onChange={(e) => update({ hours: e.target.value ? parseInt(e.target.value, 10) : 0 })}
+              placeholder="hh"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
+            />
+            <Input
+              type="number"
+              value={minutes || ''}
+              onChange={(e) => update({ minutes: e.target.value ? parseInt(e.target.value, 10) : 0 })}
+              placeholder="mm"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
+            />
+            <Input
+              type="number"
+              value={seconds || ''}
+              onChange={(e) => update({ seconds: e.target.value ? parseInt(e.target.value, 10) : 0 })}
+              placeholder="ss"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
+            />
+          </div>
+          {plausibilityWarning && <p className="text-lapis-citrine text-xs mt-1">{plausibilityWarning}</p>}
         </div>
       )
     }

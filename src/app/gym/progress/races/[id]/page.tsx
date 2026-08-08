@@ -52,7 +52,7 @@ import {
   type MultisportSelfAssessment,
   type Discipline,
 } from '@/lib/race-plan/self-assessment'
-import { computeTensionFlags } from '@/lib/race-plan/tension'
+import { computeTensionFlags, computeMultisportTensionFlags } from '@/lib/race-plan/tension'
 import {
   estimateProjectedFinishSeconds,
   assessGoalRealism,
@@ -701,7 +701,12 @@ export default function RaceDetailPage() {
   // and nonsensical (mentions disciplines a runner never had). Use the
   // run-specific evidence check instead for that category.
   const currentFormReason = category === 'run' ? (snapshot ? deriveRunFormEvidence(snapshot.cardio).reason : null) : currentForm.reason
-  const tensionFlags = snapshot ? computeTensionFlags(selfAssessment, snapshot) : []
+  const tensionFlags = [
+    ...(snapshot ? computeTensionFlags(selfAssessment, snapshot) : []),
+    ...(category === 'multisport' && selfAssessment.kind === 'multisport'
+      ? computeMultisportTensionFlags(selfAssessment, disciplineActivityFacts)
+      : []),
+  ]
   const projectedFinishSeconds = snapshot ? estimateProjectedFinishSeconds(race.race_type, snapshot) : null
   const courseRange =
     category === 'multisport' && snapshot

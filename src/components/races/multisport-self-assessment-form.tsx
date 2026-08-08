@@ -13,6 +13,7 @@ import {
 import type { DisciplineActivityFacts } from '@/lib/race-plan/discipline-weakness'
 import { DISCIPLINE_PACE_UNIT, toSecPerKm, fromSecPerKm, formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
 import { getLocalDateString } from '@/lib/date'
+import { checkPacePlausibility, checkSessionDistancePlausibility, checkTimeTrialPlausibility } from '@/lib/race-plan/assessment-plausibility'
 
 interface MultisportSelfAssessmentFormProps {
   value: MultisportSelfAssessment
@@ -115,6 +116,7 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
         patchDiscipline(discipline, { comfortableEffort: { ...current, sustainedMinutes } })
       }
       const clear = () => patchDiscipline(discipline, { comfortableEffort: null })
+      const plausibilityWarning = checkPacePlausibility(discipline, current?.paceSecPerKm ?? null)
 
       return (
         <div className="space-y-2">
@@ -168,6 +170,8 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
             )}
           </div>
 
+          {plausibilityWarning && <p className="text-lapis-citrine text-xs">{plausibilityWarning}</p>}
+
           {facts?.avgPaceSecPerKmRecent != null && (
             <button
               type="button"
@@ -196,17 +200,21 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
 
     if (q.type === 'distance') {
       const current = disciplineValue.longestRecentSessionKm
+      const plausibilityWarning = checkSessionDistancePlausibility(discipline, current)
       return (
-        <div className="flex items-center gap-2 max-w-xs">
-          <Input
-            type="number"
-            step="0.1"
-            value={current ?? ''}
-            onChange={(e) => patchDiscipline(discipline, { longestRecentSessionKm: e.target.value ? parseFloat(e.target.value) : null })}
-            placeholder="e.g. 2"
-            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
-          />
-          <span className="text-lapis-text-tertiary text-sm">km</span>
+        <div>
+          <div className="flex items-center gap-2 max-w-xs">
+            <Input
+              type="number"
+              step="0.1"
+              value={current ?? ''}
+              onChange={(e) => patchDiscipline(discipline, { longestRecentSessionKm: e.target.value ? parseFloat(e.target.value) : null })}
+              placeholder="e.g. 2"
+              className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
+            />
+            <span className="text-lapis-text-tertiary text-sm">km</span>
+          </div>
+          {plausibilityWarning && <p className="text-lapis-citrine text-xs mt-1">{plausibilityWarning}</p>}
         </div>
       )
     }
@@ -231,38 +239,43 @@ export default function MultisportSelfAssessmentForm({ value, onChange, discipli
       })
     }
 
+    const plausibilityWarning = checkTimeTrialPlausibility(discipline, current)
+
     return (
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          type="number"
-          step="0.1"
-          value={current?.distanceKm ?? ''}
-          onChange={(e) => update({ distanceKm: e.target.value ? parseFloat(e.target.value) : 0 })}
-          placeholder="km"
-          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-24"
-        />
-        <span className="text-lapis-text-tertiary text-sm">in</span>
-        <Input
-          type="number"
-          value={hours || ''}
-          onChange={(e) => update({ hours: e.target.value ? parseInt(e.target.value, 10) : 0 })}
-          placeholder="hh"
-          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
-        />
-        <Input
-          type="number"
-          value={minutes || ''}
-          onChange={(e) => update({ minutes: e.target.value ? parseInt(e.target.value, 10) : 0 })}
-          placeholder="mm"
-          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
-        />
-        <Input
-          type="number"
-          value={seconds || ''}
-          onChange={(e) => update({ seconds: e.target.value ? parseInt(e.target.value, 10) : 0 })}
-          placeholder="ss"
-          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
-        />
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="number"
+            step="0.1"
+            value={current?.distanceKm ?? ''}
+            onChange={(e) => update({ distanceKm: e.target.value ? parseFloat(e.target.value) : 0 })}
+            placeholder="km"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-24"
+          />
+          <span className="text-lapis-text-tertiary text-sm">in</span>
+          <Input
+            type="number"
+            value={hours || ''}
+            onChange={(e) => update({ hours: e.target.value ? parseInt(e.target.value, 10) : 0 })}
+            placeholder="hh"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
+          />
+          <Input
+            type="number"
+            value={minutes || ''}
+            onChange={(e) => update({ minutes: e.target.value ? parseInt(e.target.value, 10) : 0 })}
+            placeholder="mm"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
+          />
+          <Input
+            type="number"
+            value={seconds || ''}
+            onChange={(e) => update({ seconds: e.target.value ? parseInt(e.target.value, 10) : 0 })}
+            placeholder="ss"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled w-16"
+          />
+        </div>
+        {plausibilityWarning && <p className="text-lapis-citrine text-xs mt-1">{plausibilityWarning}</p>}
       </div>
     )
   }
