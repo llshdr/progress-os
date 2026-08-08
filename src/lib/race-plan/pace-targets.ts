@@ -167,3 +167,62 @@ export function estimateWeeklyTrainingHours(
   const cardioHours = DISCIPLINES.reduce((sum, d) => sum + (week.disciplines![d].km * easyPaceTargets[d]) / 3600, 0)
   return cardioHours + week.targetStrengthSessions * STRENGTH_SESSION_HOURS
 }
+
+// ─── Within-tier range narrowing (display-only) ───────────────────────
+// Narrows WHERE inside estimateCourseFinishRange's existing tier band
+// the shown projection falls, using the athlete's own real measured pace
+// (resolveRealZone2Pace's exact "real data only, no placeholder" signal
+// - goal-achievability.ts). Deliberately NOT more course-data tiers (no
+// data exists at finer granularity - race_course_time_bands has a hard
+// 3-tier CHECK constraint) and NOT a calendar-based shrink (narrowing
+// should track evidence quality, not elapsed time as a proxy for it -
+// the caller gates this on deriveCurrentFormLevel's own evidence signal).
+//
+// Mechanism: convert the band's fast/slow ends to their OWN implied
+// per-discipline pace (computePeakPaceTargets, reusing the band's own
+// split fractions), then find where the athlete's real pace falls
+// between those two implied paces, averaged across every discipline with
+// a real signal. That position centers a narrowed window.
+// MAX_SHADE_FRACTION caps how much narrower than the original band this
+// is allowed to get - real day-of variance (weather, nutrition,
+// mechanicals, pacing errors) sets a floor under any honest pre-race
+// estimate that no training-log analysis closes, so this never claims to
+// close the whole band down to a point estimate.
+const MAX_SHADE_FRACTION = 0.35
+
+export function shadeRangeWithinTier(
+  range: ProjectedRaceTimeRange,
+  raceType: RaceType,
+  realZone2PaceByDiscipline: Record<Discipline, number | null>
+): { totalSecondsLow: number; totalSecondsHigh: number; shaded: boolean } {
+  const unshaded = { totalSecondsLow: range.totalSecondsLow, totalSecondsHigh: range.totalSecondsHigh, shaded: false }
+
+  // A real past-result band is already tightly evidence-based (+-8%
+  // around an actual result, see finish-time.ts) - shading on top of it
+  // would be redundant, not more honest.
+  if (range.source === 'exact_course_result') return unshaded
+
+  const fastPace = computePeakPaceTargets(raceType, range.totalSecondsLow, range)
+  const slowPace = computePeakPaceTargets(raceType, range.totalSecondsHigh, range)
+  if (!fastPace || !slowPace) return unshaded
+
+  const positions: number[] = []
+  for (const d of DISCIPLINES) {
+    const real = realZone2PaceByDiscipline[d]
+    const span = slowPace[d] - fastPace[d]
+    if (real == null || span <= 0) continue
+    positions.push((real - fastPace[d]) / span)
+  }
+  if (positions.length === 0) return unshaded
+
+  const avgPosition = Math.min(1, Math.max(0, positions.reduce((a, b) => a + b, 0) / positions.length))
+
+  const width = range.totalSecondsHigh - range.totalSecondsLow
+  const center = range.totalSecondsLow + width * avgPosition
+  const shadedWidth = width * (1 - MAX_SHADE_FRACTION)
+
+  const low = Math.max(range.totalSecondsLow, Math.round(center - shadedWidth / 2))
+  const high = Math.min(range.totalSecondsHigh, Math.round(center + shadedWidth / 2))
+
+  return { totalSecondsLow: low, totalSecondsHigh: high, shaded: true }
+}

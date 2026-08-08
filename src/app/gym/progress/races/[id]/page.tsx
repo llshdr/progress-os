@@ -74,7 +74,13 @@ import {
   type DisciplineActivityFacts,
 } from '@/lib/race-plan/discipline-weakness'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
-import { resolvePeakPaceTargets, resolveEasyPaceTargets, TYPICAL_TRANSITION_SECONDS, estimateWeeklyTrainingHours } from '@/lib/race-plan/pace-targets'
+import {
+  resolvePeakPaceTargets,
+  resolveEasyPaceTargets,
+  TYPICAL_TRANSITION_SECONDS,
+  estimateWeeklyTrainingHours,
+  shadeRangeWithinTier,
+} from '@/lib/race-plan/pace-targets'
 import { findMostOverdueRetest, type RetestCandidate } from '@/lib/race-plan/retest-reminder'
 import { resolveRealZone2Pace, computePaceGaps, describePaceGap, type PaceGap } from '@/lib/race-plan/goal-achievability'
 import { assessBenchmarkCompliance, type BenchmarkFlag, type DisruptionRange } from '@/lib/race-plan/benchmark-verification'
@@ -750,6 +756,42 @@ export default function RaceDetailPage() {
       : { swim: null, bike: null, run: null }
   const easyPaceTargets = peakPaceTargets ? resolveEasyPaceTargets(peakPaceTargets, comfortableEffortByDiscipline, disciplineActivityFacts) : null
 
+  // Real measured pace per discipline (self-reported comfortable pace,
+  // else real logged average - never a placeholder, see
+  // resolveRealZone2Pace) - shared by the pace-gap flags below and the
+  // within-tier range narrowing further down, so both read the exact
+  // same "real pace" signal.
+  const realZone2PaceByDiscipline: Record<Discipline, number | null> = {
+    swim: resolveRealZone2Pace(comfortableEffortByDiscipline.swim, disciplineActivityFacts?.swim ?? null),
+    bike: resolveRealZone2Pace(comfortableEffortByDiscipline.bike, disciplineActivityFacts?.bike ?? null),
+    run: resolveRealZone2Pace(comfortableEffortByDiscipline.run, disciplineActivityFacts?.run ?? null),
+  }
+
+  // Display-only within-tier narrowing (see shadeRangeWithinTier,
+  // pace-targets.ts) - narrows WHERE the shown projection falls inside
+  // the existing tier band using the athlete's own real measured pace,
+  // never the band itself. Deliberately NEVER substituted into
+  // cutoffRiskFlags, resolvePeakPaceTargets, safeCutoffPaceTargets, or
+  // assessGoalRealismForRange - those stay conservative against the
+  // full, honest tier band, since silently narrowing what drives
+  // cutoff-risk assessment or plan pace targets would be a real safety
+  // regression dressed up as more precision. Gated on
+  // currentForm.evidence !== 'insufficient' - narrowing only ever
+  // happens once real training data actually exists to justify it.
+  const shadeResult =
+    courseRange && currentForm.evidence !== 'insufficient'
+      ? shadeRangeWithinTier(courseRange, race.race_type, realZone2PaceByDiscipline)
+      : null
+  const displayedCourseRange: ProjectedRaceTimeRange | null =
+    courseRange && shadeResult?.shaded
+      ? {
+          ...courseRange,
+          totalSecondsLow: shadeResult.totalSecondsLow,
+          totalSecondsHigh: shadeResult.totalSecondsHigh,
+          sourceNote: `${courseRange.sourceNote} Narrowed using your own logged pace - the full range without that signal is ${formatDuration(courseRange.totalSecondsLow)}–${formatDuration(courseRange.totalSecondsHigh)}.`,
+        }
+      : courseRange
+
   // Opportunistic threshold-pace proxy per discipline - reuses the
   // athlete's own recentTimeTrial only when its duration fits a real
   // threshold-test window (see thresholdPaceHint in day-template.ts),
@@ -782,11 +824,7 @@ export default function RaceDetailPage() {
   const weeksUntilRace = Math.max(0, Math.round(daysUntil / 7))
   const paceGaps: PaceGap[] =
     category === 'multisport' && targetFinishSeconds != null && peakPaceTargets
-      ? computePaceGaps(peakPaceTargets, {
-          swim: resolveRealZone2Pace(comfortableEffortByDiscipline.swim, disciplineActivityFacts?.swim ?? null),
-          bike: resolveRealZone2Pace(comfortableEffortByDiscipline.bike, disciplineActivityFacts?.bike ?? null),
-          run: resolveRealZone2Pace(comfortableEffortByDiscipline.run, disciplineActivityFacts?.run ?? null),
-        })
+      ? computePaceGaps(peakPaceTargets, realZone2PaceByDiscipline)
       : []
 
   // Real logged activity vs. this plan's planned key sessions - purely
@@ -1077,7 +1115,7 @@ export default function RaceDetailPage() {
                   category={category}
                   targetFinishSeconds={targetFinishSeconds}
                   projectedFinishSeconds={projectedFinishSeconds}
-                  courseRange={courseRange}
+                  courseRange={displayedCourseRange}
                   reason={currentFormReason}
                 />
               </div>
@@ -1217,9 +1255,9 @@ export default function RaceDetailPage() {
                 currentStrengthSessionsPerWeek={snapshot.strength.recentSessionsPerWeek}
                 showFinishTime={category === 'run' || courseRange != null}
                 projectedFinishSeconds={projectedFinishSeconds}
-                projectedFinishRange={courseRange ? { low: courseRange.totalSecondsLow, high: courseRange.totalSecondsHigh } : null}
-                finishRangeSource={courseRange?.source ?? null}
-                finishRangeSourceNote={courseRange?.sourceNote ?? null}
+                projectedFinishRange={displayedCourseRange ? { low: displayedCourseRange.totalSecondsLow, high: displayedCourseRange.totalSecondsHigh } : null}
+                finishRangeSource={displayedCourseRange?.source ?? null}
+                finishRangeSourceNote={displayedCourseRange?.sourceNote ?? null}
                 targetFinishSeconds={targetFinishSeconds}
                 onTargetFinishSecondsChange={setTargetFinishSeconds}
                 disciplineInputs={disciplineInputs}
@@ -1613,7 +1651,7 @@ export default function RaceDetailPage() {
                     category={category}
                     targetFinishSeconds={targetFinishSeconds}
                     projectedFinishSeconds={projectedFinishSeconds}
-                    courseRange={courseRange}
+                    courseRange={displayedCourseRange}
                     reason={currentFormReason}
                   />
 
@@ -1621,12 +1659,12 @@ export default function RaceDetailPage() {
                       FinishTimeCard's own value above already IS the
                       projection, and repeating it here would be the exact
                       duplicate this reorg removed. */}
-                  {targetFinishSeconds != null && (courseRange || projectedFinishSeconds != null) && (
+                  {targetFinishSeconds != null && (displayedCourseRange || projectedFinishSeconds != null) && (
                     <div className="pt-4 mt-4 border-t border-lapis-border-subtle">
                       <p className="text-xs text-lapis-text-tertiary mb-1">Projected Finish</p>
                       <p className="text-lapis-text-secondary text-sm">
-                        {courseRange
-                          ? `${formatDuration(courseRange.totalSecondsLow)}–${formatDuration(courseRange.totalSecondsHigh)}`
+                        {displayedCourseRange
+                          ? `${formatDuration(displayedCourseRange.totalSecondsLow)}–${formatDuration(displayedCourseRange.totalSecondsHigh)}`
                           : formatDuration(projectedFinishSeconds!)}
                       </p>
                     </div>
@@ -1670,11 +1708,11 @@ export default function RaceDetailPage() {
                             {formatDuration(Math.abs(race.resultDurationSeconds - targetFinishSeconds))}
                           </p>
                         ) : (
-                          courseRange || projectedFinishSeconds != null
+                          displayedCourseRange || projectedFinishSeconds != null
                         ) ? (
                           <p className="text-lapis-text-secondary text-sm">
                             {(() => {
-                              const projected = courseRange ? (courseRange.totalSecondsLow + courseRange.totalSecondsHigh) / 2 : projectedFinishSeconds!
+                              const projected = displayedCourseRange ? (displayedCourseRange.totalSecondsLow + displayedCourseRange.totalSecondsHigh) / 2 : projectedFinishSeconds!
                               const diff = race.resultDurationSeconds! - projected
                               return `${diff <= 0 ? 'Beat' : 'Slower than'} your projection (${formatDuration(projected)}) by ${formatDuration(Math.abs(diff))}`
                             })()}
