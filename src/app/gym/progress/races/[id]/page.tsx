@@ -315,6 +315,17 @@ export default function RaceDetailPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [step, setStep] = useState<Step>('confirm')
+  // Only meaningful once step === 'review' - the wizard steps above stay
+  // their own single-column linear flow, untouched by this. Plan/Progress/
+  // Prep, not routes: nearly every section here reads from the same large
+  // block of derived values computed once after fetch (cutoffRiskFlags,
+  // peakPaceTargets, muscleImpact, etc.), so splitting into real routes
+  // would mean duplicating all of that per-route or introducing a shared
+  // layout/context - an in-page tab, same pattern as Calendar's Day/Week
+  // toggle, is the lower-risk fit for "sections of one entity that share
+  // one fetch," not "independent features" (Settings/Gym's hub-of-routes
+  // pattern is for the latter).
+  const [reviewTab, setReviewTab] = useState<'plan' | 'progress' | 'prep'>('plan')
 
   const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(emptySelfAssessmentFor('other'))
   const [disciplineWeakness, setDisciplineWeakness] = useState<DisciplineWeakness | null>(null)
@@ -1134,343 +1145,366 @@ export default function RaceDetailPage() {
               </p>
             )}
 
-            <DisruptionDeclaration disruptions={disruptions} onChanged={refetchDisruptions} />
-
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
-              <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
-                <h2 className="text-lg font-medium text-lapis-text-primary">
-                  Training Plan <span className="text-lapis-text-tertiary text-sm font-normal">({RACE_APPROACH_LABELS[plan.approach]})</span>
-                </h2>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setStep('confirm')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
-                    Edit start date
-                  </button>
-                  <button onClick={() => setStep('assessment')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
-                    Edit my assessment
-                  </button>
-                  <Button onClick={() => setStep('spectrum')} variant="outline" className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2">
-                    Regenerate Plan
-                  </Button>
-                </div>
-              </div>
-              {race.trainingStartDate && race.trainingStartDate > today && (
-                <p className="text-lapis-text-tertiary text-xs mb-3">
-                  Training starts {new Date(race.trainingStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} -{' '}
-                  {daysBetween(race.trainingStartDate, today)} days from now.
-                </p>
-              )}
-              <p className="text-lapis-text-secondary text-sm leading-relaxed mb-4">{plan.overview}</p>
-              {seasonMismatchNote && <p className="text-lapis-text-tertiary text-xs mb-4">{seasonMismatchNote}</p>}
-
-              <div className="flex flex-wrap gap-8 pt-4 border-t border-lapis-border-subtle">
-                <div>
-                  <p className="text-xs text-lapis-text-tertiary mb-1">Strength Emphasis</p>
-                  <p className="text-lapis-text-primary text-sm">{describeStrengthEmphasis(plan.approach, snapshot.strength.recentSessionsPerWeek)}</p>
-                </div>
-                <FinishTimeCard
-                  category={category}
-                  targetFinishSeconds={targetFinishSeconds}
-                  projectedFinishSeconds={projectedFinishSeconds}
-                  courseRange={courseRange}
-                  reason={currentFormReason}
-                />
-              </div>
-
-              {cutoffRiskFlags.length > 0 && courseRange && (
-                <div className="pt-4 mt-4 border-t border-lapis-border-subtle space-y-3">
-                  <p className="text-xs text-lapis-text-tertiary">Cutoff safety margin</p>
-                  {cutoffRiskFlags.map((f) => (
-                    <CutoffMarginRow key={f.segment} flag={f} range={courseRange} />
-                  ))}
-                </div>
-              )}
-
-              {muscleImpact.length > 0 && (
-                <div className="pt-4 mt-4 border-t border-lapis-border-subtle">
-                  <p className="text-xs text-lapis-text-tertiary mb-2">Muscle Impact</p>
-                  <div className="flex flex-wrap gap-2">
-                    {muscleImpact.map((line) => (
-                      <span
-                        key={line.muscle}
-                        title={line.description}
-                        className="px-3 py-1.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle"
-                      >
-                        {line.muscle}: {line.shortLabel}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {nutritionTensionFlag && (
-                <div className="mt-4 border border-lapis-citrine/20 rounded-lapis-lg bg-lapis-citrine/[0.04] p-4">
-                  <p className="text-lapis-citrine/80 text-sm font-medium mb-1">Worth double-checking</p>
-                  <p className="text-lapis-citrine/60 text-xs">{nutritionTensionFlag}</p>
-                </div>
-              )}
+            {/* Plan/Progress/Prep, not routes - see reviewTab's own comment
+                for why. Same pill-toggle pattern as Calendar's Day/Week
+                switch, reused rather than inventing a new nav style. */}
+            <div className="flex items-center gap-1 p-1 rounded-lapis-sm bg-lapis-surface-2 w-fit">
+              {([
+                { key: 'plan', label: 'Plan' },
+                { key: 'progress', label: 'Progress' },
+                { key: 'prep', label: 'Prep' },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setReviewTab(tab.key)}
+                  className={`px-4 py-1.5 rounded-lapis-sm text-sm font-medium transition-colors ${
+                    reviewTab === tab.key ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'text-lapis-text-secondary hover:text-lapis-text-primary'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            {weeksByPhase.map((group) => (
-              <div key={`${group.phase}-${group.isAcclimation}`}>
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="text-sm font-medium text-lapis-text-secondary">{group.isAcclimation ? 'Acclimation' : `${PHASE_LABELS[group.phase]} Phase`}</h3>
-                  {/* Editing here reuses the shared Base template, which also governs
-                      real Base weeks - hidden for the acclimation group so "edit" isn't
-                      offered from a heading it wouldn't be scoped to. */}
-                  {!group.isAcclimation && plan.phaseTemplates[group.phase] && (
-                    <PhaseTemplateDialog
-                      raceId={raceId}
-                      phase={group.phase}
-                      template={plan.phaseTemplates[group.phase]!}
-                      allTemplates={plan.phaseTemplates}
-                      weeksInPhase={group.weeks}
-                      onSaved={(updated) => handleTemplateSaved(group.phase, updated)}
-                      easyPaceTargets={easyPaceTargets}
-                      peakPaceTargets={peakPaceTargets}
-                      thresholdPaceHints={thresholdPaceHints}
-                    />
+            {reviewTab === 'plan' && (
+              <div className="space-y-8">
+                <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                  <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
+                    <h2 className="text-lg font-medium text-lapis-text-primary">
+                      Training Plan <span className="text-lapis-text-tertiary text-sm font-normal">({RACE_APPROACH_LABELS[plan.approach]})</span>
+                    </h2>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setStep('confirm')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
+                        Edit start date
+                      </button>
+                      <button onClick={() => setStep('assessment')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
+                        Edit my assessment
+                      </button>
+                      <Button onClick={() => setStep('spectrum')} variant="outline" className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2">
+                        Regenerate Plan
+                      </Button>
+                    </div>
+                  </div>
+                  {race.trainingStartDate && race.trainingStartDate > today && (
+                    <p className="text-lapis-text-tertiary text-xs mb-3">
+                      Training starts {new Date(race.trainingStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} -{' '}
+                      {daysBetween(race.trainingStartDate, today)} days from now.
+                    </p>
+                  )}
+                  <p className="text-lapis-text-secondary text-sm leading-relaxed mb-4">{plan.overview}</p>
+                  {seasonMismatchNote && <p className="text-lapis-text-tertiary text-xs mb-4">{seasonMismatchNote}</p>}
+
+                  <div className="pt-4 border-t border-lapis-border-subtle">
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Strength Emphasis</p>
+                    <p className="text-lapis-text-primary text-sm">{describeStrengthEmphasis(plan.approach, snapshot.strength.recentSessionsPerWeek)}</p>
+                  </div>
+
+                  {nutritionTensionFlag && (
+                    <div className="mt-4 border border-lapis-citrine/20 rounded-lapis-lg bg-lapis-citrine/[0.04] p-4">
+                      <p className="text-lapis-citrine/80 text-sm font-medium mb-1">Worth double-checking</p>
+                      <p className="text-lapis-citrine/60 text-xs">{nutritionTensionFlag}</p>
+                    </div>
                   )}
                 </div>
-                {group.isAcclimation && <p className="text-lapis-text-tertiary text-xs mb-1">{ACCLIMATION_GUIDANCE}</p>}
-                <p className="text-lapis-text-tertiary text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
-                <p className="text-lapis-text-tertiary text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
-                <div className="grid gap-3">
-                  {group.weeks.map((week, weekIndex) => {
-                    const isCurrentWeek = week.weekStartDate === currentWeekStartDate
-                    const phaseTemplate = plan.phaseTemplates[week.phase]
-                    const isExpanded = expandedWeeks.has(week.weekStartDate)
-                    return (
-                      <div
-                        key={week.weekStartDate}
-                        className={`border rounded-lapis-lg p-6 transition-all duration-200 ${
-                          isCurrentWeek ? 'border-lapis-border-strong bg-lapis-accent-500/[0.05]' : 'border-lapis-border-subtle bg-lapis-surface-1'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lapis-text-primary font-medium">Week of {formatWeekDate(week.weekStartDate)}</span>
-                            {isCurrentWeek && (
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500 text-lapis-text-primary">This Week</span>
-                            )}
-                            {!!week.brickSessions && (
-                              <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
-                                {week.brickSessions} brick
-                              </span>
+
+                {weeksByPhase.map((group) => (
+                  <div key={`${group.phase}-${group.isAcclimation}`}>
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="text-sm font-medium text-lapis-text-secondary">{group.isAcclimation ? 'Acclimation' : `${PHASE_LABELS[group.phase]} Phase`}</h3>
+                      {/* Editing here reuses the shared Base template, which also governs
+                          real Base weeks - hidden for the acclimation group so "edit" isn't
+                          offered from a heading it wouldn't be scoped to. */}
+                      {!group.isAcclimation && plan.phaseTemplates[group.phase] && (
+                        <PhaseTemplateDialog
+                          raceId={raceId}
+                          phase={group.phase}
+                          template={plan.phaseTemplates[group.phase]!}
+                          allTemplates={plan.phaseTemplates}
+                          weeksInPhase={group.weeks}
+                          onSaved={(updated) => handleTemplateSaved(group.phase, updated)}
+                          easyPaceTargets={easyPaceTargets}
+                          peakPaceTargets={peakPaceTargets}
+                          thresholdPaceHints={thresholdPaceHints}
+                        />
+                      )}
+                    </div>
+                    {group.isAcclimation && <p className="text-lapis-text-tertiary text-xs mb-1">{ACCLIMATION_GUIDANCE}</p>}
+                    <p className="text-lapis-text-tertiary text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
+                    <p className="text-lapis-text-tertiary text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
+                    <div className="grid gap-3">
+                      {group.weeks.map((week, weekIndex) => {
+                        const isCurrentWeek = week.weekStartDate === currentWeekStartDate
+                        const phaseTemplate = plan.phaseTemplates[week.phase]
+                        const isExpanded = expandedWeeks.has(week.weekStartDate)
+                        return (
+                          <div
+                            key={week.weekStartDate}
+                            className={`border rounded-lapis-lg p-6 transition-all duration-200 ${
+                              isCurrentWeek ? 'border-lapis-border-strong bg-lapis-accent-500/[0.05]' : 'border-lapis-border-subtle bg-lapis-surface-1'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lapis-text-primary font-medium">Week of {formatWeekDate(week.weekStartDate)}</span>
+                                {isCurrentWeek && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500 text-lapis-text-primary">This Week</span>
+                                )}
+                                {!!week.brickSessions && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
+                                    {week.brickSessions} brick
+                                  </span>
+                                )}
+                              </div>
+                              {week.disciplines ? (
+                                <div className="flex gap-4 text-right text-sm flex-wrap justify-end">
+                                  {(['swim', 'bike', 'run'] as Discipline[]).map((d) => (
+                                    <div key={d}>
+                                      <p className="text-xs text-lapis-text-tertiary">{DISCIPLINE_LABELS[d]}</p>
+                                      <p className="text-lapis-text-primary font-semibold">
+                                        {week.disciplines![d].km}km · {week.disciplines![d].sessions}x
+                                      </p>
+                                    </div>
+                                  ))}
+                                  <div>
+                                    <p className="text-xs text-lapis-text-tertiary">Strength</p>
+                                    <p className="text-lapis-text-primary font-semibold">{week.targetStrengthSessions}x</p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex gap-4 text-right text-sm">
+                                  <div>
+                                    <p className="text-xs text-lapis-text-tertiary">Cardio</p>
+                                    <p className="text-lapis-text-primary font-semibold">
+                                      {isCurrentWeek && currentWeekActual ? `${currentWeekActual.cardioKm.toFixed(1)} / ` : ''}
+                                      {week.targetCardioKm}km
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-lapis-text-tertiary">Sessions</p>
+                                    <p className="text-lapis-text-primary font-semibold">{week.targetCardioSessions} cardio · {week.targetStrengthSessions} strength</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-lapis-text-tertiary text-sm">{week.focusNote}</p>
+
+                            {phaseTemplate && (
+                              <>
+                                <button
+                                  onClick={() => toggleWeekExpanded(week.weekStartDate)}
+                                  className="flex items-center gap-1 text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mt-3"
+                                >
+                                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                  {isExpanded ? 'Hide days' : 'Show days'}
+                                </button>
+                                {isExpanded && (
+                                  <WeekDayList
+                                    slots={slotsForWeek(phaseTemplate, week)}
+                                    week={week}
+                                    weekIndexWithinPhase={weekIndex}
+                                    easyPaceTargets={easyPaceTargets}
+                                    peakPaceTargets={peakPaceTargets}
+                                    thresholdPaceHints={thresholdPaceHints}
+                                    approach={plan.approach}
+                                    paceGaps={paceGaps}
+                                    weeksUntilRace={weeksUntilRace}
+                                    level={level}
+                                  />
+                                )}
+                              </>
                             )}
                           </div>
-                          {week.disciplines ? (
-                            <div className="flex gap-4 text-right text-sm flex-wrap justify-end">
-                              {(['swim', 'bike', 'run'] as Discipline[]).map((d) => (
-                                <div key={d}>
-                                  <p className="text-xs text-lapis-text-tertiary">{DISCIPLINE_LABELS[d]}</p>
-                                  <p className="text-lapis-text-primary font-semibold">
-                                    {week.disciplines![d].km}km · {week.disciplines![d].sessions}x
-                                  </p>
-                                </div>
-                              ))}
-                              <div>
-                                <p className="text-xs text-lapis-text-tertiary">Strength</p>
-                                <p className="text-lapis-text-primary font-semibold">{week.targetStrengthSessions}x</p>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex gap-4 text-right text-sm">
-                              <div>
-                                <p className="text-xs text-lapis-text-tertiary">Cardio</p>
-                                <p className="text-lapis-text-primary font-semibold">
-                                  {isCurrentWeek && currentWeekActual ? `${currentWeekActual.cardioKm.toFixed(1)} / ` : ''}
-                                  {week.targetCardioKm}km
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-lapis-text-tertiary">Sessions</p>
-                                <p className="text-lapis-text-primary font-semibold">{week.targetCardioSessions} cardio · {week.targetStrengthSessions} strength</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-lapis-text-tertiary text-sm">{week.focusNote}</p>
-
-                        {phaseTemplate && (
-                          <>
-                            <button
-                              onClick={() => toggleWeekExpanded(week.weekStartDate)}
-                              className="flex items-center gap-1 text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mt-3"
-                            >
-                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                              {isExpanded ? 'Hide days' : 'Show days'}
-                            </button>
-                            {isExpanded && (
-                              <WeekDayList
-                                slots={slotsForWeek(phaseTemplate, week)}
-                                week={week}
-                                weekIndexWithinPhase={weekIndex}
-                                easyPaceTargets={easyPaceTargets}
-                                peakPaceTargets={peakPaceTargets}
-                                thresholdPaceHints={thresholdPaceHints}
-                                approach={plan.approach}
-                                paceGaps={paceGaps}
-                                weeksUntilRace={weeksUntilRace}
-                                level={level}
-                              />
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-
-            <RaceChecklistCard raceId={race.id} category={category} />
-
-            {fuelingPhaseSummaries.length > 0 && (
-              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
-                <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Fueling</h2>
-                <p className="text-lapis-text-secondary text-sm leading-relaxed mb-4">{FUELING_GUIDANCE}</p>
-                <div className="space-y-1 mb-4">
-                  {fuelingPhaseSummaries.map((line) => (
-                    <p key={line.phase} className="text-lapis-text-tertiary text-xs">
-                      <span className="text-lapis-text-secondary">{PHASE_LABELS[line.phase]}:</span> {line.summary}
-                    </p>
-                  ))}
-                </div>
-                <Link href="/nutrition" className="text-sm text-lapis-text-secondary hover:text-lapis-text-primary underline underline-offset-2">
-                  Log an Intra-Workout entry →
-                </Link>
-              </div>
-            )}
-
-            {milestoneSuggestions && (
-              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
-                <button
-                  onClick={() => setMilestoneExpanded((prev) => !prev)}
-                  className="flex items-center gap-1 text-lg font-medium text-lapis-text-primary"
-                >
-                  {milestoneExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  Milestone session ideas
-                </button>
-                {!milestoneExpanded ? (
-                  <p className="text-lapis-text-tertiary text-sm mt-2">
-                    You have a long runway to this race - optionally, consider one longer-than-usual session per discipline for confidence and nutrition
-                    practice. Entirely optional and doesn&apos;t change your plan&apos;s numbers.
-                  </p>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-lapis-text-tertiary text-xs mb-2">
-                      A one-off, occasional session per discipline - not a new weekly expectation. Adjust distance/timing to how it feels.
-                    </p>
-                    {milestoneSuggestions.map((s) => (
-                      <p key={s.discipline} className="text-lapis-text-secondary text-sm">
-                        <span className="text-lapis-text-tertiary">{DISCIPLINE_LABELS[s.discipline]}:</span> ~{s.km}km, around the week of {formatWeekDate(s.weekStartDate)}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Race Day Plan</h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-lapis-text-tertiary mb-1">Pacing</p>
-                  <p className="text-lapis-text-secondary text-sm">{ZONE_GUIDANCE.key.peak.full}</p>
-                  {peakPaceTargets && (
-                    <div className="mt-2 space-y-1">
-                      {(['swim', 'bike', 'run'] as Discipline[]).map((d) => {
-                        const gap = paceGaps.find((g) => g.discipline === d)
-                        return (
-                          <p key={d} className="text-lapis-text-secondary text-sm">
-                            {DISCIPLINE_LABELS[d]}: ~{formatPaceForDiscipline(peakPaceTargets[d], d)}
-                            {gap && <span className="text-lapis-text-tertiary text-xs"> ({describePaceGap(gap, weeksUntilRace, level)})</span>}
-                            {!gap && safeCutoffPaceTargets && (
-                              <span className="text-lapis-text-tertiary text-xs">
-                                {' '}
-                                (a safe-cutoff pace would be ~{formatPaceForDiscipline(safeCutoffPaceTargets[d], d)} - reaching your goal takes real
-                                improvement, not just showing up; not enough logged data yet for a more precise comparison)
-                              </span>
-                            )}
-                          </p>
                         )
                       })}
                     </div>
-                  )}
-                  {targetFinishSeconds != null && peakPaceTargets && (
-                    <p className="text-lapis-text-tertiary text-xs mt-2 max-w-sm">
-                      These paces reserve ~{Math.round(TYPICAL_TRANSITION_SECONDS / 60)} minutes for T1/T2 transitions, so multiplying them out by
-                      distance won't quite reach your goal time on its own - that's expected, not a shortfall.
-                    </p>
-                  )}
-                </div>
-
-                {(courseRange || projectedFinishSeconds != null) && (
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-1">Projected Finish</p>
-                    <p className="text-lapis-text-secondary text-sm">
-                      {courseRange
-                        ? `${formatDuration(courseRange.totalSecondsLow)}–${formatDuration(courseRange.totalSecondsHigh)}`
-                        : formatDuration(projectedFinishSeconds!)}
-                    </p>
                   </div>
-                )}
+                ))}
 
-                {aspirationalRange && nextTier && (
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-1">If You Progress Further</p>
-                    <p className="text-lapis-text-secondary text-sm">
-                      {formatDuration(aspirationalRange.totalSecondsLow)}–{formatDuration(aspirationalRange.totalSecondsHigh)}
-                    </p>
-                    <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">
-                      If your real training reaches {TIER_LABELS[nextTier]}-level fitness by race day - the same tracking already updating your
-                      projection above - your range could look more like this. Not a promise, just where the evidence would point.
-                    </p>
-                  </div>
-                )}
-
-                {cutoffRiskFlags.length > 0 && (
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-1">Cutoff Margins</p>
-                    {cutoffRiskFlags.map((f) => (
-                      <p key={f.segment} className="text-lapis-text-secondary text-sm">
-                        {f.message}
+                {milestoneSuggestions && (
+                  <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                    <button
+                      onClick={() => setMilestoneExpanded((prev) => !prev)}
+                      className="flex items-center gap-1 text-lg font-medium text-lapis-text-primary"
+                    >
+                      {milestoneExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      Milestone session ideas
+                    </button>
+                    {!milestoneExpanded ? (
+                      <p className="text-lapis-text-tertiary text-sm mt-2">
+                        You have a long runway to this race - optionally, consider one longer-than-usual session per discipline for confidence and nutrition
+                        practice. Entirely optional and doesn&apos;t change your plan&apos;s numbers.
                       </p>
-                    ))}
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-lapis-text-tertiary text-xs mb-2">
+                          A one-off, occasional session per discipline - not a new weekly expectation. Adjust distance/timing to how it feels.
+                        </p>
+                        {milestoneSuggestions.map((s) => (
+                          <p key={s.discipline} className="text-lapis-text-secondary text-sm">
+                            <span className="text-lapis-text-tertiary">{DISCIPLINE_LABELS[s.discipline]}:</span> ~{s.km}km, around the week of {formatWeekDate(s.weekStartDate)}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
+              </div>
+            )}
 
-                {category === 'multisport' && (
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-1">Transitions</p>
-                    <p className="text-lapis-text-secondary text-sm">{TRANSITION_GUIDANCE.peak.full}</p>
-                  </div>
-                )}
+            {reviewTab === 'progress' && (
+              <div className="space-y-8">
+                <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                  <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Finish Time &amp; Projections</h2>
+                  <FinishTimeCard
+                    category={category}
+                    targetFinishSeconds={targetFinishSeconds}
+                    projectedFinishSeconds={projectedFinishSeconds}
+                    courseRange={courseRange}
+                    reason={currentFormReason}
+                  />
 
-                <div>
-                  <p className="text-xs text-lapis-text-tertiary mb-1">Fueling</p>
-                  <p className="text-lapis-text-secondary text-sm">{FUELING_GUIDANCE}</p>
+                  {/* Only shown separately when a target is set - otherwise
+                      FinishTimeCard's own value above already IS the
+                      projection, and repeating it here would be the exact
+                      duplicate this reorg removed. */}
+                  {targetFinishSeconds != null && (courseRange || projectedFinishSeconds != null) && (
+                    <div className="pt-4 mt-4 border-t border-lapis-border-subtle">
+                      <p className="text-xs text-lapis-text-tertiary mb-1">Projected Finish</p>
+                      <p className="text-lapis-text-secondary text-sm">
+                        {courseRange
+                          ? `${formatDuration(courseRange.totalSecondsLow)}–${formatDuration(courseRange.totalSecondsHigh)}`
+                          : formatDuration(projectedFinishSeconds!)}
+                      </p>
+                    </div>
+                  )}
+
+                  {aspirationalRange && nextTier && (
+                    <div className="pt-4 mt-4 border-t border-lapis-border-subtle">
+                      <p className="text-xs text-lapis-text-tertiary mb-1">If You Progress Further</p>
+                      <p className="text-lapis-text-secondary text-sm">
+                        {formatDuration(aspirationalRange.totalSecondsLow)}–{formatDuration(aspirationalRange.totalSecondsHigh)}
+                      </p>
+                      <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">
+                        If your real training reaches {TIER_LABELS[nextTier]}-level fitness by race day - the same tracking already updating your
+                        projection above - your range could look more like this. Not a promise, just where the evidence would point.
+                      </p>
+                    </div>
+                  )}
+
+                  {cutoffRiskFlags.length > 0 && courseRange && (
+                    <div className="pt-4 mt-4 border-t border-lapis-border-subtle space-y-3">
+                      <p className="text-xs text-lapis-text-tertiary">Cutoff safety margin</p>
+                      {cutoffRiskFlags.map((f) => (
+                        <CutoffMarginRow key={f.segment} flag={f} range={courseRange} />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                <div>
-                  <p className="text-xs text-lapis-text-tertiary mb-2">Checkpoints</p>
-                  <div className="space-y-2">
-                    {RACE_DAY_CHECKPOINTS[category].map((checkpoint) => (
-                      <div key={checkpoint.label}>
-                        <p className="text-lapis-text-primary text-sm font-medium">{checkpoint.label}</p>
-                        <ul className="list-disc ml-4">
-                          {checkpoint.notes.map((note) => (
-                            <li key={note} className="text-lapis-text-secondary text-xs">
-                              {note}
-                            </li>
-                          ))}
-                        </ul>
+                {muscleImpact.length > 0 && (
+                  <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                    <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Muscle Impact</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {muscleImpact.map((line) => (
+                        <span
+                          key={line.muscle}
+                          title={line.description}
+                          className="px-3 py-1.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle"
+                        >
+                          {line.muscle}: {line.shortLabel}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <DisruptionDeclaration disruptions={disruptions} onChanged={refetchDisruptions} />
+              </div>
+            )}
+
+            {reviewTab === 'prep' && (
+              <div className="space-y-8">
+                <RaceChecklistCard raceId={race.id} category={category} />
+
+                {fuelingPhaseSummaries.length > 0 && (
+                  <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                    <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Fueling</h2>
+                    <p className="text-lapis-text-secondary text-sm leading-relaxed mb-4">{FUELING_GUIDANCE}</p>
+                    <div className="space-y-1 mb-4">
+                      {fuelingPhaseSummaries.map((line) => (
+                        <p key={line.phase} className="text-lapis-text-tertiary text-xs">
+                          <span className="text-lapis-text-secondary">{PHASE_LABELS[line.phase]}:</span> {line.summary}
+                        </p>
+                      ))}
+                    </div>
+                    <Link href="/nutrition" className="text-sm text-lapis-text-secondary hover:text-lapis-text-primary underline underline-offset-2">
+                      Log an Intra-Workout entry →
+                    </Link>
+                  </div>
+                )}
+
+                <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                  <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Race Day Plan</h2>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-lapis-text-tertiary mb-1">Pacing</p>
+                      <p className="text-lapis-text-secondary text-sm">{ZONE_GUIDANCE.key.peak.full}</p>
+                      {peakPaceTargets && (
+                        <div className="mt-2 space-y-1">
+                          {(['swim', 'bike', 'run'] as Discipline[]).map((d) => {
+                            const gap = paceGaps.find((g) => g.discipline === d)
+                            return (
+                              <p key={d} className="text-lapis-text-secondary text-sm">
+                                {DISCIPLINE_LABELS[d]}: ~{formatPaceForDiscipline(peakPaceTargets[d], d)}
+                                {gap && <span className="text-lapis-text-tertiary text-xs"> ({describePaceGap(gap, weeksUntilRace, level)})</span>}
+                                {!gap && safeCutoffPaceTargets && (
+                                  <span className="text-lapis-text-tertiary text-xs">
+                                    {' '}
+                                    (a safe-cutoff pace would be ~{formatPaceForDiscipline(safeCutoffPaceTargets[d], d)} - reaching your goal takes real
+                                    improvement, not just showing up; not enough logged data yet for a more precise comparison)
+                                  </span>
+                                )}
+                              </p>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {targetFinishSeconds != null && peakPaceTargets && (
+                        <p className="text-lapis-text-tertiary text-xs mt-2 max-w-sm">
+                          These paces reserve ~{Math.round(TYPICAL_TRANSITION_SECONDS / 60)} minutes for T1/T2 transitions, so multiplying them out by
+                          distance won't quite reach your goal time on its own - that's expected, not a shortfall.
+                        </p>
+                      )}
+                    </div>
+
+                    {category === 'multisport' && (
+                      <div>
+                        <p className="text-xs text-lapis-text-tertiary mb-1">Transitions</p>
+                        <p className="text-lapis-text-secondary text-sm">{TRANSITION_GUIDANCE.peak.full}</p>
                       </div>
-                    ))}
+                    )}
+
+                    <div>
+                      <p className="text-xs text-lapis-text-tertiary mb-2">Checkpoints</p>
+                      <div className="space-y-2">
+                        {RACE_DAY_CHECKPOINTS[category].map((checkpoint) => (
+                          <div key={checkpoint.label}>
+                            <p className="text-lapis-text-primary text-sm font-medium">{checkpoint.label}</p>
+                            <ul className="list-disc ml-4">
+                              {checkpoint.notes.map((note) => (
+                                <li key={note} className="text-lapis-text-secondary text-xs">
+                                  {note}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
