@@ -274,8 +274,11 @@ function buildEnduranceSlots(
 // simple, even spacing, not an optimizer (same "not real sports
 // science" honesty as periodization.ts's allocatePhases). Mutates
 // `blockedDays` with the days it places, so repeated calls sharing the
-// same set naturally avoid colliding with each other.
-function assignDays(count: number, blockedDays: Set<number>, preferredStart = 0): number[] {
+// same set naturally avoid colliding with each other. Exported so
+// PhaseTemplateDialog's "redistribute around unavailable days" action
+// reuses this exact placement primitive instead of a second, parallel
+// implementation.
+export function assignDays(count: number, blockedDays: Set<number>, preferredStart = 0): number[] {
   const days: number[] = []
   let cursor = preferredStart
   let attempts = 0

@@ -311,6 +311,16 @@ export default function RaceDetailPage() {
   // multi-month plan stays scannable; every other week can still be
   // peeked at on demand.
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set([getLocalDateString(getLocalWeekStart())]))
+  // Same idea one level up: a phase can hold up to 52 weeks, so phases
+  // themselves collapse to a summary row by default too - only the phase
+  // containing the current week starts open. Uses the same touched-flag
+  // pattern as approachTouched below (rather than seeding this via a
+  // useEffect keyed off plan, which can't run until after the first
+  // paint): until the user ever toggles a phase, isPhaseExpanded falls
+  // back to "is this the current week's phase," computed fresh every
+  // render from data that's already loaded - no flash-of-wrong-state.
+  const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set())
+  const [phasesTouched, setPhasesTouched] = useState(false)
   const [milestoneExpanded, setMilestoneExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -582,6 +592,29 @@ export default function RaceDetailPage() {
       else next.add(weekStartDate)
       return next
     })
+  }
+
+  // Self-contained rather than sharing the later currentWeekStartDate
+  // const (out of scope this early) - same "compute it fresh, it's cheap"
+  // precedent expandedWeeks' own initial state already uses.
+  const currentWeekPhaseKey = (): string | null => {
+    const week = plan?.weeks.find((w) => w.weekStartDate === getLocalDateString(getLocalWeekStart()))
+    return week ? `${week.phase}-${week.isAcclimation}` : null
+  }
+
+  const isPhaseExpanded = (key: string): boolean => (phasesTouched ? expandedPhases.has(key) : key === currentWeekPhaseKey())
+
+  const togglePhaseExpanded = (key: string) => {
+    // On first-ever toggle, seed the real set from the default (rather
+    // than the empty placeholder Set expandedPhases starts as) - without
+    // this, clicking to collapse the auto-expanded current phase would
+    // instead ADD it to an empty set and read as "explicitly expanded."
+    const base = phasesTouched ? expandedPhases : new Set(currentWeekPhaseKey() ? [currentWeekPhaseKey()!] : [])
+    const next = new Set(base)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    setExpandedPhases(next)
+    setPhasesTouched(true)
   }
 
   if (loading) {
@@ -1207,118 +1240,172 @@ export default function RaceDetailPage() {
                   )}
                 </div>
 
-                {weeksByPhase.map((group) => (
-                  <div key={`${group.phase}-${group.isAcclimation}`}>
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-sm font-medium text-lapis-text-secondary">{group.isAcclimation ? 'Acclimation' : `${PHASE_LABELS[group.phase]} Phase`}</h3>
-                      {/* Editing here reuses the shared Base template, which also governs
-                          real Base weeks - hidden for the acclimation group so "edit" isn't
-                          offered from a heading it wouldn't be scoped to. */}
-                      {!group.isAcclimation && plan.phaseTemplates[group.phase] && (
-                        <PhaseTemplateDialog
-                          raceId={raceId}
-                          phase={group.phase}
-                          template={plan.phaseTemplates[group.phase]!}
-                          allTemplates={plan.phaseTemplates}
-                          weeksInPhase={group.weeks}
-                          onSaved={(updated) => handleTemplateSaved(group.phase, updated)}
-                          easyPaceTargets={easyPaceTargets}
-                          peakPaceTargets={peakPaceTargets}
-                          thresholdPaceHints={thresholdPaceHints}
-                        />
-                      )}
-                    </div>
-                    {group.isAcclimation && <p className="text-lapis-text-tertiary text-xs mb-1">{ACCLIMATION_GUIDANCE}</p>}
-                    <p className="text-lapis-text-tertiary text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
-                    <p className="text-lapis-text-tertiary text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
-                    <div className="grid gap-3">
-                      {group.weeks.map((week, weekIndex) => {
-                        const isCurrentWeek = week.weekStartDate === currentWeekStartDate
-                        const phaseTemplate = plan.phaseTemplates[week.phase]
-                        const isExpanded = expandedWeeks.has(week.weekStartDate)
-                        return (
-                          <div
-                            key={week.weekStartDate}
-                            className={`border rounded-lapis-lg p-6 transition-all duration-200 ${
-                              isCurrentWeek ? 'border-lapis-border-strong bg-lapis-accent-500/[0.05]' : 'border-lapis-border-subtle bg-lapis-surface-1'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-lapis-text-primary font-medium">Week of {formatWeekDate(week.weekStartDate)}</span>
-                                {isCurrentWeek && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500 text-lapis-text-primary">This Week</span>
-                                )}
-                                {!!week.brickSessions && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
-                                    {week.brickSessions} brick
-                                  </span>
-                                )}
-                              </div>
-                              {week.disciplines ? (
-                                <div className="flex gap-4 text-right text-sm flex-wrap justify-end">
-                                  {(['swim', 'bike', 'run'] as Discipline[]).map((d) => (
-                                    <div key={d}>
-                                      <p className="text-xs text-lapis-text-tertiary">{DISCIPLINE_LABELS[d]}</p>
-                                      <p className="text-lapis-text-primary font-semibold">
-                                        {week.disciplines![d].km}km · {week.disciplines![d].sessions}x
-                                      </p>
-                                    </div>
-                                  ))}
-                                  <div>
-                                    <p className="text-xs text-lapis-text-tertiary">Strength</p>
-                                    <p className="text-lapis-text-primary font-semibold">{week.targetStrengthSessions}x</p>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex gap-4 text-right text-sm">
-                                  <div>
-                                    <p className="text-xs text-lapis-text-tertiary">Cardio</p>
-                                    <p className="text-lapis-text-primary font-semibold">
-                                      {isCurrentWeek && currentWeekActual ? `${currentWeekActual.cardioKm.toFixed(1)} / ` : ''}
-                                      {week.targetCardioKm}km
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-lapis-text-tertiary">Sessions</p>
-                                    <p className="text-lapis-text-primary font-semibold">{week.targetCardioSessions} cardio · {week.targetStrengthSessions} strength</p>
-                                  </div>
-                                </div>
+                {weeksByPhase.map((group) => {
+                  const groupKey = `${group.phase}-${group.isAcclimation}`
+                  const isGroupExpanded = isPhaseExpanded(groupKey)
+                  const firstWeek = group.weeks[0]
+                  const lastWeek = group.weeks[group.weeks.length - 1]
+                  const containsCurrentWeek = group.weeks.some((w) => w.weekStartDate === currentWeekStartDate)
+                  const phaseEndDate = new Date(lastWeek.weekStartDate + 'T00:00:00')
+                  phaseEndDate.setDate(phaseEndDate.getDate() + 6)
+                  const dateRangeLabel = `${formatWeekDate(firstWeek.weekStartDate)} – ${formatWeekDate(getLocalDateString(phaseEndDate))}`
+                  // Boundary weeks of the phase, not a claimed "peak" -
+                  // Base/Build ramp up (last week highest) while Taper
+                  // ramps down (first week highest), so "start → end"
+                  // stays honest either way without needing to determine
+                  // which end is actually higher.
+                  const loadSummary = firstWeek.disciplines
+                    ? (['swim', 'bike', 'run'] as Discipline[])
+                        .map((d) => `${DISCIPLINE_LABELS[d]} ${firstWeek.disciplines![d].km}→${lastWeek.disciplines![d].km}km`)
+                        .join(' · ')
+                    : `${firstWeek.targetCardioKm}→${lastWeek.targetCardioKm}km`
+
+                  return (
+                    <div key={groupKey}>
+                      <button
+                        onClick={() => togglePhaseExpanded(groupKey)}
+                        className={`w-full text-left flex items-center justify-between flex-wrap gap-3 border rounded-lapis-lg p-4 transition-colors ${
+                          containsCurrentWeek
+                            ? 'border-lapis-border-strong bg-lapis-accent-500/[0.05]'
+                            : 'border-lapis-border-subtle bg-lapis-surface-1 hover:bg-lapis-surface-2'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {isGroupExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-lapis-text-tertiary shrink-0" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-lapis-text-tertiary shrink-0" />
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-lapis-text-primary font-medium text-sm">
+                                {group.isAcclimation ? 'Acclimation' : `${PHASE_LABELS[group.phase]} Phase`}
+                              </span>
+                              <span className="text-lapis-text-tertiary text-xs">— {group.weeks.length} week{group.weeks.length === 1 ? '' : 's'}</span>
+                              {containsCurrentWeek && (
+                                <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500 text-lapis-text-primary">This Week</span>
                               )}
                             </div>
-                            <p className="text-lapis-text-tertiary text-sm">{week.focusNote}</p>
-
-                            {phaseTemplate && (
-                              <>
-                                <button
-                                  onClick={() => toggleWeekExpanded(week.weekStartDate)}
-                                  className="flex items-center gap-1 text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mt-3"
-                                >
-                                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                  {isExpanded ? 'Hide days' : 'Show days'}
-                                </button>
-                                {isExpanded && (
-                                  <WeekDayList
-                                    slots={slotsForWeek(phaseTemplate, week)}
-                                    week={week}
-                                    weekIndexWithinPhase={weekIndex}
-                                    easyPaceTargets={easyPaceTargets}
-                                    peakPaceTargets={peakPaceTargets}
-                                    thresholdPaceHints={thresholdPaceHints}
-                                    approach={plan.approach}
-                                    paceGaps={paceGaps}
-                                    weeksUntilRace={weeksUntilRace}
-                                    level={level}
-                                  />
-                                )}
-                              </>
-                            )}
+                            <p className="text-lapis-text-tertiary text-xs mt-0.5">{dateRangeLabel}</p>
                           </div>
-                        )
-                      })}
+                        </div>
+                        <p className="text-lapis-text-tertiary text-xs">{loadSummary}</p>
+                      </button>
+
+                      {isGroupExpanded && (
+                        <div className="mt-3">
+                          {/* Editing here reuses the shared Base template, which also governs
+                              real Base weeks - hidden for the acclimation group so "edit" isn't
+                              offered from a heading it wouldn't be scoped to. */}
+                          {!group.isAcclimation && plan.phaseTemplates[group.phase] && (
+                            <div className="mb-1">
+                              <PhaseTemplateDialog
+                                raceId={raceId}
+                                phase={group.phase}
+                                template={plan.phaseTemplates[group.phase]!}
+                                allTemplates={plan.phaseTemplates}
+                                weeksInPhase={group.weeks}
+                                onSaved={(updated) => handleTemplateSaved(group.phase, updated)}
+                                easyPaceTargets={easyPaceTargets}
+                                peakPaceTargets={peakPaceTargets}
+                                thresholdPaceHints={thresholdPaceHints}
+                              />
+                            </div>
+                          )}
+                          {group.isAcclimation && <p className="text-lapis-text-tertiary text-xs mb-1">{ACCLIMATION_GUIDANCE}</p>}
+                          <p className="text-lapis-text-tertiary text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
+                          <p className="text-lapis-text-tertiary text-xs mb-3">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
+                          <div className="grid gap-3">
+                            {group.weeks.map((week, weekIndex) => {
+                              const isCurrentWeek = week.weekStartDate === currentWeekStartDate
+                              const phaseTemplate = plan.phaseTemplates[week.phase]
+                              const isExpanded = expandedWeeks.has(week.weekStartDate)
+                              return (
+                                <div
+                                  key={week.weekStartDate}
+                                  className={`border rounded-lapis-lg p-6 transition-all duration-200 ${
+                                    isCurrentWeek ? 'border-lapis-border-strong bg-lapis-accent-500/[0.05]' : 'border-lapis-border-subtle bg-lapis-surface-1'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between flex-wrap gap-4 mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-lapis-text-primary font-medium">Week of {formatWeekDate(week.weekStartDate)}</span>
+                                      {isCurrentWeek && (
+                                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-accent-500 text-lapis-text-primary">This Week</span>
+                                      )}
+                                      {!!week.brickSessions && (
+                                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
+                                          {week.brickSessions} brick
+                                        </span>
+                                      )}
+                                    </div>
+                                    {week.disciplines ? (
+                                      <div className="flex gap-4 text-right text-sm flex-wrap justify-end">
+                                        {(['swim', 'bike', 'run'] as Discipline[]).map((d) => (
+                                          <div key={d}>
+                                            <p className="text-xs text-lapis-text-tertiary">{DISCIPLINE_LABELS[d]}</p>
+                                            <p className="text-lapis-text-primary font-semibold">
+                                              {week.disciplines![d].km}km · {week.disciplines![d].sessions}x
+                                            </p>
+                                          </div>
+                                        ))}
+                                        <div>
+                                          <p className="text-xs text-lapis-text-tertiary">Strength</p>
+                                          <p className="text-lapis-text-primary font-semibold">{week.targetStrengthSessions}x</p>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex gap-4 text-right text-sm">
+                                        <div>
+                                          <p className="text-xs text-lapis-text-tertiary">Cardio</p>
+                                          <p className="text-lapis-text-primary font-semibold">
+                                            {isCurrentWeek && currentWeekActual ? `${currentWeekActual.cardioKm.toFixed(1)} / ` : ''}
+                                            {week.targetCardioKm}km
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <p className="text-xs text-lapis-text-tertiary">Sessions</p>
+                                          <p className="text-lapis-text-primary font-semibold">{week.targetCardioSessions} cardio · {week.targetStrengthSessions} strength</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-lapis-text-tertiary text-sm">{week.focusNote}</p>
+
+                                  {phaseTemplate && (
+                                    <>
+                                      <button
+                                        onClick={() => toggleWeekExpanded(week.weekStartDate)}
+                                        className="flex items-center gap-1 text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mt-3"
+                                      >
+                                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                        {isExpanded ? 'Hide days' : 'Show days'}
+                                      </button>
+                                      {isExpanded && (
+                                        <WeekDayList
+                                          slots={slotsForWeek(phaseTemplate, week)}
+                                          week={week}
+                                          weekIndexWithinPhase={weekIndex}
+                                          easyPaceTargets={easyPaceTargets}
+                                          peakPaceTargets={peakPaceTargets}
+                                          thresholdPaceHints={thresholdPaceHints}
+                                          approach={plan.approach}
+                                          paceGaps={paceGaps}
+                                          weeksUntilRace={weeksUntilRace}
+                                          level={level}
+                                        />
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
 
                 {milestoneSuggestions && (
                   <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
