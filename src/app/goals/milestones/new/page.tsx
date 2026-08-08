@@ -36,6 +36,7 @@ function NewMilestonePageInner() {
   const [status, setStatus] = useState<ActionItemStatus>('active')
   const [goalId, setGoalId] = useState<string | null>(presetGoalId)
   const [goalOptions, setGoalOptions] = useState<{ id: string; title: string }[]>([])
+  const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
@@ -79,6 +80,7 @@ function NewMilestonePageInner() {
       next_action: nextAction.trim() || null,
       due_date: dueDate || null,
       status,
+      auto_block_before_deadline: autoBlockBeforeDeadline,
     })
 
     if (error) {
@@ -117,6 +119,8 @@ function NewMilestonePageInner() {
             goalId={goalId}
             onGoalIdChange={setGoalId}
             goalOptions={goalOptions}
+            autoBlockBeforeDeadline={autoBlockBeforeDeadline}
+            onAutoBlockBeforeDeadlineChange={setAutoBlockBeforeDeadline}
           />
 
           <Button

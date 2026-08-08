@@ -5,7 +5,7 @@
 // banner item when it doesn't - never a fabricated time.
 
 import { CalendarDays, Dumbbell, Flag, Target, CheckCircle2, type LucideIcon } from 'lucide-react'
-import { getLocalWeekdayIndex } from '@/lib/date'
+import { getLocalWeekdayIndex, getLocalDateString } from '@/lib/date'
 import { computeSlotForWeekday, slotDisplayName, type ScheduleSlot } from '@/lib/gym-schedule'
 import type { ActionItem } from '@/lib/goals'
 import type { WeekSlots } from '@/lib/race-plan/day-template'
@@ -173,6 +173,16 @@ const DEFAULT_RACES_BLOCK_MINUTES = 75
 // caveat as the constants above.
 const DEFAULT_HABIT_BLOCK_MINUTES = 15
 
+// Opt-in per goal/milestone (auto_block_before_deadline, migration 069) -
+// a fixed "a few days out" convention rather than a configurable N, and a
+// fixed default time/duration since neither goals nor milestones carry a
+// real usual-time the way gym/races slots or habits do. Purely computed
+// here, never a stored calendar_entries row - same "not individually
+// draggable, just a visual nudge" treatment gym/races blocks already get.
+const AUTO_BLOCK_DAYS_BEFORE = 3
+const AUTO_BLOCK_START_MINUTES = 9 * 60 // 09:00
+const AUTO_BLOCK_DURATION_MINUTES = 60
+
 export function buildTimedItemsForDate(params: {
   date: string
   calendarEntries: CalendarEntry[]
@@ -208,6 +218,20 @@ export function buildTimedItemsForDate(params: {
   for (const item of goalItems) {
     if (item.targetDate === date) {
       items.push({ id: `goal-${item.id}`, source: 'goal', title: item.title, startMinutes: null, endMinutes: null, href: item.editHref })
+    }
+    if (item.autoBlockBeforeDeadline && item.targetDate) {
+      const blockDate = new Date(item.targetDate + 'T00:00:00')
+      blockDate.setDate(blockDate.getDate() - AUTO_BLOCK_DAYS_BEFORE)
+      if (getLocalDateString(blockDate) === date) {
+        items.push({
+          id: `goal-block-${item.id}`,
+          source: 'goal',
+          title: `Work on: ${item.title}`,
+          startMinutes: AUTO_BLOCK_START_MINUTES,
+          endMinutes: AUTO_BLOCK_START_MINUTES + AUTO_BLOCK_DURATION_MINUTES,
+          href: item.editHref,
+        })
+      }
     }
   }
 

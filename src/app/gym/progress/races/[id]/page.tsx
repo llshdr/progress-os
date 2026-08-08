@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { raceTypeLabel, RACE_TYPE_DISTANCE, type RaceType } from '@/lib/race-constants'
-import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
+import { getLocalDateString, getLocalWeekStart, getLocalWeekdayIndex } from '@/lib/date'
 import { daysBetween } from '@/lib/goals'
 import { fetchCardioActivity, type CardioActivity } from '@/lib/cardio-stats'
 import { analyzeCurrentFitness, type FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
@@ -96,6 +96,7 @@ type Race = {
   courseOrLocation: string | null
   race_date: string
   trainingStartDate: string | null
+  resultDurationSeconds: number | null
 }
 
 type PlanWeek = {
@@ -302,6 +303,8 @@ export default function RaceDetailPage() {
   const [disciplineActivityFacts, setDisciplineActivityFacts] = useState<Record<Discipline, DisciplineActivityFacts> | null>(null)
   const [cardioActivities, setCardioActivities] = useState<CardioActivity[]>([])
   const [disruptions, setDisruptions] = useState<TrainingDisruption[]>([])
+  const [checklistProgress, setChecklistProgress] = useState<{ done: number; total: number } | null>(null)
+  const [hasCompletedWorkoutToday, setHasCompletedWorkoutToday] = useState(false)
   const [courseProfile, setCourseProfile] = useState<RaceCourseProfile | null>(null)
   const [courseTimeBands, setCourseTimeBands] = useState<Partial<Record<ExperienceLevel, RaceCourseTimeBand | null>>>({})
   const [courseCutoffs, setCourseCutoffs] = useState<RaceCourseCutoff[]>([])
@@ -355,6 +358,14 @@ export default function RaceDetailPage() {
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [showCutoffConfirm, setShowCutoffConfirm] = useState(false)
+  // Same three-field hours/minutes/seconds shape as the races list page's
+  // own result entry - no prior update path existed for a race that
+  // already had a full generated plan (that page's dialog is insert-only,
+  // for logging a past race from scratch), so this is new.
+  const [resultHours, setResultHours] = useState('')
+  const [resultMinutes, setResultMinutes] = useState('')
+  const [resultSeconds, setResultSeconds] = useState('')
+  const [savingResult, setSavingResult] = useState(false)
 
   useEffect(() => {
     fetchAll()
@@ -388,10 +399,13 @@ export default function RaceDetailPage() {
       return
     }
 
-    const [{ data: raceRow }, { data: planRow }, { data: settingsRow }, { data: disruptionRows }] = await Promise.all([
+    const [{ data: raceRow }, { data: planRow }, { data: settingsRow }, { data: disruptionRows }, { data: checklistRows }, { data: todayWorkoutRows }] =
+      await Promise.all([
       supabase
         .from('races')
-        .select('id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds, discipline_weakness, training_start_date')
+        .select(
+          'id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds, discipline_weakness, training_start_date, result_duration_seconds'
+        )
         .eq('id', raceId)
         .eq('user_id', user.id)
         .maybeSingle(),
@@ -404,7 +418,17 @@ export default function RaceDetailPage() {
         .select('id, start_date, end_date, reason, note')
         .eq('user_id', user.id)
         .order('start_date', { ascending: false }),
+      // Just enough for the race-week digest's completion count - the full
+      // per-item list still lives entirely in RaceChecklistCard, which
+      // self-fetches independently rather than being prop-driven from here.
+      supabase.from('race_checklist_items').select('done_at').eq('race_id', raceId),
+      // Powers the checklist-to-brick-session tie-in below - just "was
+      // anything completed today," not which workout specifically.
+      supabase.from('workouts').select('id').eq('user_id', user.id).eq('date', getLocalDateString()).not('completed_at', 'is', null).limit(1),
     ])
+
+    setChecklistProgress(checklistRows ? { done: checklistRows.filter((r) => r.done_at != null).length, total: checklistRows.length } : null)
+    setHasCompletedWorkoutToday((todayWorkoutRows ?? []).length > 0)
 
     setOpenWaterSeasonStartMonth(settingsRow?.open_water_season_start_month ?? null)
     setOpenWaterSeasonEndMonth(settingsRow?.open_water_season_end_month ?? null)
@@ -429,6 +453,7 @@ export default function RaceDetailPage() {
       courseOrLocation: courseName ?? raceRow.location,
       race_date: raceRow.race_date,
       trainingStartDate: raceRow.training_start_date ?? null,
+      resultDurationSeconds: raceRow.result_duration_seconds ?? null,
     })
     setTrainingStartDateInput(raceRow.training_start_date ?? getLocalDateString())
 
@@ -503,6 +528,22 @@ export default function RaceDetailPage() {
     const strengthDays = new Set((sets ?? []).map((s: any) => getLocalDateString(new Date(s.created_at)))).size
 
     setCurrentWeekActual({ cardioKm, strengthSessions: strengthDays })
+  }
+
+  const handleSaveResult = async () => {
+    const totalSeconds =
+      parseInt(resultHours || '0', 10) * 3600 + parseInt(resultMinutes || '0', 10) * 60 + parseInt(resultSeconds || '0', 10)
+    if (totalSeconds <= 0) return
+
+    setSavingResult(true)
+    const { error } = await supabase.from('races').update({ result_duration_seconds: totalSeconds }).eq('id', raceId)
+    setSavingResult(false)
+
+    if (error) {
+      console.error('Error saving race result:', error)
+      return
+    }
+    setRace((prev) => (prev ? { ...prev, resultDurationSeconds: totalSeconds } : prev))
   }
 
   const handleConfirmStartDate = async () => {
@@ -831,6 +872,13 @@ export default function RaceDetailPage() {
   // matching today's date rather than assuming weeks[0], which is only
   // "current" right after generation.
   const currentPlanPhase = plan?.weeks.find((w) => w.weekStartDate === currentWeekStartDate)?.phase ?? null
+  // Checklist-to-brick tie-in: today's weekday against the CURRENT phase's
+  // own template (the same one slotsForWeek/WeekDayList already read from)
+  // rather than a separate brick-day computation.
+  const isBrickDayToday =
+    currentPlanPhase && plan?.phaseTemplates[currentPlanPhase]
+      ? plan.phaseTemplates[currentPlanPhase]!.brickDays.includes(getLocalWeekdayIndex(new Date(today + 'T00:00:00')))
+      : false
   const nutritionTensionFlag =
     currentPlanPhase && snapshot
       ? assessNutritionPhaseTension(currentPlanPhase, snapshot.trainingPhase, snapshot.trainingIntensity, snapshot.maintenanceCalories)
@@ -1171,6 +1219,58 @@ export default function RaceDetailPage() {
             <CutoffRiskBanner flags={cutoffRiskFlags} />
             <BenchmarkComplianceBanner flags={behindBenchmarkFlags} onRegenerate={() => setStep('spectrum')} />
 
+            {/* A synthesis pass over signals that already exist elsewhere on
+                this page (cutoff margins, checklist, fueling, transition
+                guidance) - not a new computation, just pulled into one place
+                for the one week it matters most to see them together. */}
+            {daysUntil >= 0 && daysUntil <= 7 && (
+              <div className="border border-lapis-accent-400/30 rounded-lapis-lg bg-lapis-accent-500/[0.04] p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Race Week</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
+                  {daysUntil === 0 ? 'Today is race day.' : `${daysUntil} day${daysUntil === 1 ? '' : 's'} to go.`} Everything worth a last look, in
+                  one place.
+                </p>
+                <div className="space-y-4">
+                  {currentPlanPhase === 'taper' && category === 'multisport' && (
+                    <div>
+                      <p className="text-xs text-lapis-text-tertiary mb-1">Transitions</p>
+                      <p className="text-lapis-text-secondary text-sm">{TRANSITION_GUIDANCE.taper.full}</p>
+                    </div>
+                  )}
+                  {cutoffRiskFlags.length > 0 && (
+                    <div>
+                      <p className="text-xs text-lapis-text-tertiary mb-1">Cutoff margins</p>
+                      {cutoffRiskFlags.map((f) => (
+                        <p key={f.segment} className={`text-sm ${MARGIN_RISK_COLOR[f.risk]}`}>
+                          {f.message}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {checklistProgress && checklistProgress.total > 0 && (
+                    <div>
+                      <p className="text-xs text-lapis-text-tertiary mb-1">Race Prep Checklist</p>
+                      <p className="text-lapis-text-secondary text-sm">
+                        {checklistProgress.done} of {checklistProgress.total} done
+                        {checklistProgress.done < checklistProgress.total && (
+                          <button
+                            onClick={() => setReviewTab('prep')}
+                            className="ml-2 text-lapis-text-tertiary hover:text-lapis-text-secondary underline underline-offset-2"
+                          >
+                            Finish it →
+                          </button>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Fueling</p>
+                    <p className="text-lapis-text-secondary text-sm">{FUELING_GUIDANCE}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeOrUpcomingDisruption && (
               <p className="text-lapis-text-tertiary text-xs">
                 {formatDateRange(activeOrUpcomingDisruption.start_date, activeOrUpcomingDisruption.end_date)} (
@@ -1488,6 +1588,77 @@ export default function RaceDetailPage() {
                   )}
                 </div>
 
+                {race.race_date <= today && (
+                  <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                    <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Race Result</h2>
+                    {race.resultDurationSeconds != null ? (
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs text-lapis-text-tertiary mb-1">Your Time</p>
+                          <p className="text-lapis-text-primary text-2xl font-semibold">{formatDuration(race.resultDurationSeconds)}</p>
+                        </div>
+                        {targetFinishSeconds != null ? (
+                          <p className="text-lapis-text-secondary text-sm">
+                            {race.resultDurationSeconds <= targetFinishSeconds ? 'Beat' : 'Missed'} your target ({formatDuration(targetFinishSeconds)}) by{' '}
+                            {formatDuration(Math.abs(race.resultDurationSeconds - targetFinishSeconds))}
+                          </p>
+                        ) : (
+                          courseRange || projectedFinishSeconds != null
+                        ) ? (
+                          <p className="text-lapis-text-secondary text-sm">
+                            {(() => {
+                              const projected = courseRange ? (courseRange.totalSecondsLow + courseRange.totalSecondsHigh) / 2 : projectedFinishSeconds!
+                              const diff = race.resultDurationSeconds! - projected
+                              return `${diff <= 0 ? 'Beat' : 'Slower than'} your projection (${formatDuration(projected)}) by ${formatDuration(Math.abs(diff))}`
+                            })()}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-lapis-text-tertiary text-sm mb-3">Log your finish time to see it against your target and projection.</p>
+                        <div className="flex items-end gap-2 flex-wrap">
+                          <div className="space-y-1">
+                            <Label className="text-lapis-text-secondary text-xs">Hours</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={resultHours}
+                              onChange={(e) => setResultHours(e.target.value)}
+                              className="w-20 bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-lapis-text-secondary text-xs">Minutes</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="59"
+                              value={resultMinutes}
+                              onChange={(e) => setResultMinutes(e.target.value)}
+                              className="w-20 bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-lapis-text-secondary text-xs">Seconds</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="59"
+                              value={resultSeconds}
+                              onChange={(e) => setResultSeconds(e.target.value)}
+                              className="w-20 bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
+                            />
+                          </div>
+                          <Button onClick={handleSaveResult} disabled={savingResult} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
+                            {savingResult ? 'Saving...' : 'Save'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {muscleImpact.length > 0 && (
                   <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
                     <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Muscle Impact</h2>
@@ -1511,7 +1682,7 @@ export default function RaceDetailPage() {
 
             {reviewTab === 'prep' && (
               <div className="space-y-8">
-                <RaceChecklistCard raceId={race.id} category={category} />
+                <RaceChecklistCard raceId={race.id} category={category} justCompletedBrickToday={isBrickDayToday && hasCompletedWorkoutToday} />
 
                 {fuelingPhaseSummaries.length > 0 && (
                   <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">

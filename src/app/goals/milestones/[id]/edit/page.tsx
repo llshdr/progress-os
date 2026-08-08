@@ -22,6 +22,7 @@ export default function EditMilestonePage() {
   const [status, setStatus] = useState<ActionItemStatus>('active')
   const [goalId, setGoalId] = useState<string | null>(null)
   const [goalOptions, setGoalOptions] = useState<{ id: string; title: string }[]>([])
+  const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -51,6 +52,7 @@ export default function EditMilestonePage() {
     setDueDate(data.due_date || '')
     setStatus(data.status)
     setGoalId(data.goal_id)
+    setAutoBlockBeforeDeadline(data.auto_block_before_deadline ?? false)
 
     const { data: goals } = await supabase
       .from('goals')
@@ -79,6 +81,7 @@ export default function EditMilestonePage() {
         due_date: dueDate || null,
         status,
         goal_id: goalId,
+        auto_block_before_deadline: autoBlockBeforeDeadline,
       })
       .eq('id', params.id)
 
@@ -146,6 +149,8 @@ export default function EditMilestonePage() {
             goalId={goalId}
             onGoalIdChange={setGoalId}
             goalOptions={goalOptions}
+            autoBlockBeforeDeadline={autoBlockBeforeDeadline}
+            onAutoBlockBeforeDeadlineChange={setAutoBlockBeforeDeadline}
           />
 
           <Button

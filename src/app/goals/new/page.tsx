@@ -19,6 +19,7 @@ export default function NewGoalPage() {
   const [nextAction, setNextAction] = useState('')
   const [status, setStatus] = useState<ActionItemStatus>('active')
   const [scope, setScope] = useState<GoalScope | null>(null)
+  const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
 
@@ -43,6 +44,7 @@ export default function NewGoalPage() {
       next_action: nextAction.trim() || null,
       status,
       scope,
+      auto_block_before_deadline: autoBlockBeforeDeadline,
     })
 
     if (error) {
@@ -79,6 +81,8 @@ export default function NewGoalPage() {
             onStatusChange={setStatus}
             scope={scope}
             onScopeChange={setScope}
+            autoBlockBeforeDeadline={autoBlockBeforeDeadline}
+            onAutoBlockBeforeDeadlineChange={setAutoBlockBeforeDeadline}
           />
 
           <Button

@@ -72,11 +72,11 @@ export default function GoalsPage() {
     const [{ data: goals }, { data: milestones }] = await Promise.all([
       supabase
         .from('goals')
-        .select('id, title, next_action, target_date, updated_at, status')
+        .select('id, title, next_action, target_date, updated_at, status, auto_block_before_deadline')
         .eq('user_id', user.id),
       supabase
         .from('milestones')
-        .select('id, title, next_action, due_date, updated_at, status')
+        .select('id, title, next_action, due_date, updated_at, status, auto_block_before_deadline')
         .eq('user_id', user.id)
         .is('goal_id', null),
     ])
@@ -91,6 +91,7 @@ export default function GoalsPage() {
         updatedAt: g.updated_at as string,
         status: g.status as ActionItemStatus,
         editHref: `/goals/${g.id}`,
+        autoBlockBeforeDeadline: g.auto_block_before_deadline ?? false,
       })),
       ...(milestones ?? []).map((m) => ({
         id: m.id as string,
@@ -101,6 +102,7 @@ export default function GoalsPage() {
         updatedAt: m.updated_at as string,
         status: m.status as ActionItemStatus,
         editHref: `/goals/milestones/${m.id}/edit`,
+        autoBlockBeforeDeadline: m.auto_block_before_deadline ?? false,
       })),
     ]
 

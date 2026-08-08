@@ -25,6 +25,8 @@ interface MilestoneFormFieldsProps {
   goalId: string | null
   onGoalIdChange: (value: string | null) => void
   goalOptions: GoalOption[]
+  autoBlockBeforeDeadline: boolean
+  onAutoBlockBeforeDeadlineChange: (value: boolean) => void
 }
 
 const NO_GOAL_VALUE = 'none'
@@ -45,6 +47,8 @@ export default function MilestoneFormFields({
   goalId,
   onGoalIdChange,
   goalOptions,
+  autoBlockBeforeDeadline,
+  onAutoBlockBeforeDeadlineChange,
 }: MilestoneFormFieldsProps) {
   return (
     <>
@@ -127,6 +131,17 @@ export default function MilestoneFormFields({
           className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
         />
       </div>
+
+      {dueDate && (
+        <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
+          <input
+            type="checkbox"
+            checked={autoBlockBeforeDeadline}
+            onChange={(e) => onAutoBlockBeforeDeadlineChange(e.target.checked)}
+          />
+          Block time on my Calendar a few days before this is due
+        </label>
+      )}
 
       <div className="space-y-2">
         <Label className="text-lapis-text-secondary">Status</Label>

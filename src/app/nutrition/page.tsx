@@ -97,6 +97,9 @@ export default function NutritionPage() {
   const [allEntries, setAllEntries] = useState<NutritionEntry[]>([])
   const [foodItems, setFoodItems] = useState<FoodItem[]>([])
   const [libraryFoods, setLibraryFoods] = useState<FoodTemplate[]>([])
+  // Fetched once alongside everything else, not re-queried at click time -
+  // the quick-repeat button below just reuses whatever this already holds.
+  const [lastIntraWorkoutItem, setLastIntraWorkoutItem] = useState<FoodItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -140,6 +143,18 @@ export default function NutritionPage() {
       console.error('Error fetching food library:', foodsError)
     }
     setLibraryFoods(foods || [])
+
+    // RLS on nutrition_food_items is scoped through the owning entry's
+    // user_id (no direct user_id column on this table - see migration
+    // 021), so this already only ever returns the current user's own rows.
+    const { data: lastIntraWorkout } = await supabase
+      .from('nutrition_food_items')
+      .select('id, name, logged_at, ingredients, meal_tag, food_library_id, servings, logged_calories, logged_protein_g, logged_fat_g, logged_carbs_g')
+      .eq('meal_tag', 'intra_workout')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    setLastIntraWorkoutItem(lastIntraWorkout ?? null)
 
     const { data: entry, error: entryError } = await supabase
       .from('nutrition_entries')
@@ -271,6 +286,41 @@ export default function NutritionPage() {
           loggedProteinG: food.protein_g,
           loggedFatG: food.fat_g,
           loggedCarbsG: food.carbs_g,
+        },
+      ],
+    }))
+  }
+
+  // One-tap "log the same as last long session" - reuses lastIntraWorkoutItem
+  // (already fetched, not re-queried here) the same way addFoodFromLibrary
+  // reuses a library template: appends a snapshotted item and prefills the
+  // editable totals, never locking them. Opens the dialog first if it isn't
+  // already open - but only then, since re-opening an already-open dialog
+  // would reset the form via openDialog() and discard any unsaved edits.
+  const handleQuickRepeatIntraWorkout = () => {
+    if (!lastIntraWorkoutItem) return
+    const item = lastIntraWorkoutItem
+    if (!isDialogOpen) openDialog()
+
+    setForm((prev) => ({
+      ...prev,
+      calories: item.logged_calories != null ? String(Math.round(parseFloat(prev.calories || '0') + item.logged_calories)) : prev.calories,
+      protein: item.logged_protein_g != null ? String((parseFloat(prev.protein || '0') + item.logged_protein_g).toFixed(1)) : prev.protein,
+      fat: item.logged_fat_g != null ? String((parseFloat(prev.fat || '0') + item.logged_fat_g).toFixed(1)) : prev.fat,
+      carbs: item.logged_carbs_g != null ? String((parseFloat(prev.carbs || '0') + item.logged_carbs_g).toFixed(1)) : prev.carbs,
+      items: [
+        ...prev.items,
+        {
+          name: item.name,
+          loggedAt: new Date().toTimeString().slice(0, 5),
+          ingredients: item.ingredients ?? '',
+          mealTag: 'intra_workout',
+          foodLibraryId: item.food_library_id,
+          servings: item.servings ?? 1,
+          loggedCalories: item.logged_calories,
+          loggedProteinG: item.logged_protein_g,
+          loggedFatG: item.logged_fat_g,
+          loggedCarbsG: item.logged_carbs_g,
         },
       ],
     }))
@@ -415,6 +465,15 @@ export default function NutritionPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {lastIntraWorkoutItem && (
+              <button
+                onClick={handleQuickRepeatIntraWorkout}
+                title={`Log "${lastIntraWorkoutItem.name}" again, same as your last long session`}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-secondary hover:bg-lapis-surface-2 transition-colors text-sm"
+              >
+                Repeat Intra-Workout
+              </button>
+            )}
             <Link href="/nutrition/library">
               <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-secondary hover:bg-lapis-surface-2 transition-colors text-sm">
                 <BookOpen className="w-4 h-4" />

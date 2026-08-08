@@ -31,6 +31,7 @@ export default function GoalDetailPage() {
   const [nextAction, setNextAction] = useState('')
   const [status, setStatus] = useState<ActionItemStatus>('active')
   const [scope, setScope] = useState<GoalScope | null>(null)
+  const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [linkedMilestones, setLinkedMilestones] = useState<LinkedMilestone[]>([])
@@ -59,6 +60,7 @@ export default function GoalDetailPage() {
     setNextAction(data.next_action || '')
     setStatus(data.status)
     setScope(data.scope ?? null)
+    setAutoBlockBeforeDeadline(data.auto_block_before_deadline ?? false)
 
     const { data: milestones, error: milestonesError } = await supabase
       .from('milestones')
@@ -118,6 +120,7 @@ export default function GoalDetailPage() {
         next_action: nextAction.trim() || null,
         status,
         scope,
+        auto_block_before_deadline: autoBlockBeforeDeadline,
       })
       .eq('id', params.id)
 
@@ -184,6 +187,8 @@ export default function GoalDetailPage() {
             onStatusChange={setStatus}
             scope={scope}
             onScopeChange={setScope}
+            autoBlockBeforeDeadline={autoBlockBeforeDeadline}
+            onAutoBlockBeforeDeadlineChange={setAutoBlockBeforeDeadline}
           />
 
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">

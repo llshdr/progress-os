@@ -263,6 +263,12 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     return diff
   }
 
+  const daysSinceLastWeighIn = (): number | null => {
+    if (!latestWeight) return null
+    const msPerDay = 1000 * 60 * 60 * 24
+    return Math.floor((Date.now() - new Date(latestWeight.recorded_at).getTime()) / msPerDay)
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const today = new Date()
@@ -388,6 +394,12 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                     {getWeightDifference()! > 0 ? '+' : ''}
                     {getWeightDifference()!.toFixed(1)} kg
                   </p>
+                )}
+                {/* 14 days - long enough that a single skipped week
+                    doesn't trigger it, short enough to still be a useful
+                    nudge rather than stale advice by the time it fires. */}
+                {daysSinceLastWeighIn() != null && daysSinceLastWeighIn()! >= 14 && (
+                  <p className="text-lapis-text-disabled text-xs mt-1">Last weighed in {daysSinceLastWeighIn()} days ago</p>
                 )}
                 <button
                   onClick={handleUpdateWeight}

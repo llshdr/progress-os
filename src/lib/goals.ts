@@ -13,6 +13,10 @@ export interface ActionItem {
   updatedAt: string
   status: ActionItemStatus
   editHref: string
+  // Opt-in, off by default (migration 069) - when true and targetDate is
+  // set, Calendar adds a real timed block a few days before the deadline
+  // alongside the always-shown all-day chip on the exact date itself.
+  autoBlockBeforeDeadline: boolean
 }
 
 // Nearest date first (a goal's target_date, or a milestone's due_date) -
@@ -59,13 +63,13 @@ export function daysBetween(a: string, b: string): number {
 export async function fetchActiveActionItems(supabase: SupabaseClient, userId: string): Promise<ActionItem[]> {
   const { data: goals } = await supabase
     .from('goals')
-    .select('id, title, next_action, target_date, updated_at')
+    .select('id, title, next_action, target_date, updated_at, auto_block_before_deadline')
     .eq('user_id', userId)
     .eq('status', 'active')
 
   const { data: milestones } = await supabase
     .from('milestones')
-    .select('id, title, next_action, due_date, updated_at, goal_id')
+    .select('id, title, next_action, due_date, updated_at, goal_id, auto_block_before_deadline')
     .eq('user_id', userId)
     .eq('status', 'active')
 
@@ -79,6 +83,7 @@ export async function fetchActiveActionItems(supabase: SupabaseClient, userId: s
       updatedAt: g.updated_at as string,
       status: 'active' as const,
       editHref: `/goals/${g.id}`,
+      autoBlockBeforeDeadline: g.auto_block_before_deadline ?? false,
     })),
     ...(milestones ?? []).map((m: any) => ({
       id: m.id as string,
@@ -89,6 +94,7 @@ export async function fetchActiveActionItems(supabase: SupabaseClient, userId: s
       updatedAt: m.updated_at as string,
       status: 'active' as const,
       editHref: m.goal_id ? `/goals/${m.goal_id}` : `/goals/milestones/${m.id}/edit`,
+      autoBlockBeforeDeadline: m.auto_block_before_deadline ?? false,
     })),
   ]
 

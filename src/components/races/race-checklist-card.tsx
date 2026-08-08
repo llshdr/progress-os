@@ -17,6 +17,14 @@ interface ChecklistItem {
 interface Props {
   raceId: string
   category: RaceCategory
+  // True when today is a brick day for this race's current training week
+  // AND a workout was completed today (computed by the parent page, which
+  // already has raceWeekSlots in scope - this component doesn't otherwise
+  // know anything about the training plan). Only ever offers a one-tap
+  // "mark done" when there's a real, unambiguous match by keyword against
+  // the item's actual current title - never guesses on an edited/renamed
+  // item, since a wrong auto-check would be worse than no nudge at all.
+  justCompletedBrickToday?: boolean
 }
 
 const SECTIONS: { key: 'gear' | 'test'; label: string; addPlaceholder: string }[] = [
@@ -33,7 +41,7 @@ const SECTIONS: { key: 'gear' | 'test'; label: string; addPlaceholder: string }[
 // (real, useful defaults from PACKING_LISTS/TEST_CHECKLIST_ITEMS) but
 // the per-section add-item inputs are always available too, so a fully
 // custom checklist works just as well as a seeded one.
-export default function RaceChecklistCard({ raceId, category }: Props) {
+export default function RaceChecklistCard({ raceId, category, justCompletedBrickToday }: Props) {
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [loading, setLoading] = useState(true)
   const [newTitles, setNewTitles] = useState<Record<'gear' | 'test', string>>({ gear: '', test: '' })
@@ -145,6 +153,14 @@ export default function RaceChecklistCard({ raceId, category }: Props) {
 
   if (loading) return null
 
+  // Keyword match against whatever the item's title actually says right
+  // now, not the original seeded string - still works if it's been
+  // lightly edited, and simply doesn't fire if there's no real match
+  // rather than guessing at the wrong item.
+  const brickTieInItem = justCompletedBrickToday
+    ? items.find((i) => i.category === 'test' && i.doneAt == null && /transition/i.test(i.title))
+    : undefined
+
   return (
     <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
       <div className="flex items-center justify-between mb-3">
@@ -159,6 +175,18 @@ export default function RaceChecklistCard({ raceId, category }: Props) {
           </button>
         )}
       </div>
+
+      {brickTieInItem && (
+        <div className="flex items-center justify-between gap-3 border border-lapis-jade/30 rounded-lapis-md bg-lapis-jade/[0.06] p-3 mb-4">
+          <p className="text-lapis-jade/90 text-sm">You completed a brick session today - test what you needed to?</p>
+          <button
+            onClick={() => toggleDone(brickTieInItem)}
+            className="shrink-0 text-xs font-medium text-lapis-jade hover:brightness-125 transition-all underline underline-offset-2"
+          >
+            Mark done
+          </button>
+        </div>
+      )}
 
       <div className="space-y-6">
         {SECTIONS.map((section) => {

@@ -22,6 +22,8 @@ interface GoalFormFieldsProps {
   onStatusChange: (value: ActionItemStatus) => void
   scope: GoalScope | null
   onScopeChange: (value: GoalScope | null) => void
+  autoBlockBeforeDeadline: boolean
+  onAutoBlockBeforeDeadlineChange: (value: boolean) => void
 }
 
 // Shared by goals/new and the goal detail page - same fields, same shape,
@@ -41,6 +43,8 @@ export default function GoalFormFields({
   onStatusChange,
   scope,
   onScopeChange,
+  autoBlockBeforeDeadline,
+  onAutoBlockBeforeDeadlineChange,
 }: GoalFormFieldsProps) {
   return (
     <>
@@ -100,6 +104,17 @@ export default function GoalFormFields({
           Used to space out a generated plan&apos;s milestone due dates.
         </p>
       </div>
+
+      {targetDate && (
+        <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
+          <input
+            type="checkbox"
+            checked={autoBlockBeforeDeadline}
+            onChange={(e) => onAutoBlockBeforeDeadlineChange(e.target.checked)}
+          />
+          Block time on my Calendar a few days before this is due
+        </label>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="goal-next-action" className="text-lapis-text-secondary">
