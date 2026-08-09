@@ -5,13 +5,14 @@ import AppLayout from '@/components/app-layout'
 import { User } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Flame } from 'lucide-react'
+import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Flame, Flag } from 'lucide-react'
 import Link from 'next/link'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
 import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
 import { computeGymStreakWeeks } from '@/lib/gym-streak'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { raceTypeLabel, type RaceType } from '@/lib/race-constants'
 
 interface DashboardClientProps {
   user: User
@@ -39,6 +40,12 @@ interface PersonalRecord {
   date: string
 }
 
+interface TodayRace {
+  id: string
+  race_type: RaceType
+  location: string | null
+}
+
 export default function DashboardClient({ user }: DashboardClientProps) {
   const supabase = createClient()
   const router = useRouter()
@@ -53,6 +60,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
   const [userName, setUserName] = useState<string>('')
   const [mesocycleStatus, setMesocycleStatus] = useState<CurrentMesocycleStatus | null>(null)
+  const [todayRace, setTodayRace] = useState<TodayRace | null>(null)
 
   const motivationalQuotes = [
     "Let's make today count.",
@@ -163,6 +171,22 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         }))
         setMesocycleStatus(selectActiveMesocycle(mesocycles, getLocalDateString()))
       }
+
+      // Race-day quick-log entry point (Races Part D) - only ever shown
+      // the day of a declared race, and only until a result is logged
+      // (races/[id]'s own Race Result card, deep-linked via ?tab=progress
+      // rather than duplicating that form here). Deliberately not "any
+      // upcoming race" - this is specifically about today.
+      const { data: raceToday } = await supabase
+        .from('races')
+        .select('id, race_type, location')
+        .eq('user_id', user.id)
+        .eq('race_date', getLocalDateString())
+        .is('result_duration_seconds', null)
+        .limit(1)
+        .maybeSingle()
+
+      setTodayRace(raceToday)
 
       // Fetch latest weight entries
       const { data: weightData } = await supabase
@@ -307,6 +331,32 @@ export default function DashboardClient({ user }: DashboardClientProps) {
             </p>
           )}
         </div>
+
+        {/* Race Day - one tap to the existing, already-simple Race Result
+            entry (races/[id]'s Progress tab), rather than a new form here.
+            Only appears the day of a declared race, before a result is
+            logged. */}
+        {todayRace && (
+          <div className="mb-6">
+            <Link
+              href={`/gym/progress/races/${todayRace.id}?tab=progress`}
+              className="relative overflow-hidden border border-lapis-gold-500/40 rounded-lapis-xl bg-lapis-gold-500/[0.06] p-8 flex items-center justify-between gap-4 flex-wrap hover:bg-lapis-gold-500/[0.1] transition-colors block"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lapis-lg bg-lapis-gold-500/15">
+                  <Flag className="w-6 h-6 text-lapis-gold-500" />
+                </div>
+                <div>
+                  <p className="font-display text-xl font-semibold text-lapis-text-primary">
+                    Today is race day — {raceTypeLabel(todayRace.race_type)}
+                    {todayRace.location ? ` (${todayRace.location})` : ''}
+                  </p>
+                  <p className="text-lapis-text-tertiary text-sm">Good luck out there. Tap to log your result.</p>
+                </div>
+              </div>
+            </Link>
+          </div>
+        )}
 
         {/* Today's Focus */}
         <div className="mb-6">

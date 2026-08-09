@@ -58,7 +58,7 @@ function longestSessionThisWeek(
   for (const activity of activities) {
     const date = new Date(activity.date)
     if (date < weekStart || date >= weekEnd) continue
-    if (discipline !== 'cardio' && classifyDiscipline(activity.exerciseName) !== discipline) continue
+    if (discipline !== 'cardio' && classifyDiscipline(activity.exerciseName, activity.cardioType) !== discipline) continue
     if (!best || activity.distanceKm > best.distanceKm) best = activity
   }
   return best

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import ExerciseVariantsManager from '@/components/gym/exercise-variants-manager'
-import type { ExerciseType } from '@/lib/exercise-constants'
+import type { ExerciseType, CardioType } from '@/lib/exercise-constants'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 export default function EditExercisePage() {
@@ -19,6 +19,7 @@ export default function EditExercisePage() {
   const [primaryMuscleGroup, setPrimaryMuscleGroup] = useState('')
   const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>([])
   const [muscleTargets, setMuscleTargets] = useState<string[]>([])
+  const [cardioType, setCardioType] = useState<CardioType | null>(null)
   const [equipmentType, setEquipmentType] = useState('')
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
@@ -49,6 +50,7 @@ export default function EditExercisePage() {
     setPrimaryMuscleGroup(data.primary_muscle_group)
     setSecondaryMuscleGroups(data.secondary_muscle_groups || [])
     setMuscleTargets(data.muscle_targets || [])
+    setCardioType((data.cardio_type as CardioType | null) ?? null)
     setEquipmentType(data.equipment_type)
     setCategory(data.category)
     setNotes(data.notes || '')
@@ -73,21 +75,31 @@ export default function EditExercisePage() {
     setMuscleTargets([])
   }
 
+  // Cardio requires cardioType instead of primaryMuscleGroup - the two
+  // pickers are mutually exclusive in the form (see ExerciseFormFields).
+  const requiredFieldsFilled =
+    !!name && !!equipmentType && !!category && (exerciseType === 'cardio' ? !!cardioType : !!primaryMuscleGroup)
+
   const handleUpdateExercise = async () => {
-    if (!name || !primaryMuscleGroup || !equipmentType || !category) {
+    if (!requiredFieldsFilled) {
       return
     }
 
     setSaving(true)
 
+    // Same 'Full Body' convention as exercises/new - computeSlotMuscles
+    // (gym-schedule.ts) reads primary_muscle_group from any exercise in a
+    // workout template, cardio included, so it still needs a sane value
+    // even though cardio no longer shows the muscle-group picker.
     const { error } = await supabase
       .from('exercise_library')
       .update({
         name,
         exercise_type: exerciseType,
-        primary_muscle_group: primaryMuscleGroup,
-        secondary_muscle_groups: secondaryMuscleGroups.length > 0 ? secondaryMuscleGroups : null,
-        muscle_targets: muscleTargets.length > 0 ? muscleTargets : null,
+        primary_muscle_group: exerciseType === 'cardio' ? 'Full Body' : primaryMuscleGroup,
+        secondary_muscle_groups: exerciseType === 'cardio' || secondaryMuscleGroups.length === 0 ? null : secondaryMuscleGroups,
+        muscle_targets: exerciseType === 'cardio' || muscleTargets.length === 0 ? null : muscleTargets,
+        cardio_type: exerciseType === 'cardio' ? cardioType : null,
         equipment_type: equipmentType,
         category,
         notes: notes || null,
@@ -137,6 +149,8 @@ export default function EditExercisePage() {
             onToggleSecondaryMuscle={toggleSecondaryMuscle}
             muscleTargets={muscleTargets}
             onToggleMuscleTarget={toggleMuscleTarget}
+            cardioType={cardioType}
+            onCardioTypeChange={setCardioType}
             equipmentType={equipmentType}
             onEquipmentTypeChange={setEquipmentType}
             category={category}
@@ -153,7 +167,7 @@ export default function EditExercisePage() {
 
           <Button
             onClick={handleUpdateExercise}
-            disabled={saving || !name || !primaryMuscleGroup || !equipmentType || !category}
+            disabled={saving || !requiredFieldsFilled}
             className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
             {saving ? 'Saving...' : 'Update Exercise'}

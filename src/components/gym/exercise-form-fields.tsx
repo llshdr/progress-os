@@ -3,7 +3,7 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { MUSCLE_GROUPS, EQUIPMENT_TYPES, CATEGORIES, EXERCISE_TYPES, type ExerciseType } from '@/lib/exercise-constants'
+import { MUSCLE_GROUPS, EQUIPMENT_TYPES, CATEGORIES, EXERCISE_TYPES, CARDIO_TYPES, CARDIO_TYPE_LABELS, type ExerciseType, type CardioType } from '@/lib/exercise-constants'
 import { MUSCLE_TARGETS_BY_GROUP } from '@/lib/muscle-targets'
 
 interface ExerciseFormFieldsProps {
@@ -17,6 +17,8 @@ interface ExerciseFormFieldsProps {
   onToggleSecondaryMuscle: (muscle: string) => void
   muscleTargets: string[]
   onToggleMuscleTarget: (target: string) => void
+  cardioType: CardioType | null
+  onCardioTypeChange: (value: CardioType) => void
   equipmentType: string
   onEquipmentTypeChange: (value: string) => void
   category: string
@@ -40,6 +42,8 @@ export default function ExerciseFormFields({
   onToggleSecondaryMuscle,
   muscleTargets,
   onToggleMuscleTarget,
+  cardioType,
+  onCardioTypeChange,
   equipmentType,
   onEquipmentTypeChange,
   category,
@@ -92,67 +96,94 @@ export default function ExerciseFormFields({
         )}
       </div>
 
-      <div>
-        <Label className="text-lapis-text-secondary mb-3 block">Muscle Target *</Label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {MUSCLE_GROUPS.map((muscle) => (
-            <button
-              key={muscle}
-              type="button"
-              onClick={() => onPrimaryMuscleGroupChange(muscle)}
-              className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
-                primaryMuscleGroup === muscle
-                  ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
-                  : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
-              }`}
-            >
-              {muscle}
-            </button>
-          ))}
+      {exerciseType === 'cardio' ? (
+        <div>
+          <Label className="text-lapis-text-secondary mb-3 block">Cardio Type *</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {CARDIO_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => onCardioTypeChange(type)}
+                className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
+                  cardioType === type
+                    ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                    : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
+                }`}
+              >
+                {CARDIO_TYPE_LABELS[type]}
+              </button>
+            ))}
+          </div>
+          {(cardioType === 'running' || cardioType === 'cycling' || cardioType === 'swimming') && (
+            <p className="text-lapis-text-tertiary text-xs mt-2">Counts toward Races' swim/bike/run training data automatically.</p>
+          )}
         </div>
-
-        {refineOptions.length > 0 && (
-          <div className="mt-3">
-            <Label className="text-lapis-text-secondary mb-2 block text-xs">Get more specific (optional)</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {refineOptions.map((target) => (
+      ) : (
+        <>
+          <div>
+            <Label className="text-lapis-text-secondary mb-3 block">Muscle Target *</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {MUSCLE_GROUPS.map((muscle) => (
                 <button
-                  key={target}
+                  key={muscle}
                   type="button"
-                  onClick={() => onToggleMuscleTarget(target)}
-                  className={`p-2.5 rounded-lapis-sm border transition-all duration-200 text-xs ${
-                    muscleTargets.includes(target)
+                  onClick={() => onPrimaryMuscleGroupChange(muscle)}
+                  className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
+                    primaryMuscleGroup === muscle
+                      ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                      : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
+                  }`}
+                >
+                  {muscle}
+                </button>
+              ))}
+            </div>
+
+            {refineOptions.length > 0 && (
+              <div className="mt-3">
+                <Label className="text-lapis-text-secondary mb-2 block text-xs">Get more specific (optional)</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {refineOptions.map((target) => (
+                    <button
+                      key={target}
+                      type="button"
+                      onClick={() => onToggleMuscleTarget(target)}
+                      className={`p-2.5 rounded-lapis-sm border transition-all duration-200 text-xs ${
+                        muscleTargets.includes(target)
+                          ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
+                          : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
+                      }`}
+                    >
+                      {target}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <Label className="text-lapis-text-secondary mb-3 block">Secondary Muscle Groups (optional)</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {MUSCLE_GROUPS.filter((m) => m !== primaryMuscleGroup).map((muscle) => (
+                <button
+                  key={muscle}
+                  type="button"
+                  onClick={() => onToggleSecondaryMuscle(muscle)}
+                  className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
+                    secondaryMuscleGroups.includes(muscle)
                       ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
                       : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
                   }`}
                 >
-                  {target}
+                  {muscle}
                 </button>
               ))}
             </div>
           </div>
-        )}
-      </div>
-
-      <div>
-        <Label className="text-lapis-text-secondary mb-3 block">Secondary Muscle Groups (optional)</Label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {MUSCLE_GROUPS.filter((m) => m !== primaryMuscleGroup).map((muscle) => (
-            <button
-              key={muscle}
-              type="button"
-              onClick={() => onToggleSecondaryMuscle(muscle)}
-              className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
-                secondaryMuscleGroups.includes(muscle)
-                  ? 'bg-lapis-surface-2 text-lapis-text-primary border-lapis-border-strong'
-                  : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
-              }`}
-            >
-              {muscle}
-            </button>
-          ))}
-        </div>
-      </div>
+        </>
+      )}
 
       <div className="space-y-2">
         <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">

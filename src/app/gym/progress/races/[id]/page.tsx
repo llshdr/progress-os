@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
@@ -307,6 +307,7 @@ function BenchmarkComplianceBanner({ flags, onRegenerate }: { flags: BenchmarkFl
 
 export default function RaceDetailPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const raceId = params.id as string
   const supabase = createClient()
 
@@ -351,7 +352,15 @@ export default function RaceDetailPage() {
   // toggle, is the lower-risk fit for "sections of one entity that share
   // one fetch," not "independent features" (Settings/Gym's hub-of-routes
   // pattern is for the latter).
-  const [reviewTab, setReviewTab] = useState<'plan' | 'progress' | 'prep'>('plan')
+  // Reads ?tab= once at mount so a link from elsewhere (e.g. the
+  // Dashboard's race-day banner) can deep-link straight to the Progress
+  // tab's Race Result card, rather than always landing on Plan and
+  // making the athlete find it themselves - not a route, just an initial
+  // value; switching tabs afterward never touches the URL.
+  const [reviewTab, setReviewTab] = useState<'plan' | 'progress' | 'prep'>(() => {
+    const tab = searchParams.get('tab')
+    return tab === 'progress' || tab === 'prep' ? tab : 'plan'
+  })
 
   const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(emptySelfAssessmentFor('other'))
   const [disciplineWeakness, setDisciplineWeakness] = useState<DisciplineWeakness | null>(null)

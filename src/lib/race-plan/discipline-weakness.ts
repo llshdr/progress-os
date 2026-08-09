@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchCardioActivity, bucketWeeklyCardioDistance, averagePace, type CardioActivity } from '@/lib/cardio-stats'
 import type { Discipline, MultisportSelfAssessment } from '@/lib/race-plan/self-assessment'
+import type { CardioType } from '@/lib/exercise-constants'
 
 export interface DisciplineActivityFacts {
   weeksActiveOf8: number
@@ -18,11 +19,33 @@ const DISCIPLINE_KEYWORDS: Record<Discipline, string[]> = {
   run: ['run', 'jog'],
 }
 
+// Only 3 of the 10 cardio_type values map onto a triathlon discipline -
+// rowing/elliptical/stair_climber/jump_rope/hiking/walking/other have no
+// Ironman-discipline equivalent and correctly fall through to null here,
+// same as they always have via the keyword fallback below.
+const CARDIO_TYPE_TO_DISCIPLINE: Partial<Record<CardioType, Discipline>> = {
+  running: 'run',
+  cycling: 'bike',
+  swimming: 'swim',
+}
+
 // Exported so analyze-fitness.ts can filter its own aggregate activity
 // list down to running specifically before computing pace - mixing
 // swim/bike/run paces into one average is meaningless (different units
 // entirely), which is exactly the bug that classification here fixes.
-export function classifyDiscipline(exerciseName: string): Discipline | null {
+//
+// cardioType (from the exercise's own real taxonomy field, see
+// exercise-constants.ts) is preferred when present - a real signal, not a
+// guess. Falls back to the original name-keyword match for exercises that
+// predate the taxonomy or are tagged 'other' - never a regression for
+// existing data, same "new signal takes priority, old path never breaks"
+// precedent as resolveRealZone2Pace/resolveEasyPaceBaseline elsewhere in
+// this feature.
+export function classifyDiscipline(exerciseName: string, cardioType?: string | null): Discipline | null {
+  if (cardioType && cardioType in CARDIO_TYPE_TO_DISCIPLINE) {
+    return CARDIO_TYPE_TO_DISCIPLINE[cardioType as CardioType] ?? null
+  }
+
   const lower = exerciseName.toLowerCase()
   for (const discipline of ['swim', 'bike', 'run'] as Discipline[]) {
     if (DISCIPLINE_KEYWORDS[discipline].some((keyword) => lower.includes(keyword))) return discipline
@@ -30,17 +53,16 @@ export function classifyDiscipline(exerciseName: string): Discipline | null {
   return null
 }
 
-// Best-effort keyword match against fetchCardioActivity()'s exercise
-// names - a real but conditional signal that degrades gracefully (an
-// unclassifiable exercise just isn't counted toward any discipline,
-// rather than the whole thing failing) when a user's library doesn't
-// name swim/bike/run distinctly.
+// Best-effort classification against fetchCardioActivity()'s activities -
+// a real signal when cardioType is set, degrading gracefully to a
+// name-keyword guess (and then to "unclassified, not counted toward any
+// discipline") when it isn't, rather than the whole thing failing.
 export async function computeDisciplineActivityFacts(supabase: SupabaseClient): Promise<Record<Discipline, DisciplineActivityFacts>> {
   const activities = await fetchCardioActivity(supabase)
   const byDiscipline: Record<Discipline, CardioActivity[]> = { swim: [], bike: [], run: [] }
 
   for (const activity of activities) {
-    const discipline = classifyDiscipline(activity.exerciseName)
+    const discipline = classifyDiscipline(activity.exerciseName, activity.cardioType)
     if (discipline) byDiscipline[discipline].push(activity)
   }
 

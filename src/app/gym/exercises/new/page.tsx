@@ -9,7 +9,7 @@ import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import CatalogSearch, { type CatalogEntry } from '@/components/gym/catalog-search'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
-import type { ExerciseType } from '@/lib/exercise-constants'
+import type { ExerciseType, CardioType } from '@/lib/exercise-constants'
 import { inferMuscleTargets } from '@/lib/muscle-targets'
 import { suggestIsUnilateral } from '@/lib/unilateral'
 
@@ -20,6 +20,7 @@ export default function NewExercisePage() {
   const [primaryMuscleGroup, setPrimaryMuscleGroup] = useState('')
   const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>([])
   const [muscleTargets, setMuscleTargets] = useState<string[]>([])
+  const [cardioType, setCardioType] = useState<CardioType | null>(null)
   const [equipmentType, setEquipmentType] = useState('')
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
@@ -73,6 +74,7 @@ export default function NewExercisePage() {
     setPrimaryMuscleGroup(entry.muscle_group)
     setSecondaryMuscleGroups([])
     setMuscleTargets(entry.muscle_targets ?? [])
+    setCardioType((entry.cardio_type as CardioType | null) ?? null)
     setEquipmentType(entry.equipment_type)
     setCategory(entry.category)
     // The catalog's own is_unilateral is a real, curated answer - a
@@ -92,13 +94,20 @@ export default function NewExercisePage() {
     const finalMuscleTargets =
       muscleTargets.length > 0 ? muscleTargets : inferMuscleTargets(name, primaryMuscleGroup)
 
+    // Cardio exercises never show the muscle-group picker (see
+    // ExerciseFormFields), but primary_muscle_group still needs a sane
+    // value - computeSlotMuscles (gym-schedule.ts) reads it from any
+    // exercise added to a workout template, cardio included, with no
+    // exercise_type filter. 'Full Body' matches the existing
+    // exercise_catalog convention for cardio rows (migration 029).
     const { error } = await supabase.from('exercise_library').insert({
       user_id: userId,
       name,
       exercise_type: exerciseType,
-      primary_muscle_group: primaryMuscleGroup,
-      secondary_muscle_groups: secondaryMuscleGroups.length > 0 ? secondaryMuscleGroups : null,
-      muscle_targets: finalMuscleTargets,
+      primary_muscle_group: exerciseType === 'cardio' ? 'Full Body' : primaryMuscleGroup,
+      secondary_muscle_groups: exerciseType === 'cardio' || secondaryMuscleGroups.length === 0 ? null : secondaryMuscleGroups,
+      muscle_targets: exerciseType === 'cardio' ? null : finalMuscleTargets,
+      cardio_type: exerciseType === 'cardio' ? cardioType : null,
       equipment_type: equipmentType,
       category,
       notes: notes || null,
@@ -113,8 +122,13 @@ export default function NewExercisePage() {
     }
   }
 
+  // Cardio requires cardioType instead of primaryMuscleGroup - the two
+  // pickers are mutually exclusive in the form (see ExerciseFormFields).
+  const requiredFieldsFilled =
+    !!name && !!equipmentType && !!category && (exerciseType === 'cardio' ? !!cardioType : !!primaryMuscleGroup)
+
   const handleCreateExercise = async () => {
-    if (!name || !primaryMuscleGroup || !equipmentType || !category) {
+    if (!requiredFieldsFilled) {
       return
     }
 
@@ -179,6 +193,8 @@ export default function NewExercisePage() {
               onToggleSecondaryMuscle={toggleSecondaryMuscle}
               muscleTargets={muscleTargets}
               onToggleMuscleTarget={toggleMuscleTarget}
+              cardioType={cardioType}
+              onCardioTypeChange={setCardioType}
               equipmentType={equipmentType}
               onEquipmentTypeChange={setEquipmentType}
               category={category}
@@ -192,7 +208,7 @@ export default function NewExercisePage() {
 
           <Button
             onClick={handleCreateExercise}
-            disabled={loading || !name || !primaryMuscleGroup || !equipmentType || !category}
+            disabled={loading || !requiredFieldsFilled}
             className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
             {loading ? 'Creating...' : 'Create Exercise'}

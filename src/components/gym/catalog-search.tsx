@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Search } from 'lucide-react'
 import { fuzzySearch } from '@/lib/fuzzy-match'
+import { CARDIO_TYPE_LABELS, type CardioType } from '@/lib/exercise-constants'
 
 export interface CatalogEntry {
   id: string
@@ -17,6 +18,7 @@ export interface CatalogEntry {
   aliases: string[] | null
   muscle_targets: string[] | null
   is_unilateral: boolean
+  cardio_type: string | null
 }
 
 interface CatalogSearchProps {
@@ -35,7 +37,7 @@ export default function CatalogSearch({ onSelect }: CatalogSearchProps) {
   useEffect(() => {
     supabase
       .from('exercise_catalog')
-      .select('id, name, muscle_group, equipment_type, category, exercise_type, aliases, muscle_targets, is_unilateral')
+      .select('id, name, muscle_group, equipment_type, category, exercise_type, aliases, muscle_targets, is_unilateral, cardio_type')
       .then(({ data, error }) => {
         if (error) {
           console.error('Error fetching exercise catalog:', error)
@@ -74,8 +76,9 @@ export default function CatalogSearch({ onSelect }: CatalogSearchProps) {
             >
               <div className="font-medium text-lapis-text-primary">{entry.name}</div>
               <div className="text-lapis-text-tertiary text-sm">
-                {entry.muscle_group} • {entry.equipment_type}
-                {entry.exercise_type === 'cardio' && ' • Cardio'}
+                {entry.exercise_type === 'cardio'
+                  ? `Cardio${entry.cardio_type ? ` • ${CARDIO_TYPE_LABELS[entry.cardio_type as CardioType]}` : ''} • ${entry.equipment_type}`
+                  : `${entry.muscle_group} • ${entry.equipment_type}`}
               </div>
             </button>
           ))}

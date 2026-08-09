@@ -231,8 +231,8 @@ export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: st
   // into a meaningless number (the bug this fixes). Volume/session-count
   // aggregates above stay broad on purpose ("were you active at all"
   // should include every cardio type).
-  const recentRunActivities = recentActivities.filter((a) => classifyDiscipline(a.exerciseName) === 'run')
-  const priorRunActivities = priorActivities.filter((a) => classifyDiscipline(a.exerciseName) === 'run')
+  const recentRunActivities = recentActivities.filter((a) => classifyDiscipline(a.exerciseName, a.cardioType) === 'run')
+  const priorRunActivities = priorActivities.filter((a) => classifyDiscipline(a.exerciseName, a.cardioType) === 'run')
 
   const [strengthFacts, muscleVolume, gymConsistencyWeeks, nutritionConsistencyWeeks, settingsResult, actionItems, pastRaceResults, weightTrend] =
     await Promise.all([

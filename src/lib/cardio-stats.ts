@@ -7,6 +7,10 @@ export interface CardioActivity {
   exerciseName: string
   distanceKm: number
   durationSeconds: number
+  // Real discipline signal when set (see exercise-constants.ts's
+  // CardioType) - classifyDiscipline prefers this over guessing from
+  // exerciseName. Null for exercises created before this field existed.
+  cardioType: string | null
 }
 
 export interface WeeklyCardioBucket {
@@ -23,7 +27,7 @@ export interface WeeklyCardioBucket {
 export async function fetchCardioActivity(supabase: SupabaseClient): Promise<CardioActivity[]> {
   const { data: cardioLibrary, error: libraryError } = await supabase
     .from('exercise_library')
-    .select('id, name')
+    .select('id, name, cardio_type')
     .eq('exercise_type', 'cardio')
 
   if (libraryError) {
@@ -31,7 +35,9 @@ export async function fetchCardioActivity(supabase: SupabaseClient): Promise<Car
     return []
   }
 
-  const libraryById = new Map((cardioLibrary ?? []).map((l) => [l.id as string, l.name as string]))
+  const libraryById = new Map(
+    (cardioLibrary ?? []).map((l) => [l.id as string, { name: l.name as string, cardioType: (l.cardio_type as string | null) ?? null }])
+  )
   const libraryIds = Array.from(libraryById.keys())
   if (libraryIds.length === 0) return []
 
@@ -64,12 +70,15 @@ export async function fetchCardioActivity(supabase: SupabaseClient): Promise<Car
       const meta = instanceMeta.get(log.exercise_id)
       if (!meta) return null
 
+      const library = libraryById.get(meta.libraryId)
+
       return {
         date: meta.date,
         exerciseLibraryId: meta.libraryId,
-        exerciseName: libraryById.get(meta.libraryId) ?? 'Unknown',
+        exerciseName: library?.name ?? 'Unknown',
         distanceKm: typeof log.distance_km === 'string' ? parseFloat(log.distance_km) : log.distance_km,
         durationSeconds: log.duration_seconds,
+        cardioType: library?.cardioType ?? null,
       }
     })
     .filter((e): e is CardioActivity => e !== null)
