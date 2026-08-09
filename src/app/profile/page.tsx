@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
@@ -145,7 +146,11 @@ export default function ProfilePage() {
         .not('completed_at', 'is', null)
         .gte('completed_at', ninetyDaysAgo.toISOString()),
       supabase.from('nutrition_entries').select('date').eq('user_id', uid).gte('date', cutoff),
-      supabase.from('user_settings').select('count_cardio_toward_workout_goal').eq('user_id', uid).maybeSingle(),
+      supabase
+        .from('user_settings')
+        .select('count_cardio_toward_workout_goal, races_progression_signal, gym_progression_signal')
+        .eq('user_id', uid)
+        .maybeSingle(),
     ])
 
     const countingIds = await filterWorkoutsCountingTowardGoal(
@@ -159,7 +164,9 @@ export default function ProfilePage() {
       computeRankBreakdown(
         (goalRows ?? []).map((g) => ({ createdAt: g.created_at, updatedAt: g.updated_at, status: g.status, scope: g.scope })),
         countingWorkoutDates,
-        (nutritionRows ?? []).map((n) => n.date as string)
+        (nutritionRows ?? []).map((n) => n.date as string),
+        settings?.races_progression_signal ?? null,
+        settings?.gym_progression_signal ?? null
       )
     )
   }
@@ -291,7 +298,8 @@ export default function ProfilePage() {
             <h3 className="text-sm font-medium text-lapis-text-tertiary uppercase tracking-wide mb-3">Rank Breakdown</h3>
             <p className="text-lapis-text-secondary text-sm mb-4">
               Currently driven by your {MODULE_LABEL[breakdown.drivingModule]} activity
-              {breakdown.activeModules >= 2 && ', plus a +1 bonus for staying active across multiple modules'}.
+              {breakdown.activeModules >= 2 && ', plus a +1 bonus for staying active across multiple modules'}
+              {breakdown.progression.bonus >= 1 && ', plus a +1 bonus for strong progression across multiple areas'}.
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="border border-lapis-border-subtle rounded-lapis-md p-4">
@@ -324,46 +332,65 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
+
+            <div className="mt-4 pt-4 border-t border-lapis-border-subtle">
+              <p className="text-lapis-text-secondary text-sm mb-3">
+                Progression - are you executing your own plan well? ({breakdown.progression.signalsStrong}/3 strong
+                {breakdown.progression.bonus >= 1 ? ', earning the bonus above' : ', need 2 for a bonus'})
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="border border-lapis-border-subtle rounded-lapis-md p-4">
+                  <p className="text-xs text-lapis-text-tertiary mb-1">Goals</p>
+                  <p className="text-lapis-text-primary text-sm">{breakdown.progression.goalsStrong ? 'Strong' : 'Not there yet'}</p>
+                  <p className="text-lapis-text-disabled text-xs mt-1">2+ done at 70%+ completion</p>
+                </div>
+                <div className="border border-lapis-border-subtle rounded-lapis-md p-4">
+                  <p className="text-xs text-lapis-text-tertiary mb-1">Races</p>
+                  <p className="text-lapis-text-primary text-sm">
+                    {breakdown.progression.racesSignal != null
+                      ? `${Math.round(breakdown.progression.racesSignal * 100)}% on track`
+                      : 'Not enough data yet'}
+                  </p>
+                  <p className="text-lapis-text-disabled text-xs mt-1">Strong at 70%+</p>
+                </div>
+                <div className="border border-lapis-border-subtle rounded-lapis-md p-4">
+                  <p className="text-xs text-lapis-text-tertiary mb-1">Gym</p>
+                  <p className="text-lapis-text-primary text-sm">
+                    {breakdown.progression.gymSignal != null
+                      ? `${Math.round(breakdown.progression.gymSignal * 100)}% of muscle groups improving`
+                      : 'Not enough data yet'}
+                  </p>
+                  <p className="text-lapis-text-disabled text-xs mt-1">Strong at 60%+</p>
+                </div>
+              </div>
+              <p className="text-lapis-text-disabled text-xs mt-3">
+                Private to you - never shown to anyone else, only the resulting bonus (if any) affects your visible tier.
+              </p>
+            </div>
+
             <p className="text-lapis-text-disabled text-xs mt-4">
               An estimate that mirrors the same math your rank is actually computed from - not guaranteed to match exactly right at a week boundary.
             </p>
           </div>
         )}
 
-        <h3 className="text-sm font-medium text-lapis-text-tertiary uppercase tracking-wide mb-4">
-          Others
-        </h3>
         {others.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-8 text-center">
             <Users className="w-8 h-8 text-lapis-text-disabled mx-auto mb-3" />
             <p className="text-lapis-text-tertiary">No one else here yet</p>
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {others.map((profile) => (
-              <div
-                key={profile.user_id}
-                className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4 flex items-center gap-3"
-              >
-                {profile.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.display_name}
-                    className="w-12 h-12 rounded-full object-cover border border-lapis-border-subtle"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-lapis-surface-2 border border-lapis-border-subtle flex items-center justify-center text-lapis-text-tertiary">
-                    {profile.display_name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div>
-                  <p className="text-lapis-text-primary font-medium">{profile.display_name}</p>
-                  <p className="text-lapis-text-tertiary text-sm">{rankTierLabel(profile.rank)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          // Same public_profiles data the old flat "Others" grid rendered
+          // here directly - now a teaser into its own dedicated, casual
+          // comparison view (/profile/compare) instead of duplicating that
+          // list in two places.
+          <Link
+            href="/profile/compare"
+            className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-4 flex items-center gap-3 hover:bg-lapis-surface-2 transition-colors"
+          >
+            <Users className="w-5 h-5 text-lapis-text-tertiary shrink-0" />
+            <p className="text-lapis-text-secondary text-sm">See how everyone&apos;s doing →</p>
+          </Link>
         )}
       </div>
     </AppLayout>
