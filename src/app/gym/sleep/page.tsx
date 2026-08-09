@@ -70,17 +70,43 @@ export default function SleepPage() {
     } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data } = await supabase.from('workouts').select('date, session_rir').eq('user_id', user.id).not('completed_at', 'is', null)
+    // RIR is per-set (migration 075) - fetch each completed workout's date,
+    // plus every rated set within it, and average per day below. RLS on
+    // `sets` already scopes this to the current user via its
+    // exercises/workouts chain, same pattern as the Training Load card
+    // (gym/records/page.tsx).
+    const [{ data: workoutRows }, { data: rirSetRows }] = await Promise.all([
+      supabase.from('workouts').select('id, date').eq('user_id', user.id).not('completed_at', 'is', null),
+      supabase
+        .from('sets')
+        .select('rir, exercise:exercises!inner(workout:workouts!inner(id, date, completed_at))')
+        .eq('completed', true)
+        .not('rir', 'is', null),
+    ])
+
+    // Grouped by DATE (not workout id) directly, so two completed workouts
+    // on the same date pool their real individual set values into one
+    // flat list - averaging an already-averaged number back in with raw
+    // values would silently misweight whichever workout had fewer sets.
+    const workoutIdToDate = new Map((workoutRows ?? []).map((w) => [w.id as string, w.date as string]))
+    const rirsByDate = new Map<string, number[]>()
+    for (const row of (rirSetRows ?? []) as any[]) {
+      const workout = row.exercise?.workout
+      if (!workout || workout.completed_at == null) continue
+      const date = workoutIdToDate.get(workout.id) ?? workout.date
+      const list = rirsByDate.get(date) ?? []
+      list.push(row.rir as number)
+      rirsByDate.set(date, list)
+    }
 
     const workoutsByDate = new Map<string, NextDayWorkout>()
-    for (const w of data ?? []) {
-      // A date can have more than one completed workout - keep whichever
-      // has an RIR logged if there's a choice, since that's strictly more
-      // informative than an unrated duplicate.
-      const existing = workoutsByDate.get(w.date)
-      if (!existing || (existing.sessionRir == null && w.session_rir != null)) {
-        workoutsByDate.set(w.date, { date: w.date, sessionRir: w.session_rir })
-      }
+    for (const w of workoutRows ?? []) {
+      if (workoutsByDate.has(w.date)) continue
+      const rirs = rirsByDate.get(w.date) ?? []
+      workoutsByDate.set(w.date, {
+        date: w.date,
+        avgRir: rirs.length > 0 ? rirs.reduce((sum, v) => sum + v, 0) / rirs.length : null,
+      })
     }
 
     setPerformanceCorrelation(
@@ -308,9 +334,9 @@ export default function SleepPage() {
                   <p className="text-lapis-text-primary font-semibold">
                     {Math.round(performanceCorrelation.belowAverage.nextDayWorkoutRate * 100)}% trained next day
                   </p>
-                  {performanceCorrelation.belowAverage.avgNextDaySessionRir != null && (
+                  {performanceCorrelation.belowAverage.avgNextDayRir != null && (
                     <p className="text-lapis-text-tertiary text-xs mt-0.5">
-                      Avg RIR {performanceCorrelation.belowAverage.avgNextDaySessionRir.toFixed(1)}
+                      Avg RIR {performanceCorrelation.belowAverage.avgNextDayRir.toFixed(1)}
                     </p>
                   )}
                 </div>
@@ -321,9 +347,9 @@ export default function SleepPage() {
                   <p className="text-lapis-text-primary font-semibold">
                     {Math.round(performanceCorrelation.aboveOrAtAverage.nextDayWorkoutRate * 100)}% trained next day
                   </p>
-                  {performanceCorrelation.aboveOrAtAverage.avgNextDaySessionRir != null && (
+                  {performanceCorrelation.aboveOrAtAverage.avgNextDayRir != null && (
                     <p className="text-lapis-text-tertiary text-xs mt-0.5">
-                      Avg RIR {performanceCorrelation.aboveOrAtAverage.avgNextDaySessionRir.toFixed(1)}
+                      Avg RIR {performanceCorrelation.aboveOrAtAverage.avgNextDayRir.toFixed(1)}
                     </p>
                   )}
                 </div>

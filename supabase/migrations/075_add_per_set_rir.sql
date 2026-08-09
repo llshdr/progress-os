@@ -1,0 +1,23 @@
+-- Per-set RIR (Reps in Reserve) - replaces the session-level self-rating
+-- (workouts.session_rir, migration 067) with a real per-set signal, since
+-- RIR naturally varies set to set within a session (e.g. 3 RIR on an
+-- early set, 0 RIR on the final one) and a single session-wide value
+-- loses exactly that. Same pattern as set_type (migration 059): a single
+-- nullable, CHECK-constrained column, NULL = default for every existing
+-- row and every set logged without picking one.
+--
+-- Deliberately a NEW column, not a repurpose of sets.rpe (migration 005):
+-- that column is already selected and read by the AI coach prompt
+-- ("@RPE ${set.rpe}" in recommend/route.ts) even though nothing writes
+-- to it today - reusing it for RIR would silently feed the AI coach a
+-- value on an inverted scale (RIR: lower = harder/closer to failure;
+-- RPE: higher = harder) under the same label. Same reasoning migration
+-- 067 already used, held at the per-set level too.
+--
+-- workouts.session_rir is deliberately left in place, unmodified and
+-- un-migrated - never DROP COLUMN on user data, and a single session
+-- average can't be honestly reverse-engineered into per-set values
+-- without inventing data. The app simply stops writing to and reading
+-- it going forward.
+ALTER TABLE sets
+ADD COLUMN IF NOT EXISTS rir INTEGER CHECK (rir IS NULL OR (rir >= 0 AND rir <= 10));

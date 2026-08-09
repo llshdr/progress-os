@@ -29,9 +29,12 @@ interface SavedSet {
   reps: number
   set_order: number
   set_type: 'drop' | 'myo' | null
+  rir: number | null
 }
 
 type SetType = 'normal' | 'drop' | 'myo'
+
+const RIR_VALUES = Array.from({ length: 11 }, (_, i) => i)
 
 const SET_TYPE_LABEL: Record<SetType, string> = { normal: 'Normal', drop: 'Drop', myo: 'Myo' }
 const SET_TYPE_TAG: Record<'drop' | 'myo', string> = { drop: 'drop', myo: 'myo' }
@@ -60,6 +63,11 @@ export default function SetLogger({
   // (see handleSaveSet), so the vast majority of sets that never touch
   // this stay indistinguishable from before this feature existed.
   const [setType, setSetType] = useState<SetType>('normal')
+  // Optional, per-set - null unless explicitly picked, same "never require
+  // it" precedent as setType above. Replaces the old session-wide
+  // session_rir rating (migration 067) with the real per-set signal RIR
+  // is meant to capture.
+  const [rir, setRir] = useState<number | null>(null)
   const [currentSetNumber, setCurrentSetNumber] = useState(1)
   const [previousSet, setPreviousSet] = useState<PreviousSet | null>(null)
   const [savedSets, setSavedSets] = useState<SavedSet[]>([])
@@ -69,6 +77,7 @@ export default function SetLogger({
   const [editingSetId, setEditingSetId] = useState<string | null>(null)
   const [editWeight, setEditWeight] = useState('')
   const [editReps, setEditReps] = useState('')
+  const [editRir, setEditRir] = useState<number | null>(null)
   const [aiSuggestion, setAiSuggestion] = useState<RecommendationResult | null>(null)
   const [variants, setVariants] = useState<Variant[]>([])
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
@@ -282,7 +291,7 @@ export default function SetLogger({
   const fetchSavedSets = async () => {
     const { data, error } = await supabase
       .from('sets')
-      .select('id, weight, reps, set_order, set_type')
+      .select('id, weight, reps, set_order, set_type, rir')
       .eq('exercise_id', exerciseId)
       .order('set_order', { ascending: true })
 
@@ -313,6 +322,7 @@ export default function SetLogger({
       set_order: currentSetNumber,
       rest_time_seconds: restTimeSeconds,
       set_type: setType === 'normal' ? null : setType,
+      rir,
     })
 
     if (error) {
@@ -326,6 +336,7 @@ export default function SetLogger({
     setCurrentSetNumber(prev => prev + 1)
     setReps('')
     setSetType('normal')
+    setRir(null)
     // Keep the same weight for next set (common pattern)
     setLoading(false)
     setRestStartedAt(Date.now())
@@ -381,6 +392,7 @@ export default function SetLogger({
     setEditingSetId(set.id)
     setEditWeight(set.weight.toString())
     setEditReps(set.reps.toString())
+    setEditRir(set.rir)
   }
 
   const cancelEditSet = () => {
@@ -392,7 +404,7 @@ export default function SetLogger({
 
     const { error } = await supabase
       .from('sets')
-      .update({ weight: parseFloat(editWeight), reps: parseInt(editReps) })
+      .update({ weight: parseFloat(editWeight), reps: parseInt(editReps), rir: editRir })
       .eq('id', editingSetId)
 
     if (error) {
@@ -502,8 +514,8 @@ export default function SetLogger({
               className="flex items-center justify-between border border-lapis-border-subtle rounded-lapis-md bg-lapis-surface-1 p-4"
             >
               {editingSetId === set.id ? (
-                <>
-                  <div className="flex items-center gap-2 flex-1">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
                     <span className="text-lapis-text-tertiary text-sm shrink-0">Set {set.set_order}</span>
                     <Input
                       type="number"
@@ -520,23 +532,40 @@ export default function SetLogger({
                       onChange={(e) => setEditReps(e.target.value)}
                       className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary h-9 w-16 text-center"
                     />
+                    <div className="flex items-center gap-1 ml-auto">
+                      <button
+                        onClick={handleUpdateSet}
+                        disabled={!editWeight || !editReps}
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-secondary hover:text-lapis-text-primary transition-colors disabled:opacity-30"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={cancelEditSet}
+                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={handleUpdateSet}
-                      disabled={!editWeight || !editReps}
-                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-secondary hover:text-lapis-text-primary transition-colors disabled:opacity-30"
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={cancelEditSet}
-                      className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-lapis-text-tertiary text-xs mr-1">RIR</span>
+                    {RIR_VALUES.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setEditRir(editRir === value ? null : value)}
+                        className={`w-6 h-6 rounded-full text-[10px] font-medium transition-colors ${
+                          editRir === value
+                            ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                            : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-3'
+                        }`}
+                      >
+                        {value}
+                      </button>
+                    ))}
                   </div>
-                </>
+                </div>
               ) : (
                 <>
                   <div className="flex items-center gap-4">
@@ -545,6 +574,11 @@ export default function SetLogger({
                     {set.set_type && (
                       <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                         {SET_TYPE_TAG[set.set_type]}
+                      </span>
+                    )}
+                    {set.rir != null && (
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
+                        RIR {set.rir}
                       </span>
                     )}
                   </div>
@@ -654,6 +688,31 @@ export default function SetLogger({
                   }`}
                 >
                   {SET_TYPE_LABEL[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* RIR (reps in reserve) - optional, defaults unset. Per-set,
+              not per-session (see migration 075/session_rir's own
+              retirement) - 0 = failure, 10 = very easy. Tapping the
+              already-selected value clears it, same toggle-off precedent
+              as the session-level picker this replaces. */}
+          <div className="space-y-2">
+            <label className="text-lapis-text-secondary text-sm">RIR (reps in reserve, optional)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {RIR_VALUES.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setRir(rir === value ? null : value)}
+                  className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                    rir === value
+                      ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                      : 'bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-3'
+                  }`}
+                >
+                  {value}
                 </button>
               ))}
             </div>

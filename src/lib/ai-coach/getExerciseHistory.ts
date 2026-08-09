@@ -5,6 +5,12 @@ export interface HistoricalSet {
   weight: number
   reps: number
   rpe: number | null
+  // Reps in reserve (0 = failure, 10 = very easy) - per-set (migration
+  // 075), distinct from rpe above: rpe is already selected/read here but
+  // nothing has ever written to it, and the two scales run in opposite
+  // directions (lower rpe = easier, lower rir = harder), so they're kept
+  // as separate fields rather than one conflated "effort" number.
+  rir: number | null
   workoutDate: string
   createdAt: string
   // The equipment variant used for this exercise-instance, if any was picked
@@ -33,7 +39,7 @@ export async function getExerciseHistory(
   // built via string interpolation — an exercise name containing a comma or
   // other PostgREST-significant character would otherwise break or misbehave.
   const select =
-    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(id, weight, reps, rpe, completed, created_at, set_type)'
+    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(id, weight, reps, rpe, rir, completed, created_at, set_type)'
   const queries: PromiseLike<any>[] = []
 
   if (exerciseLibraryId) {
@@ -85,6 +91,7 @@ export async function getExerciseHistory(
         weight: typeof set.weight === 'string' ? parseFloat(set.weight) : set.weight,
         reps: typeof set.reps === 'string' ? parseInt(set.reps) : set.reps,
         rpe: set.rpe ?? null,
+        rir: set.rir ?? null,
         workoutDate,
         createdAt: set.created_at,
         variantLabel,

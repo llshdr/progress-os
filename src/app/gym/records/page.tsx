@@ -46,21 +46,36 @@ type CardioRecord = {
 
 type LibraryExercise = { id: string; name: string; exercise_type: string }
 
-type LoadWindow = { sessionCount: number; avgRir: number | null }
+type LoadWindow = { sessionCount: number; avgRir: number | null; hardestSetRir: number | null }
 
 const RECENT_LIMIT = 20
 
-// Two honest, separate signals - frequency and average self-rated
-// intensity - rather than one fabricated composite "load score" that
-// would imply a precision neither number actually has on its own.
-function computeLoadWindow(workouts: { date: string; session_rir: number | null }[], days: number, today: Date): LoadWindow {
+// Two honest, separate signals - session frequency and per-set effort -
+// rather than one fabricated composite "load score" that would imply a
+// precision neither number actually has on its own. RIR is per-set (see
+// migration 075, replacing the old session-level self-rating): every
+// logged value within the window contributes to avgRir, so a session
+// where more sets were rated naturally contributes more data rather than
+// every session counting equally regardless of how much was actually
+// rated. hardestSetRir (the window's minimum - lower RIR means closer to
+// failure) is a genuinely different signal from the average - a single
+// very hard set barely moves a multi-set average, but is real
+// information on its own, same "two signals, not one" philosophy this
+// card already has.
+function computeLoadWindow(
+  workoutDates: string[],
+  rirEntries: { date: string; rir: number }[],
+  days: number,
+  today: Date
+): LoadWindow {
   const cutoff = new Date(today)
   cutoff.setDate(cutoff.getDate() - days)
-  const inWindow = workouts.filter((w) => new Date(w.date) > cutoff)
-  const rirValues = inWindow.map((w) => w.session_rir).filter((v): v is number => v != null)
+  const sessionCount = workoutDates.filter((d) => new Date(d) > cutoff).length
+  const rirValues = rirEntries.filter((e) => new Date(e.date) > cutoff).map((e) => e.rir)
   return {
-    sessionCount: inWindow.length,
+    sessionCount,
     avgRir: rirValues.length > 0 ? rirValues.reduce((sum, v) => sum + v, 0) / rirValues.length : null,
+    hardestSetRir: rirValues.length > 0 ? Math.min(...rirValues) : null,
   }
 }
 
@@ -161,6 +176,7 @@ export default function RecordsPage() {
       { data: manualPrs, error: manualError },
       cardioActivityData,
       { data: recentWorkouts, error: workoutsError },
+      { data: rirSets, error: rirSetsError },
     ] = await Promise.all([
       supabase.from('sets').select('exercise_id, weight, reps'),
       supabase.from('cardio_logs').select('exercise_id, distance_km, duration_seconds'),
@@ -169,19 +185,34 @@ export default function RecordsPage() {
         .select('exercise_library_id, exercise_name, exercise_type, weight, reps, distance_km, duration_seconds, recorded_date, note')
         .eq('user_id', user.id),
       fetchCardioActivity(supabase),
-      supabase.from('workouts').select('date, session_rir').eq('user_id', user.id).not('completed_at', 'is', null),
+      supabase.from('workouts').select('date').eq('user_id', user.id).not('completed_at', 'is', null),
+      // RLS on `sets` already scopes this to the current user via its
+      // exercises/workouts chain - completed:true and a real rir value
+      // are the only filters that matter here. Filtered to completed
+      // WORKOUTS client-side below (a set on a still-in-progress workout
+      // isn't a real session data point yet).
+      supabase
+        .from('sets')
+        .select('rir, created_at, exercise:exercises!inner(workout:workouts!inner(completed_at))')
+        .eq('completed', true)
+        .not('rir', 'is', null),
     ])
 
     if (setsError) console.error('Error fetching sets:', setsError)
     if (cardioError) console.error('Error fetching cardio logs:', cardioError)
     if (manualError) console.error('Error fetching manual PRs:', manualError)
     if (workoutsError) console.error('Error fetching workouts for load stats:', workoutsError)
+    if (rirSetsError) console.error('Error fetching per-set RIR for load stats:', rirSetsError)
 
     if (recentWorkouts) {
       const today = new Date()
+      const workoutDates = recentWorkouts.map((w) => w.date)
+      const rirEntries = ((rirSets ?? []) as any[])
+        .filter((row) => row.exercise?.workout?.completed_at != null)
+        .map((row) => ({ date: row.created_at as string, rir: row.rir as number }))
       setLoadStats({
-        sevenDay: computeLoadWindow(recentWorkouts, 7, today),
-        twentyEightDay: computeLoadWindow(recentWorkouts, 28, today),
+        sevenDay: computeLoadWindow(workoutDates, rirEntries, 7, today),
+        twentyEightDay: computeLoadWindow(workoutDates, rirEntries, 28, today),
       })
     }
 
@@ -623,8 +654,8 @@ export default function RecordsPage() {
               <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-8">
                 <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Training Load</h2>
                 <p className="text-lapis-text-tertiary text-sm mb-4">
-                  Two separate signals, not one combined score - session count for frequency, session RIR for how
-                  hard those sessions felt.
+                  Two separate signals, not one combined score - session count for frequency, per-set RIR for how
+                  hard those sets actually felt.
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -633,12 +664,18 @@ export default function RecordsPage() {
                     {loadStats.sevenDay.avgRir != null && (
                       <p className="text-lapis-text-tertiary text-xs mt-0.5">Avg RIR {loadStats.sevenDay.avgRir.toFixed(1)}</p>
                     )}
+                    {loadStats.sevenDay.hardestSetRir != null && (
+                      <p className="text-lapis-text-tertiary text-xs mt-0.5">Hardest set: RIR {loadStats.sevenDay.hardestSetRir}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs text-lapis-text-tertiary mb-1">Last 28 days</p>
                     <p className="text-lapis-text-primary font-semibold">{loadStats.twentyEightDay.sessionCount} sessions</p>
                     {loadStats.twentyEightDay.avgRir != null && (
                       <p className="text-lapis-text-tertiary text-xs mt-0.5">Avg RIR {loadStats.twentyEightDay.avgRir.toFixed(1)}</p>
+                    )}
+                    {loadStats.twentyEightDay.hardestSetRir != null && (
+                      <p className="text-lapis-text-tertiary text-xs mt-0.5">Hardest set: RIR {loadStats.twentyEightDay.hardestSetRir}</p>
                     )}
                   </div>
                 </div>

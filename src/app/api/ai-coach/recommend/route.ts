@@ -179,13 +179,15 @@ export async function POST(request: NextRequest) {
   const hasVariantInfo = history.some((h) => h.variantLabel !== null)
   const promptHistory = history.slice(0, MAX_SETS_IN_PROMPT)
   const hasTechniqueInfo = promptHistory.some((h) => h.technique !== null)
+  const hasRirInfo = promptHistory.some((h) => h.rir !== null)
   const TECHNIQUE_TAG: Record<'drop' | 'myo', string> = { drop: 'drop set', myo: 'myo-rep' }
 
   const historyText = promptHistory
     .map((set) => {
       const variantSuffix = hasVariantInfo ? ` [${set.variantLabel ?? 'no variant specified'}]` : ''
       const techniqueSuffix = set.technique ? ` [${TECHNIQUE_TAG[set.technique]}]` : ''
-      return `${set.workoutDate}: ${set.weight}kg x ${set.reps}${set.rpe ? ` @RPE ${set.rpe}` : ''}${variantSuffix}${techniqueSuffix}`
+      const rirSuffix = set.rir != null ? ` @RIR ${set.rir}` : ''
+      return `${set.workoutDate}: ${set.weight}kg x ${set.reps}${set.rpe ? ` @RPE ${set.rpe}` : ''}${rirSuffix}${variantSuffix}${techniqueSuffix}`
     })
     .join('\n')
 
@@ -205,6 +207,18 @@ export async function POST(request: NextRequest) {
   let techniqueContext = ''
   if (hasTechniqueInfo) {
     techniqueContext = `\n\nLines tagged [drop set] or [myo-rep] are follow-on/burnout sets, not independent top sets - a drop set continues at reduced weight after reaching near-failure, and a myo-rep is a rest-pause mini-set at the same weight. Don't undervalue this lifter's progression because one of these shows a lighter weight or fewer reps than a normal set - base your recommendation on the untagged (normal) sets as the real top-set signal.`
+  }
+
+  // @RIR tags are per-set (migration 075), not a session average - a real,
+  // more specific signal than @RPE (which nothing currently writes to).
+  // Only added when the shown history actually contains a tagged row,
+  // same "only speak up when relevant" precedent as the other optional
+  // context blocks here. Facts in, model reasons about it - no
+  // pre-computed "last set was X" summary; the history is already
+  // ordered most-recent-first, so the model can read that directly.
+  let rirContext = ''
+  if (hasRirInfo) {
+    rirContext = `\n\nLines tagged @RIR show reps in reserve at the time (0 = trained to failure, higher numbers mean it felt easier, on a 0-10 scale). This is the lifter's own real-time read of how hard a set was, not a derived estimate - weight the most recent sets' RIR more heavily than older ones as the freshest signal of how much they have left in the tank right now.`
   }
 
   // Same "code derives the fact, model reasons about it" pattern as
@@ -291,7 +305,7 @@ export async function POST(request: NextRequest) {
 
 Below is their recent set history for one exercise, most recent session first (weight in kg):
 
-${historyText}${variantContext}${techniqueContext}${muscleGroupContext}${unilateralContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${mesocycleContext}${sleepContext}
+${historyText}${variantContext}${techniqueContext}${rirContext}${muscleGroupContext}${unilateralContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${mesocycleContext}${sleepContext}
 
 Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale — if multiple factors above are relevant, mention at most the one or two most decision-relevant ones rather than trying to reference everything.`
 

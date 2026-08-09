@@ -7,13 +7,19 @@ export interface SleepPerformancePoint {
 
 export interface NextDayWorkout {
   date: string // YYYY-MM-DD, the workout's own date
-  sessionRir: number | null
+  // Average of that day's per-set RIR values (migration 075) - RIR moved
+  // from a single session-level self-rating to per-set, so this is now a
+  // derived per-workout figure the caller computes from real logged sets,
+  // not a self-rated number. Still one value per workout-day here - this
+  // feature's own granularity is "did next-day training feel harder,"
+  // which a per-workout average answers without needing set-level detail.
+  avgRir: number | null
 }
 
 export interface SleepBucketStats {
   nightCount: number
   nextDayWorkoutRate: number // 0-1, fraction of nights followed by a completed workout
-  avgNextDaySessionRir: number | null // null when no next-day workout in this bucket ever had an RIR logged
+  avgNextDayRir: number | null // null when no next-day workout in this bucket ever had an RIR logged
 }
 
 export interface SleepPerformanceCorrelation {
@@ -59,13 +65,13 @@ export function computeSleepPerformanceCorrelation(
       const nextDayWorkout = workoutsByDate.get(nextCalendarDate(night.date))
       if (nextDayWorkout) {
         workoutCount++
-        if (nextDayWorkout.sessionRir != null) rirValues.push(nextDayWorkout.sessionRir)
+        if (nextDayWorkout.avgRir != null) rirValues.push(nextDayWorkout.avgRir)
       }
     }
     return {
       nightCount: nights.length,
       nextDayWorkoutRate: nights.length > 0 ? workoutCount / nights.length : 0,
-      avgNextDaySessionRir: rirValues.length > 0 ? rirValues.reduce((sum, v) => sum + v, 0) / rirValues.length : null,
+      avgNextDayRir: rirValues.length > 0 ? rirValues.reduce((sum, v) => sum + v, 0) / rirValues.length : null,
     }
   }
 
