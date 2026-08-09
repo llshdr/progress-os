@@ -53,7 +53,7 @@ async function buildDailySuggestionsFingerprint(supabase: SupabaseClient, userId
       .maybeSingle(),
     supabase
       .from('user_settings')
-      .select('maintenance_calories, training_phase, training_intensity, weekly_workout_goal')
+      .select('maintenance_calories, training_phase, training_intensity, weekly_workout_goal, count_cardio_toward_workout_goal')
       .eq('user_id', userId)
       .maybeSingle(),
     supabase
@@ -80,10 +80,15 @@ async function buildDailySuggestionsFingerprint(supabase: SupabaseClient, userId
     settings?.training_phase,
     settings?.training_intensity,
     settings?.weekly_workout_goal,
+    settings?.count_cardio_toward_workout_goal,
     scheduleFingerprint,
   ]
 
-  return { fingerprint: parts.map((p) => String(p ?? 'null')).join('|'), weeklyGoal: settings?.weekly_workout_goal ?? 5 }
+  return {
+    fingerprint: parts.map((p) => String(p ?? 'null')).join('|'),
+    weeklyGoal: settings?.weekly_workout_goal ?? 5,
+    countCardio: settings?.count_cardio_toward_workout_goal ?? true,
+  }
 }
 
 const MODEL = 'gemini-2.5-flash'
@@ -165,7 +170,7 @@ export async function generateDailySuggestions(
   supabase: SupabaseClient,
   userId: string
 ): Promise<Suggestion[]> {
-  const { fingerprint, weeklyGoal } = await buildDailySuggestionsFingerprint(supabase, userId)
+  const { fingerprint, weeklyGoal, countCardio } = await buildDailySuggestionsFingerprint(supabase, userId)
 
   const { data: cached } = await supabase
     .from('daily_suggestions')
@@ -180,7 +185,7 @@ export async function generateDailySuggestions(
   // Gather candidates from every module that has one. Future modules append
   // their own candidates here without changing anything else in this pipeline.
   const rawCandidates: SuggestionCandidate[] = [
-    ...(await getGymSuggestionCandidates(supabase, userId, weeklyGoal)),
+    ...(await getGymSuggestionCandidates(supabase, userId, weeklyGoal, countCardio)),
     ...(await getProjectsSuggestionCandidates(supabase, userId)),
     ...(await getNutritionSuggestionCandidates(supabase, userId)),
     ...(await getScheduleSuggestionCandidates(supabase, userId)),

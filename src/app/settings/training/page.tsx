@@ -19,6 +19,7 @@ const MONTH_NAMES = [
 
 export default function TrainingSettingsPage() {
   const [weeklyWorkoutGoal, setWeeklyWorkoutGoal] = useState('5')
+  const [countCardioTowardGoal, setCountCardioTowardGoal] = useState(true)
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg')
   const [goalWeight, setGoalWeight] = useState('')
   const [trainingPhase, setTrainingPhase] = useState<TrainingPhase>('maintain')
@@ -46,7 +47,7 @@ export default function TrainingSettingsPage() {
     const { data } = await supabase
       .from('user_settings')
       .select(
-        'weekly_workout_goal, weight_unit, goal_weight, training_phase, training_intensity, open_water_season_start_month, open_water_season_end_month'
+        'weekly_workout_goal, count_cardio_toward_workout_goal, weight_unit, goal_weight, training_phase, training_intensity, open_water_season_start_month, open_water_season_end_month'
       )
       .eq('user_id', user.id)
       .maybeSingle()
@@ -54,6 +55,7 @@ export default function TrainingSettingsPage() {
     if (data?.weekly_workout_goal) {
       setWeeklyWorkoutGoal(String(data.weekly_workout_goal))
     }
+    setCountCardioTowardGoal(data?.count_cardio_toward_workout_goal ?? true)
     const unit: WeightUnit = data?.weight_unit === 'lbs' ? 'lbs' : 'kg'
     setWeightUnit(unit)
     if (data?.goal_weight) {
@@ -103,6 +105,7 @@ export default function TrainingSettingsPage() {
       {
         user_id: user.id,
         weekly_workout_goal: goal,
+        count_cardio_toward_workout_goal: countCardioTowardGoal,
         weight_unit: weightUnit,
         goal_weight: goalWeightKg,
         training_phase: trainingPhase,
@@ -158,6 +161,23 @@ export default function TrainingSettingsPage() {
                     }}
                     className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary"
                   />
+                </div>
+                <div className="space-y-1 mt-4 pt-4 border-t border-lapis-border-subtle">
+                  <label className="flex items-center gap-2 text-sm text-lapis-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={countCardioTowardGoal}
+                      onChange={(e) => {
+                        setCountCardioTowardGoal(e.target.checked)
+                        setSaved(false)
+                      }}
+                    />
+                    Cardio-only sessions count toward this target
+                  </label>
+                  <p className="text-lapis-text-tertiary text-xs">
+                    Off means a workout only counts here if it has at least one strength exercise - a mixed session still
+                    counts either way. Also affects your streak and the gym part of your rank.
+                  </p>
                 </div>
               </div>
 

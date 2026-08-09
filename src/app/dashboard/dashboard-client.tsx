@@ -11,6 +11,7 @@ import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-sec
 import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
 import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
 import { computeGymStreakWeeks } from '@/lib/gym-streak'
+import { filterWorkoutsCountingTowardGoal } from '@/lib/workout-goal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { raceTypeLabel, type RaceType } from '@/lib/race-constants'
 
@@ -118,26 +119,19 @@ export default function DashboardClient({ user }: DashboardClientProps) {
 
       setActiveWorkout(activeWorkoutData)
 
-      // Fetch workouts completed this week
-      const { data: weeklyWorkoutsData, count } = await supabase
-        .from('workouts')
-        .select('*', { count: 'exact', head: false })
-        .eq('user_id', user.id)
-        .gte('date', getLocalWeekStartString())
-        .not('completed_at', 'is', null)
-
-      setWeeklyWorkouts(count || 0)
-
-      // Fetch weekly goal from user settings (default to 5)
+      // Fetch weekly goal + the cardio-counting toggle from user settings
+      // (defaults matching historical behavior: goal 5, cardio counts).
       let resolvedWeeklyGoal = 5
+      let resolvedCountCardio = true
       try {
         const { data: settings } = await supabase
           .from('user_settings')
-          .select('weekly_workout_goal, show_today_suggestions')
+          .select('weekly_workout_goal, show_today_suggestions, count_cardio_toward_workout_goal')
           .eq('user_id', user.id)
           .single()
 
         resolvedWeeklyGoal = settings?.weekly_workout_goal || 5
+        resolvedCountCardio = settings?.count_cardio_toward_workout_goal ?? true
         setWeeklyGoal(resolvedWeeklyGoal)
         setShowTodaySuggestions(settings?.show_today_suggestions ?? true)
       } catch (settingsError) {
@@ -146,12 +140,30 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         setShowTodaySuggestions(true)
       }
 
+      // Fetch workouts completed this week, then narrow to the ones that
+      // actually count toward the goal (see workout-goal.ts) - a no-op
+      // extra query when cardio counts (the default), since every
+      // completed workout counts there same as before.
+      const { data: weeklyWorkoutsData } = await supabase
+        .from('workouts')
+        .select('id')
+        .eq('user_id', user.id)
+        .gte('date', getLocalWeekStartString())
+        .not('completed_at', 'is', null)
+
+      const countingWeeklyIds = await filterWorkoutsCountingTowardGoal(
+        supabase,
+        (weeklyWorkoutsData ?? []).map((w) => w.id),
+        resolvedCountCardio
+      )
+      setWeeklyWorkouts(countingWeeklyIds.size)
+
       // Same computation the Today-suggestion sentence already uses
       // (gymSuggestions.ts) - extracted into a shared function so the two
-      // never quietly disagree. Needs the resolved goal, not the weeklyGoal
+      // never quietly disagree. Needs the resolved goal/setting, not the
       // state (which may not have flushed yet), so it's called with the
-      // local variable above.
-      setStreakWeeks(await computeGymStreakWeeks(supabase, user.id, resolvedWeeklyGoal))
+      // local variables above.
+      setStreakWeeks(await computeGymStreakWeeks(supabase, user.id, resolvedWeeklyGoal, resolvedCountCardio))
 
       // Active training block, if any - reuses the exact same derivation
       // the gym Schedule page's MesocycleCard already uses, just a

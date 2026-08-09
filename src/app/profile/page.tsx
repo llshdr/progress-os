@@ -6,6 +6,7 @@ import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { rankTierLabel, computeRankBreakdown, type RankBreakdown, type ModuleName } from '@/lib/rank'
 import RankSparkline, { type RankHistoryPoint } from '@/components/profile/rank-sparkline'
+import { filterWorkoutsCountingTowardGoal } from '@/lib/workout-goal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Users } from 'lucide-react'
 
@@ -125,22 +126,39 @@ export default function ProfilePage() {
   // why this is an estimate, not a guaranteed byte-exact one) - so "why is
   // my rank what it is" has a real answer instead of just a bare tier
   // label. Same 90-day-window raw data the SQL function itself reads from,
-  // just fetched here instead of computed server-side.
+  // just fetched here instead of computed server-side. Also mirrors the
+  // SQL function's own count_cardio_toward_workout_goal filtering
+  // (migration 074, workout-goal.ts) - reading the setting and filtering
+  // the same way here is what keeps this "estimate" from silently
+  // disagreeing with the real server-computed rank on this specific point.
   const fetchBreakdown = async (uid: string) => {
     const ninetyDaysAgo = new Date()
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
     const cutoff = ninetyDaysAgo.toISOString().slice(0, 10)
 
-    const [{ data: goalRows }, { data: workoutRows }, { data: nutritionRows }] = await Promise.all([
+    const [{ data: goalRows }, { data: workoutRows }, { data: nutritionRows }, { data: settings }] = await Promise.all([
       supabase.from('goals').select('created_at, updated_at, status, scope').eq('user_id', uid),
-      supabase.from('workouts').select('completed_at').eq('user_id', uid).not('completed_at', 'is', null).gte('completed_at', ninetyDaysAgo.toISOString()),
+      supabase
+        .from('workouts')
+        .select('id, completed_at')
+        .eq('user_id', uid)
+        .not('completed_at', 'is', null)
+        .gte('completed_at', ninetyDaysAgo.toISOString()),
       supabase.from('nutrition_entries').select('date').eq('user_id', uid).gte('date', cutoff),
+      supabase.from('user_settings').select('count_cardio_toward_workout_goal').eq('user_id', uid).maybeSingle(),
     ])
+
+    const countingIds = await filterWorkoutsCountingTowardGoal(
+      supabase,
+      (workoutRows ?? []).map((w) => w.id),
+      settings?.count_cardio_toward_workout_goal ?? true
+    )
+    const countingWorkoutDates = (workoutRows ?? []).filter((w) => countingIds.has(w.id)).map((w) => w.completed_at as string)
 
     setBreakdown(
       computeRankBreakdown(
         (goalRows ?? []).map((g) => ({ createdAt: g.created_at, updatedAt: g.updated_at, status: g.status, scope: g.scope })),
-        (workoutRows ?? []).map((w) => w.completed_at as string),
+        countingWorkoutDates,
         (nutritionRows ?? []).map((n) => n.date as string)
       )
     )

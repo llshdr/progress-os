@@ -3,6 +3,7 @@ import { getExerciseHistory } from './getExerciseHistory'
 import type { SuggestionCandidate } from './types'
 import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
 import { computeGymStreakWeeks } from '@/lib/gym-streak'
+import { filterWorkoutsCountingTowardGoal } from '@/lib/workout-goal'
 
 const RECENT_EXERCISE_LIMIT = 3
 const STALL_SESSION_WINDOW = 3
@@ -99,20 +100,31 @@ async function getExerciseTrendCandidates(supabase: SupabaseClient): Promise<Sug
 export async function getGymSuggestionCandidates(
   supabase: SupabaseClient,
   userId: string,
-  weeklyGoal: number
+  weeklyGoal: number,
+  countCardio: boolean = true
 ): Promise<SuggestionCandidate[]> {
   const candidates: SuggestionCandidate[] = []
   const today = getLocalDateString()
 
   const { data: weekWorkouts } = await supabase
     .from('workouts')
-    .select('date')
+    .select('id, date')
     .eq('user_id', userId)
     .gte('date', getLocalDateString(getLocalWeekStart(new Date())))
     .not('completed_at', 'is', null)
 
-  const weeklyCount = weekWorkouts?.length ?? 0
-  const loggedToday = (weekWorkouts ?? []).some((w: { date: string }) => w.date === today)
+  const countingIds = await filterWorkoutsCountingTowardGoal(
+    supabase,
+    (weekWorkouts ?? []).map((w) => w.id),
+    countCardio
+  )
+  const countingWeekWorkouts = (weekWorkouts ?? []).filter((w) => countingIds.has(w.id))
+  const weeklyCount = countingWeekWorkouts.length
+  // Matches weeklyCount's own filter (not just "did anything today") so
+  // the message stays internally consistent - a cardio-only session on a
+  // day cardio doesn't count still reads as "no workout logged yet",
+  // correctly nudging that today's session didn't move the goal count.
+  const loggedToday = countingWeekWorkouts.some((w) => w.date === today)
 
   if (!loggedToday) {
     candidates.push({
@@ -128,7 +140,7 @@ export async function getGymSuggestionCandidates(
     })
   }
 
-  const streakWeeks = await computeGymStreakWeeks(supabase, userId, weeklyGoal)
+  const streakWeeks = await computeGymStreakWeeks(supabase, userId, weeklyGoal, countCardio)
   if (streakWeeks >= STREAK_MIN_WEEKS) {
     candidates.push({
       module: 'gym',
