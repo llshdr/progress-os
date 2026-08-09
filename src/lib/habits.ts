@@ -1,4 +1,4 @@
-import { getLocalWeekdayIndex } from '@/lib/date'
+import { getLocalWeekdayIndex, getLocalWeekStart, getLocalDateString } from '@/lib/date'
 
 export interface Habit {
   id: string
@@ -41,4 +41,85 @@ export function daysSinceLastLog(logs: HabitLog[], habitId: string, today: strin
   const mostRecent = habitLogDates.reduce((latest, date) => (date > latest ? date : latest))
   const msPerDay = 1000 * 60 * 60 * 24
   return Math.round((new Date(today).getTime() - new Date(mostRecent).getTime()) / msPerDay)
+}
+
+// A later, explicitly-opted-into reversal of daysSinceLastLog's own
+// "no streak mechanics" precedent - the owner asked for a real
+// consistency view. Framed as a personal-best number, never a
+// guilt/warning mechanic: no color, no "you broke it" language anywhere
+// this is rendered.
+//
+// Walks backward day by day from `today`. Days the habit doesn't apply
+// to (per habitAppliesToDate) are skipped entirely - they neither extend
+// nor break the streak, so a habit scheduled Mon/Wed/Fri counts
+// consecutive SCHEDULED occurrences, not consecutive calendar days.
+export function computeHabitStreak(
+  logs: HabitLog[],
+  habit: Habit,
+  today: string
+): { current: number; longest: number } {
+  const habitLogDates = new Set(logs.filter((l) => l.habitId === habit.id).map((l) => l.date))
+  if (habitLogDates.size === 0) return { current: 0, longest: 0 }
+
+  const earliest = Array.from(habitLogDates).reduce((min, d) => (d < min ? d : min))
+  const cursor = new Date(today + 'T00:00:00')
+  const earliestDate = new Date(earliest + 'T00:00:00')
+
+  let current = 0
+  let longest = 0
+  let running = 0
+  let stillCounting = true
+
+  while (cursor >= earliestDate) {
+    const dateStr = getLocalDateString(cursor)
+    if (habitAppliesToDate(habit, dateStr)) {
+      if (habitLogDates.has(dateStr)) {
+        running += 1
+        if (stillCounting) current = running
+      } else {
+        longest = Math.max(longest, running)
+        running = 0
+        stillCounting = false // the walk-back-from-today streak just ended
+      }
+    }
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  longest = Math.max(longest, running)
+
+  return { current, longest }
+}
+
+export interface HabitHeatmapCell {
+  date: string
+  applicable: boolean
+  logged: boolean
+}
+
+// weeksBack rows (oldest first), 7 columns (Mon-Sun) each - the same
+// grid shape as any other week-bucketed view in this app
+// (getLocalWeekStart already the single shared "week start" definition).
+// Pure display data; the card decides how to color each cell.
+export function buildHabitHeatmapWeeks(logs: HabitLog[], habit: Habit, today: string, weeksBack = 8): HabitHeatmapCell[][] {
+  const habitLogDates = new Set(logs.filter((l) => l.habitId === habit.id).map((l) => l.date))
+  const currentWeekStart = getLocalWeekStart(new Date(today + 'T00:00:00'))
+
+  const weeks: HabitHeatmapCell[][] = []
+  for (let w = weeksBack - 1; w >= 0; w--) {
+    const weekStart = new Date(currentWeekStart)
+    weekStart.setDate(weekStart.getDate() - w * 7)
+
+    const row: HabitHeatmapCell[] = []
+    for (let d = 0; d < 7; d++) {
+      const cellDate = new Date(weekStart)
+      cellDate.setDate(cellDate.getDate() + d)
+      const dateStr = getLocalDateString(cellDate)
+      row.push({
+        date: dateStr,
+        applicable: dateStr <= today && habitAppliesToDate(habit, dateStr),
+        logged: habitLogDates.has(dateStr),
+      })
+    }
+    weeks.push(row)
+  }
+  return weeks
 }

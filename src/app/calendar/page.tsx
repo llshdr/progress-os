@@ -39,6 +39,7 @@ import { daysBetween } from '@/lib/goals'
 import DisruptionDeclaration, { type TrainingDisruption } from '@/components/disruption-declaration'
 import TravelPrepDialog from '@/components/calendar/travel-prep-dialog'
 import HabitsCard from '@/components/calendar/habits-card'
+import HabitConsistencyCard from '@/components/calendar/habit-consistency-card'
 import type { Habit, HabitLog } from '@/lib/habits'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -772,6 +773,10 @@ export default function CalendarPage() {
 
         <div className="mt-6">
           <HabitsCard habits={habits} habitLogs={habitLogs} onChanged={refetchHabits} />
+        </div>
+
+        <div className="mt-6">
+          <HabitConsistencyCard habits={habits} habitLogs={habitLogs} />
         </div>
 
         <div className="mt-6">
