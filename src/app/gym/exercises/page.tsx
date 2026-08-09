@@ -306,7 +306,21 @@ export default function ExerciseLibraryPage() {
           </div>
         ) : (
           <>
-            <div className="grid gap-3">
+            {/* grid-cols-1 is not decorative here - the bare `grid` utility
+                only sets display:grid with no grid-template-columns, so the
+                single implicit column sizes to auto (content-based) rather
+                than being stretched to a definite, shrinkable width. Every
+                card below inherits that: min-w-0/truncate on the title only
+                engages once ITS container has a real width to truncate
+                against, and without grid-cols-1 that container never gets
+                one - the card just grows to fit an unbreakable exercise
+                name instead, leaking real overflow all the way up through
+                main to the page (confirmed via measurement: 779px rendered
+                width at a 375px viewport before this fix, exactly 375px
+                after). The two prior fixes on the title row were correct
+                but were fixing a mechanism that was never being given a
+                width to operate against. */}
+            <div className="grid grid-cols-1 gap-3">
               {filteredExercises.map((exercise) => (
                 <div
                   key={exercise.id}
