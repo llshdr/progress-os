@@ -21,6 +21,9 @@ import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { MUSCLE_GROUPS, EXERCISE_TYPES, type ExerciseType } from '@/lib/exercise-constants'
 import { fetchCardioActivity, bucketWeeklyCardioDistance, type CardioActivity } from '@/lib/cardio-stats'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { computeStrengthFacts } from '@/lib/race-plan/analyze-fitness'
+import { computeGymProgressionSignal } from '@/lib/gym-progression'
+import { upsertGymProgressionSignal } from '@/lib/rank-progression'
 
 type ComputedStrength = { bestWeight: number; bestReps: number; estimated1RM: number; timesPerformed: number }
 type ManualStrength = { weight: number; reps: number; estimated1RM: number; date: string | null; note: string | null }
@@ -203,6 +206,17 @@ export default function RecordsPage() {
     if (manualError) console.error('Error fetching manual PRs:', manualError)
     if (workoutsError) console.error('Error fetching workouts for load stats:', workoutsError)
     if (rirSetsError) console.error('Error fetching per-set RIR for load stats:', rirSetsError)
+
+    // Feeds the rank system's progression bonus (migration 076) - fire
+    // and forget, doesn't block this page's own render. Computed here
+    // (rather than on the Races detail page, where a similar trend
+    // read already happens for its own unrelated purpose) so a user
+    // with no active race plan still earns credit for real gym
+    // progress - this page is the one every gym user actually visits.
+    computeStrengthFacts(supabase).then((facts) => {
+      const signal = computeGymProgressionSignal(facts.muscleGroupTrends)
+      upsertGymProgressionSignal(supabase, user.id, signal)
+    })
 
     if (recentWorkouts) {
       const today = new Date()

@@ -12,6 +12,13 @@ export interface MuscleGroupTrend {
   muscleGroup: string
   currentBestEst1RM: number
   trend: 'up' | 'flat' | 'down'
+  // Whether a real prior-window (6-12 weeks ago) best exists to compare
+  // against. Without this, a muscle group with zero prior data defaults
+  // to trend:'flat' identically to one that was genuinely measured flat -
+  // an ambiguity the existing render usage doesn't care about, but that
+  // computeGymProgressionSignal (gym-progression.ts) needs to gate on
+  // real evidence, not a fabricated "no change" reading.
+  hasPrior: boolean
 }
 
 export interface PastRaceResult {
@@ -81,7 +88,7 @@ async function computeConsistencyWeeks(
   return weeks.size
 }
 
-async function computeStrengthFacts(
+export async function computeStrengthFacts(
   supabase: SupabaseClient
 ): Promise<{ muscleGroupTrends: MuscleGroupTrend[]; recentSessionsPerWeek: number }> {
   const twelveWeeksAgo = new Date(Date.now() - 84 * DAY_MS)
@@ -138,7 +145,7 @@ async function computeStrengthFacts(
       const ratio = currentBestEst1RM / prior
       trend = ratio > 1.05 ? 'up' : ratio < 0.95 ? 'down' : 'flat'
     }
-    return { muscleGroup, currentBestEst1RM: Math.round(currentBestEst1RM * 10) / 10, trend }
+    return { muscleGroup, currentBestEst1RM: Math.round(currentBestEst1RM * 10) / 10, trend, hasPrior: Boolean(prior) }
   })
 
   return { muscleGroupTrends, recentSessionsPerWeek: recentDays.size / 4 }

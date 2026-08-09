@@ -85,6 +85,8 @@ import {
 import { findMostOverdueRetest, type RetestCandidate } from '@/lib/race-plan/retest-reminder'
 import { resolveRealZone2Pace, computePaceGaps, describePaceGap, type PaceGap } from '@/lib/race-plan/goal-achievability'
 import { assessBenchmarkCompliance, type BenchmarkFlag, type DisruptionRange } from '@/lib/race-plan/benchmark-verification'
+import { computeRacesProgressionSignal } from '@/lib/race-plan/progression-signal'
+import { upsertRacesProgressionSignal } from '@/lib/rank-progression'
 import DisruptionDeclaration, { formatDateRange, type TrainingDisruption } from '@/components/disruption-declaration'
 import {
   fetchCourseProfile,
@@ -410,6 +412,32 @@ export default function RaceDetailPage() {
     const flags = assessCutoffRisk(range, courseCutoffs)
     if (flags.some((f) => f.risk === 'risk')) setApproach('race_leaning')
   }, [race, snapshot, courseTimeBands, courseCutoffs, plan, approachTouched, selfAssessment, disciplineActivityFacts])
+
+  // Feeds the rank system's private progression signal (migration 076) -
+  // has to live here, before this component's early loading/not-found
+  // returns, same Rules-of-Hooks reason every other hook in this
+  // component already does. Recomputes assessBenchmarkCompliance
+  // independently from state rather than reusing the render body's own
+  // benchmarkFlags (that value is computed after the early returns, so
+  // it isn't reachable from a hook here) - deliberately passes null for
+  // both pace-target params, since a flag's status is determined purely
+  // by the distance ratio (see benchmark-verification.ts), never by
+  // paceRatio, so the flags this produces have identical status values
+  // to the render body's own richer call, just without the optional
+  // pace-shortfall message clause this doesn't need.
+  useEffect(() => {
+    if (!plan || !race) return
+    const cat = raceCategoryFor(race.race_type)
+    const weekStartDate = getLocalDateString(getLocalWeekStart())
+    const disruptionRangesForSignal: DisruptionRange[] = disruptions.map((d) => ({ startDate: d.start_date, endDate: d.end_date }))
+    const flags = assessBenchmarkCompliance(plan, cardioActivities, weekStartDate, cat, null, null, disruptionRangesForSignal)
+    const weeksElapsed = plan.weeks.filter((w) => w.weekStartDate < weekStartDate).length
+    const signal = computeRacesProgressionSignal(cat, flags, weeksElapsed)
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) upsertRacesProgressionSignal(supabase, user.id, signal)
+    })
+  }, [plan, cardioActivities, disruptions, race])
 
   const fetchAll = async () => {
     setLoading(true)

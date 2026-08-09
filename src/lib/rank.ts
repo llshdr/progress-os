@@ -41,12 +41,33 @@ export interface ModuleBreakdown {
   nextTierWeeksNeeded: number | null // null = already at Tier 5 for this module
 }
 
+// Mirrors migration 076's progression_signals_strong/progression_bonus -
+// a QUALITY dimension alongside the consistency-only tiers above ("are
+// you executing your own plan well," never a cross-user comparison).
+// Each signal is self-referential (races/gym compare this user only to
+// their own recent baseline; goals reuses the same done_count/
+// completionRate already shown above, no new column needed for that
+// one). Raw signal values ARE shown here - this is the owner's own
+// transparency view of their own private numbers, the same trust
+// boundary user_settings already has everywhere else, not a leak to
+// other users (who only ever see the resulting coarse rank tier).
+export interface ProgressionBreakdown {
+  racesSignal: number | null
+  gymSignal: number | null
+  goalsStrong: boolean
+  racesStrong: boolean
+  gymStrong: boolean
+  signalsStrong: number
+  bonus: number
+}
+
 export interface RankBreakdown {
   goals: ModuleBreakdown & { completionRate: number | null; capTier: number; doneCount: number }
   gym: ModuleBreakdown
   nutrition: ModuleBreakdown
   baseTier: number
   activeModules: number
+  progression: ProgressionBreakdown
   finalTier: number
   drivingModule: ModuleName // whichever module's tier equals baseTier (first match: goals, gym, nutrition)
 }
@@ -86,7 +107,9 @@ function countConsistencyWeeks(dates: string[], now: Date): number {
 export function computeRankBreakdown(
   goals: { createdAt: string; updatedAt: string; status: 'active' | 'done' | 'archived'; scope: GoalScope | null }[],
   gymCompletedDates: string[],
-  nutritionDates: string[]
+  nutritionDates: string[],
+  racesProgressionSignal: number | null = null,
+  gymProgressionSignal: number | null = null
 ): RankBreakdown {
   const now = new Date()
 
@@ -121,7 +144,17 @@ export function computeRankBreakdown(
   const baseTier = Math.max(goalTier, gymTier, nutritionTier)
   const activeModules =
     (goalConsistencyWeeks >= 2 ? 1 : 0) + (gymConsistencyWeeks >= 2 ? 1 : 0) + (nutritionConsistencyWeeks >= 2 ? 1 : 0)
-  const finalTier = Math.min(5, baseTier + (activeModules >= 2 ? 1 : 0))
+
+  // Same thresholds as migration 076's progression_signals_strong -
+  // goals reuses doneCount/completionRate already computed above rather
+  // than a new signal, races/gym read the private ratios passed in.
+  const goalsStrong = doneCount >= 2 && (completionRate ?? 0) >= 0.7
+  const racesStrong = racesProgressionSignal != null && racesProgressionSignal >= 0.7
+  const gymStrong = gymProgressionSignal != null && gymProgressionSignal >= 0.6
+  const signalsStrong = [goalsStrong, racesStrong, gymStrong].filter(Boolean).length
+  const progressionBonus = signalsStrong >= 2 ? 1 : 0
+
+  const finalTier = Math.min(5, baseTier + (activeModules >= 2 ? 1 : 0) + progressionBonus)
 
   const drivingModule: ModuleName = goalTier === baseTier ? 'goals' : gymTier === baseTier ? 'gym' : 'nutrition'
 
@@ -147,6 +180,15 @@ export function computeRankBreakdown(
     },
     baseTier,
     activeModules,
+    progression: {
+      racesSignal: racesProgressionSignal,
+      gymSignal: gymProgressionSignal,
+      goalsStrong,
+      racesStrong,
+      gymStrong,
+      signalsStrong,
+      bonus: progressionBonus,
+    },
     finalTier,
     drivingModule,
   }
