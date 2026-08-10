@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, X, Trash2, Pencil, Trophy } from 'lucide-react'
+import { Check, X, Trash2, Pencil, Trophy, WifiOff } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { getExerciseRecommendation, RecommendationResult } from '@/lib/ai-coach/client'
 import { getLocalDateString } from '@/lib/date'
 import { selectActiveMesocycle, type Mesocycle } from '@/lib/mesocycle'
 import { getExerciseHistory } from '@/lib/ai-coach/getExerciseHistory'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
+import { useOnlineStatus } from '@/lib/use-online-status'
 
 interface SetLoggerProps {
   exerciseId: string
@@ -107,6 +108,7 @@ export default function SetLogger({
   // what the Records page is for.
   const [personalBestEst1RM, setPersonalBestEst1RM] = useState<number | null>(null)
   const [showPrCelebration, setShowPrCelebration] = useState(false)
+  const isOnline = useOnlineStatus()
   const supabase = createClient()
 
   // Ticks the visible rest timer while it's running. Nothing to rest from
@@ -398,7 +400,11 @@ export default function SetLogger({
 
     if (error) {
       console.error('Error saving set:', error)
-      alert('Failed to save set')
+      alert(
+        isOnline
+          ? 'Failed to save set. Please try again.'
+          : "You're offline - this set wasn't saved. Reconnect, then log it again."
+      )
       setLoading(false)
       return
     }
@@ -511,6 +517,18 @@ export default function SetLogger({
 
   return (
     <div className="space-y-6">
+      {/* Proactive - shown before a save is even attempted, so a lost
+          connection is never a silent surprise mid-log. navigator.onLine
+          is a real browser signal but not a guarantee (see
+          use-online-status.ts) - the alert() in handleSaveSet above is
+          still the real backstop if a save fails for any reason. */}
+      {!isOnline && (
+        <div className="flex items-center gap-2 border border-lapis-garnet/40 bg-lapis-garnet/[0.06] rounded-lapis-md px-4 py-3 text-sm text-lapis-garnet">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          You&apos;re offline - sets won&apos;t save until you&apos;re back online.
+        </div>
+      )}
+
       {/* Exercise Header */}
       <div>
         <h2 className="text-2xl font-semibold tracking-tight text-lapis-text-primary mb-1">

@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Apple, BookOpen, Plus, X } from 'lucide-react'
+import { Apple, BookOpen, Plus, X, WifiOff } from 'lucide-react'
 import Link from 'next/link'
 import { getLocalDateString } from '@/lib/date'
 import { getEffectiveTarget, type TrainingIntensity, type TrainingPhase } from '@/lib/nutrition'
@@ -25,6 +25,7 @@ import type { CaloriePoint } from '@/lib/nutrition-trend'
 import MealTagPicker from '@/components/nutrition/meal-tag-picker'
 import { MEAL_TAGS, mealTagLabel, type MealTag } from '@/lib/food-constants'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { useOnlineStatus } from '@/lib/use-online-status'
 
 const MIN_ENTRIES_FOR_TREND = 3
 
@@ -102,6 +103,8 @@ export default function NutritionPage() {
   const [lastIntraWorkoutItem, setLastIntraWorkoutItem] = useState<FoodItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const isOnline = useOnlineStatus()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [form, setForm] = useState(emptyForm)
   // Bumped after an entry is saved so the (server-cached) AI insight
@@ -226,6 +229,7 @@ export default function NutritionPage() {
     } else {
       setForm({ ...emptyForm, date: today })
     }
+    setSaveError(null)
     setIsDialogOpen(true)
   }
 
@@ -346,8 +350,11 @@ export default function NutritionPage() {
     })
   }
 
+  const offlineSaveMessage = "You're offline - this entry wasn't saved. Reconnect and try again."
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSaveError(null)
 
     const {
       data: { user },
@@ -377,6 +384,10 @@ export default function NutritionPage() {
     if (entryError || !entry) {
       console.error('Error saving nutrition entry:', entryError)
       setSaving(false)
+      // Never silent - a failed save here previously just logged to the
+      // console with no visible sign anything went wrong, so a lost
+      // connection mid-log could look identical to a successful save.
+      setSaveError(isOnline ? 'Could not save this entry. Please try again.' : offlineSaveMessage)
       return
     }
 
@@ -407,6 +418,17 @@ export default function NutritionPage() {
       )
       if (itemsError) {
         console.error('Error saving food items:', itemsError)
+        setSaving(false)
+        // The entry itself DID save above - only the food items list
+        // failed. Previously this closed the dialog anyway, silently
+        // dropping every logged food item with no indication - now it
+        // stays open so nothing looks saved when it wasn't.
+        setSaveError(
+          isOnline
+            ? 'Your totals saved, but the food items list failed to save. Please try saving again.'
+            : offlineSaveMessage
+        )
+        return
       }
     }
 
@@ -494,6 +516,14 @@ export default function NutritionPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSave} className="space-y-4">
+                {/* Proactive - shown before a save is even attempted, so a
+                    lost connection is never a silent surprise mid-log. */}
+                {!isOnline && (
+                  <div className="flex items-center gap-2 border border-lapis-garnet/40 bg-lapis-garnet/[0.06] rounded-lapis-md px-4 py-3 text-sm text-lapis-garnet">
+                    <WifiOff className="w-4 h-4 shrink-0" />
+                    You&apos;re offline - this entry won&apos;t save until you&apos;re back online.
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="entry-date" className="text-lapis-text-secondary">
                     Date
@@ -662,6 +692,8 @@ export default function NutritionPage() {
                     </div>
                   ))}
                 </div>
+
+                {saveError && <p className="text-sm text-lapis-garnet">{saveError}</p>}
 
                 <Button type="submit" disabled={saving} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                   {saving ? 'Saving...' : 'Save Entry'}
