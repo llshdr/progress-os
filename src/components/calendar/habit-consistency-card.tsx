@@ -14,12 +14,13 @@ const WEEKS_SHOWN = 8
 // already built) - streak count plus a weekly heatmap grid, same shape
 // as any other week-bucketed grid in this app (the weekday picker in
 // HabitsCard itself, muscle-group pill grids), not a new charting
-// library. Deliberately no color for "missed" days - just filled
+// library. Deliberately no WARNING color for "missed" days - just filled
 // (logged) vs. unfilled (not logged) vs. muted (not applicable that
-// day) - same "never a guilt mechanic" precedent daysSinceLastLog
-// already established, held here even though streaks themselves are a
-// deliberate, explicitly-requested reversal of that file's earlier
-// "no streak mechanics" stance.
+// day) vs. a dashed accent outline for a forgiven miss (one free day/week
+// - computeHabitStreak/buildHabitHeatmapWeeks in habits.ts) - same "never
+// a guilt mechanic" precedent daysSinceLastLog already established, held
+// here even though streaks themselves are a deliberate, explicitly-
+// requested reversal of that file's earlier "no streak mechanics" stance.
 export default function HabitConsistencyCard({ habits, habitLogs }: Props) {
   const today = getLocalDateString()
 
@@ -50,13 +51,15 @@ export default function HabitConsistencyCard({ habits, habitLogs }: Props) {
                     {week.map((cell) => (
                       <div
                         key={cell.date}
-                        title={cell.date}
+                        title={cell.grace ? `${cell.date} - missed, but forgiven (1 free day/week)` : cell.date}
                         className={`w-3.5 h-3.5 rounded-sm ${
                           !cell.applicable
                             ? 'bg-lapis-surface-1 border border-lapis-border-subtle'
                             : cell.logged
                               ? 'bg-lapis-accent-500'
-                              : 'bg-lapis-surface-2 border border-lapis-border-subtle'
+                              : cell.grace
+                                ? 'bg-lapis-surface-2 border border-dashed border-lapis-accent-500/50'
+                                : 'bg-lapis-surface-2 border border-lapis-border-subtle'
                         }`}
                       />
                     ))}

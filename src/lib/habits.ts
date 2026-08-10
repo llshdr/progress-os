@@ -43,6 +43,39 @@ export function daysSinceLastLog(logs: HabitLog[], habitId: string, today: strin
   return Math.round((new Date(today).getTime() - new Date(mostRecent).getTime()) / msPerDay)
 }
 
+// Walks backward from `today` the same way computeHabitStreak does,
+// returning the set of missed-but-forgiven dates - at most one per
+// Monday-start week (getLocalWeekStart), and only ever a date the habit
+// actually applies to (a day it doesn't apply to was never a miss to
+// begin with). Shared by computeHabitStreak (to know which misses not to
+// break the streak on) and buildHabitHeatmapWeeks (to mark the exact
+// same days as "grace" cells) - one shared computation rather than two
+// independently-written rules that could quietly disagree about which
+// day was forgiven.
+function computeGraceDates(logs: HabitLog[], habit: Habit, today: string): Set<string> {
+  const habitLogDates = new Set(logs.filter((l) => l.habitId === habit.id).map((l) => l.date))
+  const grace = new Set<string>()
+  if (habitLogDates.size === 0) return grace
+
+  const earliest = Array.from(habitLogDates).reduce((min, d) => (d < min ? d : min))
+  const cursor = new Date(today + 'T00:00:00')
+  const earliestDate = new Date(earliest + 'T00:00:00')
+  const graceUsedByWeek = new Set<string>()
+
+  while (cursor >= earliestDate) {
+    const dateStr = getLocalDateString(cursor)
+    if (habitAppliesToDate(habit, dateStr) && !habitLogDates.has(dateStr)) {
+      const weekKey = getLocalDateString(getLocalWeekStart(cursor))
+      if (!graceUsedByWeek.has(weekKey)) {
+        graceUsedByWeek.add(weekKey)
+        grace.add(dateStr)
+      }
+    }
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return grace
+}
+
 // A later, explicitly-opted-into reversal of daysSinceLastLog's own
 // "no streak mechanics" precedent - the owner asked for a real
 // consistency view. Framed as a personal-best number, never a
@@ -53,6 +86,12 @@ export function daysSinceLastLog(logs: HabitLog[], habitId: string, today: strin
 // to (per habitAppliesToDate) are skipped entirely - they neither extend
 // nor break the streak, so a habit scheduled Mon/Wed/Fri counts
 // consecutive SCHEDULED occurrences, not consecutive calendar days.
+//
+// One missed scheduled day per week is forgiven (computeGraceDates) - a
+// common, well-liked streak-protection mechanic: it doesn't extend the
+// streak count (nothing was actually logged that day), but it also
+// doesn't reset it. A second miss in the same week still breaks it -
+// grace is capped at one, not unlimited.
 export function computeHabitStreak(
   logs: HabitLog[],
   habit: Habit,
@@ -61,6 +100,7 @@ export function computeHabitStreak(
   const habitLogDates = new Set(logs.filter((l) => l.habitId === habit.id).map((l) => l.date))
   if (habitLogDates.size === 0) return { current: 0, longest: 0 }
 
+  const graceDates = computeGraceDates(logs, habit, today)
   const earliest = Array.from(habitLogDates).reduce((min, d) => (d < min ? d : min))
   const cursor = new Date(today + 'T00:00:00')
   const earliestDate = new Date(earliest + 'T00:00:00')
@@ -76,6 +116,8 @@ export function computeHabitStreak(
       if (habitLogDates.has(dateStr)) {
         running += 1
         if (stillCounting) current = running
+      } else if (graceDates.has(dateStr)) {
+        // Forgiven - the streak passes through this day unbroken.
       } else {
         longest = Math.max(longest, running)
         running = 0
@@ -93,6 +135,10 @@ export interface HabitHeatmapCell {
   date: string
   applicable: boolean
   logged: boolean
+  // Same dates computeHabitStreak treats as forgiven (computeGraceDates) -
+  // lets the grid show WHY a gap didn't break the streak number next to
+  // it, instead of the two looking like they disagree.
+  grace: boolean
 }
 
 // weeksBack rows (oldest first), 7 columns (Mon-Sun) each - the same
@@ -101,6 +147,7 @@ export interface HabitHeatmapCell {
 // Pure display data; the card decides how to color each cell.
 export function buildHabitHeatmapWeeks(logs: HabitLog[], habit: Habit, today: string, weeksBack = 8): HabitHeatmapCell[][] {
   const habitLogDates = new Set(logs.filter((l) => l.habitId === habit.id).map((l) => l.date))
+  const graceDates = computeGraceDates(logs, habit, today)
   const currentWeekStart = getLocalWeekStart(new Date(today + 'T00:00:00'))
 
   const weeks: HabitHeatmapCell[][] = []
@@ -117,6 +164,7 @@ export function buildHabitHeatmapWeeks(logs: HabitLog[], habit: Habit, today: st
         date: dateStr,
         applicable: dateStr <= today && habitAppliesToDate(habit, dateStr),
         logged: habitLogDates.has(dateStr),
+        grace: graceDates.has(dateStr),
       })
     }
     weeks.push(row)

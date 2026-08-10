@@ -106,16 +106,30 @@ export const DAY_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE
 
 // Categorical, not semantic - each source keeps a fixed, distinct hue
 // from the Lapis palette so they stay visually distinguishable, reusing
-// (not inventing) the existing accent/citrine/jade tokens: gym was
+// (not inventing) existing tokens rather than adding new ones: gym was
 // already blue, so it keeps the primary lapis accent; races keeps its
-// warm distinction via citrine; habits keep their green via jade.
+// warm distinction via citrine; habits keep their green via jade; goal
+// reuses gold, matching the "goal-focus" framing dashboard-client.tsx's
+// own gold-accented Today's Focus card already established (not an
+// arbitrary new pairing). entry stays deliberately neutral - the
+// generic/default source, distinguished by the plain absence of a hue
+// the same way a calendar app's "default calendar" usually reads.
+//
+// Bumped up from an earlier, subtler /10-bg //30-border pass once the
+// narrower week-view columns (week-view.tsx) made the low-opacity fills
+// genuinely harder to tell apart at a glance than the full-width day
+// view - a real legibility bump, shared by both views since they're
+// meant to render identically, not a week-only special case.
 export const SOURCE_STYLE: Record<TimedItemSource, string> = {
   entry: 'bg-lapis-surface-2 border-lapis-border-strong text-lapis-text-primary',
-  gym: 'bg-lapis-accent-500/10 border-lapis-accent-400/30 text-lapis-accent-400',
-  races: 'bg-lapis-citrine/10 border-lapis-citrine/30 text-lapis-citrine',
-  race_day: 'bg-lapis-surface-2 border-lapis-border-strong text-lapis-text-primary',
-  goal: 'bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-secondary',
-  habit: 'bg-lapis-jade/10 border-lapis-jade/30 text-lapis-jade',
+  gym: 'bg-lapis-accent-500/15 border-lapis-accent-400/40 text-lapis-accent-400',
+  races: 'bg-lapis-citrine/15 border-lapis-citrine/40 text-lapis-citrine',
+  // Bolder than a regular races block - the single most important day
+  // on the whole calendar, same "emphasized variant" shape as
+  // HABIT_DONE_STYLE below, not a fourth independent hue.
+  race_day: 'bg-lapis-citrine/30 border-lapis-citrine/70 text-lapis-text-primary',
+  goal: 'bg-lapis-gold-500/15 border-lapis-gold-500/40 text-lapis-gold-500',
+  habit: 'bg-lapis-jade/15 border-lapis-jade/40 text-lapis-jade',
 }
 // Brighter variant once a habit is logged for the displayed day - the
 // only source with a done/not-done state, so it's the only one that
@@ -143,7 +157,7 @@ export const SOURCE_ICON_COLOR: Record<TimedItemSource, string> = {
   gym: 'text-lapis-accent-400',
   races: 'text-lapis-citrine',
   race_day: 'text-lapis-citrine',
-  goal: 'text-lapis-text-tertiary',
+  goal: 'text-lapis-gold-500',
   habit: 'text-lapis-jade',
 }
 export const SOURCE_DOT_COLOR: Record<TimedItemSource, string> = {
@@ -151,7 +165,7 @@ export const SOURCE_DOT_COLOR: Record<TimedItemSource, string> = {
   gym: 'bg-lapis-accent-400',
   races: 'bg-lapis-citrine',
   race_day: 'bg-lapis-citrine',
-  goal: 'bg-lapis-text-tertiary',
+  goal: 'bg-lapis-gold-500',
   habit: 'bg-lapis-jade',
 }
 
