@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Sparkles, Trash2 } from 'lucide-react'
+import { Sparkles, Trash2, Lock } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import GoalFormFields from '@/components/goals/goal-form-fields'
 import type { ActionItemStatus, GoalScope } from '@/lib/goals'
@@ -32,6 +32,9 @@ export default function GoalDetailPage() {
   const [status, setStatus] = useState<ActionItemStatus>('active')
   const [scope, setScope] = useState<GoalScope | null>(null)
   const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
+  const [dependsOnGoalId, setDependsOnGoalId] = useState<string | null>(null)
+  const [availableGoals, setAvailableGoals] = useState<{ id: string; title: string }[]>([])
+  const [prerequisite, setPrerequisite] = useState<{ title: string; status: ActionItemStatus } | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [linkedMilestones, setLinkedMilestones] = useState<LinkedMilestone[]>([])
@@ -61,6 +64,22 @@ export default function GoalDetailPage() {
     setStatus(data.status)
     setScope(data.scope ?? null)
     setAutoBlockBeforeDeadline(data.auto_block_before_deadline ?? false)
+    setDependsOnGoalId(data.depends_on_goal_id ?? null)
+
+    const { data: goalsList } = await supabase
+      .from('goals')
+      .select('id, title')
+      .eq('user_id', data.user_id)
+      .neq('status', 'archived')
+      .neq('id', params.id as string)
+    setAvailableGoals(goalsList ?? [])
+
+    if (data.depends_on_goal_id) {
+      const { data: prereq } = await supabase.from('goals').select('title, status').eq('id', data.depends_on_goal_id).maybeSingle()
+      setPrerequisite(prereq ? { title: prereq.title, status: prereq.status } : null)
+    } else {
+      setPrerequisite(null)
+    }
 
     const { data: milestones, error: milestonesError } = await supabase
       .from('milestones')
@@ -121,6 +140,7 @@ export default function GoalDetailPage() {
         status,
         scope,
         auto_block_before_deadline: autoBlockBeforeDeadline,
+        depends_on_goal_id: dependsOnGoalId,
       })
       .eq('id', params.id)
 
@@ -172,6 +192,19 @@ export default function GoalDetailPage() {
         </p>
 
         <div className="max-w-2xl space-y-6">
+          {/* Derived at render time from the prerequisite's current status,
+              never a separately-stored "blocked" flag - clears itself the
+              moment the prerequisite is marked done, same "derive, don't
+              store" precedent used elsewhere in this app. */}
+          {prerequisite && prerequisite.status !== 'done' && (
+            <div className="flex items-center gap-3 border border-lapis-border-strong rounded-lapis-md bg-lapis-surface-2 p-4">
+              <Lock className="w-4 h-4 text-lapis-text-tertiary shrink-0" />
+              <p className="text-lapis-text-secondary text-sm">
+                Blocked until <span className="text-lapis-text-primary font-medium">&ldquo;{prerequisite.title}&rdquo;</span> is done.
+              </p>
+            </div>
+          )}
+
           <GoalFormFields
             title={title}
             onTitleChange={setTitle}
@@ -189,6 +222,9 @@ export default function GoalDetailPage() {
             onScopeChange={setScope}
             autoBlockBeforeDeadline={autoBlockBeforeDeadline}
             onAutoBlockBeforeDeadlineChange={setAutoBlockBeforeDeadline}
+            dependsOnGoalId={dependsOnGoalId}
+            onDependsOnGoalIdChange={setDependsOnGoalId}
+            availableGoals={availableGoals}
           />
 
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">

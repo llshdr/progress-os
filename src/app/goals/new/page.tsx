@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
@@ -20,8 +20,25 @@ export default function NewGoalPage() {
   const [status, setStatus] = useState<ActionItemStatus>('active')
   const [scope, setScope] = useState<GoalScope | null>(null)
   const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
+  const [dependsOnGoalId, setDependsOnGoalId] = useState<string | null>(null)
+  const [availableGoals, setAvailableGoals] = useState<{ id: string; title: string }[]>([])
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+
+  // Candidates for "depends on" - excludes archived goals, since an
+  // archived goal will never become done and would permanently block
+  // whatever depends on it.
+  useEffect(() => {
+    const fetchAvailableGoals = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase.from('goals').select('id, title').eq('user_id', user.id).neq('status', 'archived')
+      setAvailableGoals(data ?? [])
+    }
+    fetchAvailableGoals()
+  }, [])
 
   const isValid = title.trim().length > 0
 
@@ -45,6 +62,7 @@ export default function NewGoalPage() {
       status,
       scope,
       auto_block_before_deadline: autoBlockBeforeDeadline,
+      depends_on_goal_id: dependsOnGoalId,
     })
 
     if (error) {
@@ -83,6 +101,9 @@ export default function NewGoalPage() {
             onScopeChange={setScope}
             autoBlockBeforeDeadline={autoBlockBeforeDeadline}
             onAutoBlockBeforeDeadlineChange={setAutoBlockBeforeDeadline}
+            dependsOnGoalId={dependsOnGoalId}
+            onDependsOnGoalIdChange={setDependsOnGoalId}
+            availableGoals={availableGoals}
           />
 
           <Button

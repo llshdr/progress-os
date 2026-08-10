@@ -28,6 +28,10 @@ export default function GoalsPage() {
   // reflects every goal regardless of which subset is currently listed
   // below it.
   const [goalStatuses, setGoalStatuses] = useState<ActionItemStatus[]>([])
+  // Keyed by goal id, only present when that goal's depends_on_goal_id
+  // points at a prerequisite that isn't done yet - derived fresh from
+  // current data every fetch, never a separately-stored "blocked" flag.
+  const [blockedInfo, setBlockedInfo] = useState<Map<string, string>>(new Map())
   const supabase = createClient()
 
   useEffect(() => {
@@ -37,6 +41,39 @@ export default function GoalsPage() {
   useEffect(() => {
     fetchGoalStatuses()
   }, [])
+
+  // Separate from fetchItems - a lightweight lookup kept out of the
+  // shared fetchActiveActionItems/ActionItem shape (used by the
+  // dashboard and Today panel too), so this list-only feature doesn't
+  // widen that shared contract.
+  useEffect(() => {
+    fetchBlockedInfo()
+  }, [items])
+
+  const fetchBlockedInfo = async () => {
+    const goalIds = items.filter((i) => i.kind === 'goal').map((i) => i.id)
+    if (goalIds.length === 0) {
+      setBlockedInfo(new Map())
+      return
+    }
+
+    const { data: goalsWithDeps } = await supabase.from('goals').select('id, depends_on_goal_id').in('id', goalIds).not('depends_on_goal_id', 'is', null)
+    const prereqIds = Array.from(new Set((goalsWithDeps ?? []).map((g) => g.depends_on_goal_id as string)))
+    if (prereqIds.length === 0) {
+      setBlockedInfo(new Map())
+      return
+    }
+
+    const { data: prereqs } = await supabase.from('goals').select('id, title, status').in('id', prereqIds)
+    const prereqById = new Map((prereqs ?? []).map((p) => [p.id, p]))
+
+    const next = new Map<string, string>()
+    for (const g of goalsWithDeps ?? []) {
+      const prereq = prereqById.get(g.depends_on_goal_id as string)
+      if (prereq && prereq.status !== 'done') next.set(g.id, prereq.title)
+    }
+    setBlockedInfo(next)
+  }
 
   const fetchGoalStatuses = async () => {
     const {
@@ -173,6 +210,9 @@ export default function GoalsPage() {
               <Link href="/gym/goals" className="text-lapis-text-disabled hover:text-lapis-text-tertiary text-xs underline underline-offset-2">
                 This week's quick-win goals →
               </Link>
+              <Link href="/goals/archived" className="block text-lapis-text-disabled hover:text-lapis-text-tertiary text-xs underline underline-offset-2">
+                Archived goals →
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -276,6 +316,11 @@ export default function GoalsPage() {
                         {daysSinceTouched >= 7 && (
                           <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                             Untouched {daysSinceTouched}d
+                          </span>
+                        )}
+                        {item.kind === 'goal' && blockedInfo.has(item.id) && (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-strong">
+                            Blocked: {blockedInfo.get(item.id)}
                           </span>
                         )}
                       </div>

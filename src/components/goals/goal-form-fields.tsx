@@ -24,6 +24,9 @@ interface GoalFormFieldsProps {
   onScopeChange: (value: GoalScope | null) => void
   autoBlockBeforeDeadline: boolean
   onAutoBlockBeforeDeadlineChange: (value: boolean) => void
+  dependsOnGoalId: string | null
+  onDependsOnGoalIdChange: (value: string | null) => void
+  availableGoals: { id: string; title: string }[]
 }
 
 // Shared by goals/new and the goal detail page - same fields, same shape,
@@ -45,6 +48,9 @@ export default function GoalFormFields({
   onScopeChange,
   autoBlockBeforeDeadline,
   onAutoBlockBeforeDeadlineChange,
+  dependsOnGoalId,
+  onDependsOnGoalIdChange,
+  availableGoals,
 }: GoalFormFieldsProps) {
   return (
     <>
@@ -167,6 +173,31 @@ export default function GoalFormFields({
           How big you consider this — affects your rank ceiling, not shown to anyone else.
         </p>
       </div>
+
+      {availableGoals.length > 0 && (
+        <div className="space-y-2">
+          <Label className="text-lapis-text-secondary">Depends on (optional)</Label>
+          <Select
+            value={dependsOnGoalId ?? 'none'}
+            onValueChange={(value) => onDependsOnGoalIdChange(value === 'none' ? null : value)}
+          >
+            <SelectTrigger className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-lapis-bg border-lapis-border-subtle">
+              <SelectItem value="none">Not blocked by another goal</SelectItem>
+              {availableGoals.map((g) => (
+                <SelectItem key={g.id} value={g.id}>
+                  {g.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-lapis-text-tertiary text-xs">
+            If set, this goal is flagged as blocked until that one is marked done.
+          </p>
+        </div>
+      )}
     </>
   )
 }
