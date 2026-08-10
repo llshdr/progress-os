@@ -51,7 +51,52 @@ type LibraryExercise = { id: string; name: string; exercise_type: string }
 
 type LoadWindow = { sessionCount: number; avgRir: number | null; hardestSetRir: number | null }
 
+type BestEffort = { label: string; targetKm: number; actualKm: number; durationSeconds: number; date: string }
+
 const RECENT_LIMIT = 20
+
+// A bodyweight reading older than this is too stale to trust for a ratio
+// PR - showing a months-old bodyweight against today's lift would silently
+// misstate the ratio. No existing "how recent counts as current" constant
+// to reuse here (the 90-day windows elsewhere in this app are consistency
+// windows, a different question) - a fresh, explicit judgment call, not
+// a borrowed one.
+const BODYWEIGHT_RECENCY_DAYS = 30
+
+// Standard recreational running distances people actually track a "PR"
+// for - not an exhaustive race-distance list. Tolerance is generous
+// (±5%) since a logged run rarely lands on an exact number; the honest
+// part is always displaying the REAL logged distance/time for whichever
+// run wins, never a projected/interpolated exact-5.00km time.
+const STANDARD_RUN_DISTANCES_KM: { label: string; km: number }[] = [
+  { label: '5K', km: 5 },
+  { label: '10K', km: 10 },
+  { label: 'Half Marathon', km: 21.1 },
+  { label: 'Marathon', km: 42.2 },
+]
+const RUN_DISTANCE_TOLERANCE = 0.05
+
+// Best real logged effort at each standard distance, discipline-wide
+// (unions every exercise tagged cardio_type='running' - migration 073 -
+// rather than per-exercise, so "Treadmill Run" and "Outdoor Run" both
+// count toward one real 5K PR instead of splitting it in two). Ranked by
+// pace within the tolerance band (not raw duration) so a shorter run in
+// the band can't unfairly beat a longer, truly-faster-paced one - but the
+// winner's own real time/distance is what's shown, never a recomputed
+// "exactly 5.00km" projection.
+function computeRunningBestEfforts(activities: CardioActivity[]): BestEffort[] {
+  const runs = activities.filter((a) => a.cardioType === 'running')
+  const efforts: BestEffort[] = []
+  for (const { label, km } of STANDARD_RUN_DISTANCES_KM) {
+    const eligible = runs.filter((a) => Math.abs(a.distanceKm - km) / km <= RUN_DISTANCE_TOLERANCE)
+    if (eligible.length === 0) continue
+    const best = eligible.reduce((fastest, a) =>
+      a.durationSeconds / a.distanceKm < fastest.durationSeconds / fastest.distanceKm ? a : fastest
+    )
+    efforts.push({ label, targetKm: km, actualKm: best.distanceKm, durationSeconds: best.durationSeconds, date: best.date })
+  }
+  return efforts
+}
 
 // Two honest, separate signals - session frequency and per-set effort -
 // rather than one fabricated composite "load score" that would imply a
@@ -107,6 +152,9 @@ export default function RecordsPage() {
   const [loadStats, setLoadStats] = useState<{ sevenDay: LoadWindow; twentyEightDay: LoadWindow } | null>(null)
   const [loading, setLoading] = useState(true)
   const [muscleFilter, setMuscleFilter] = useState<string | null>(null)
+  // Null covers both "never logged" and "too stale to trust" - the ratio
+  // PR below is simply omitted in either case, never guessed at.
+  const [recentBodyweightKg, setRecentBodyweightKg] = useState<number | null>(null)
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [exerciseMode, setExerciseMode] = useState<'library' | 'custom'>('library')
@@ -180,6 +228,7 @@ export default function RecordsPage() {
       cardioActivityData,
       { data: recentWorkouts, error: workoutsError },
       { data: rirSets, error: rirSetsError },
+      { data: latestWeightEntry, error: weightError },
     ] = await Promise.all([
       supabase.from('sets').select('exercise_id, weight, reps'),
       supabase.from('cardio_logs').select('exercise_id, distance_km, duration_seconds'),
@@ -199,6 +248,13 @@ export default function RecordsPage() {
         .select('rir, created_at, exercise:exercises!inner(workout:workouts!inner(completed_at))')
         .eq('completed', true)
         .not('rir', 'is', null),
+      supabase
+        .from('weight_entries')
+        .select('weight, recorded_at')
+        .eq('user_id', user.id)
+        .order('recorded_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ])
 
     if (setsError) console.error('Error fetching sets:', setsError)
@@ -206,6 +262,12 @@ export default function RecordsPage() {
     if (manualError) console.error('Error fetching manual PRs:', manualError)
     if (workoutsError) console.error('Error fetching workouts for load stats:', workoutsError)
     if (rirSetsError) console.error('Error fetching per-set RIR for load stats:', rirSetsError)
+    if (weightError) console.error('Error fetching latest weight entry:', weightError)
+
+    if (latestWeightEntry) {
+      const daysOld = (Date.now() - new Date(latestWeightEntry.recorded_at).getTime()) / (24 * 60 * 60 * 1000)
+      setRecentBodyweightKg(daysOld <= BODYWEIGHT_RECENCY_DAYS ? latestWeightEntry.weight : null)
+    }
 
     // Feeds the rank system's progression bonus (migration 076) - fire
     // and forget, doesn't block this page's own render. Computed here
@@ -433,6 +495,7 @@ export default function RecordsPage() {
   const cardioWeeks = bucketWeeklyCardioDistance(filteredCardioActivity)
   const maxWeekKm = Math.max(...cardioWeeks.map((w) => w.totalKm), 1)
   const recentCardioActivity = filteredCardioActivity.slice(0, RECENT_LIMIT)
+  const runningBestEfforts = computeRunningBestEfforts(filteredCardioActivity)
 
   const musclesInUse = new Set([...strengthRecords, ...cardioRecords].map((r) => r.muscleGroup))
   const availableMuscleGroups = MUSCLE_GROUPS.filter((m) => musclesInUse.has(m))
@@ -780,6 +843,19 @@ export default function RecordsPage() {
                                 {headline ? `${Math.round(headline.estimated1RM)} kg` : 'N/A'}
                               </p>
                             </div>
+                            {/* Alongside the absolute PR above, never replacing
+                                it - omitted entirely (not shown as "N/A") when
+                                there's no recent bodyweight to divide by, since
+                                a stale or missing bodyweight would make this
+                                ratio actively misleading rather than just absent. */}
+                            {headline && recentBodyweightKg && (
+                              <div>
+                                <p className="text-xs text-lapis-text-tertiary mb-1">× Bodyweight</p>
+                                <p className="text-lapis-text-primary font-semibold">
+                                  {(headline.estimated1RM / recentBodyweightKg).toFixed(2)}×
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                         {/* The full 1RM-over-time trend already lives on the
@@ -804,6 +880,26 @@ export default function RecordsPage() {
 
             <div>
               <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Cardio Records</h2>
+
+              {runningBestEfforts.length > 0 && (
+                <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
+                  <h3 className="text-sm font-medium text-lapis-text-secondary mb-1">Best Efforts (Running)</h3>
+                  <p className="text-lapis-text-disabled text-xs mb-4">
+                    Your real fastest logged run near each distance - not a projected exact-distance time.
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {runningBestEfforts.map((effort) => (
+                      <div key={effort.label}>
+                        <p className="text-xs text-lapis-text-tertiary mb-1">{effort.label}</p>
+                        <p className="text-lapis-text-primary font-semibold">{formatDuration(effort.durationSeconds)}</p>
+                        <p className="text-lapis-text-disabled text-xs mt-0.5">
+                          {effort.actualKm.toFixed(2)} km · {formatActivityDate(effort.date)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {filteredCardioActivity.length > 0 && (
                 <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">

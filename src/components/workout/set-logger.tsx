@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Check, X, Trash2, Pencil } from 'lucide-react'
+import { Check, X, Trash2, Pencil, Trophy } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { getExerciseRecommendation, RecommendationResult } from '@/lib/ai-coach/client'
 import { getLocalDateString } from '@/lib/date'
 import { selectActiveMesocycle, type Mesocycle } from '@/lib/mesocycle'
+import { getExerciseHistory } from '@/lib/ai-coach/getExerciseHistory'
+import { estimateOneRepMax } from '@/lib/estimate1rm'
 
 interface SetLoggerProps {
   exerciseId: string
@@ -98,6 +100,13 @@ export default function SetLogger({
   // already applies to drop/myo sets in fetchPreviousSet below, just a
   // different reason a set isn't a real top-set data point.
   const [isDeloadWeek, setIsDeloadWeek] = useState(false)
+  // Best estimated 1RM among this exercise's real top-set history (drop/myo
+  // and deload-week sets excluded - see fetchPersonalBest), null until
+  // that history loads or there simply isn't any yet. Used only to detect
+  // a PR moment below - never displayed as its own number here, that's
+  // what the Records page is for.
+  const [personalBestEst1RM, setPersonalBestEst1RM] = useState<number | null>(null)
+  const [showPrCelebration, setShowPrCelebration] = useState(false)
   const supabase = createClient()
 
   // Ticks the visible rest timer while it's running. Nothing to rest from
@@ -255,6 +264,23 @@ export default function SetLogger({
     fetchDeloadStatus()
   }, [])
 
+  // This exercise's real personal-best est. 1RM, for PR-celebration
+  // detection below - reuses the AI Coach's own history fetch (already
+  // excludes deload-week sets, see getExerciseHistory.ts) rather than a
+  // separate query. Drop/myo sets are filtered out here too: a follow-on
+  // burnout set was never a real top-set attempt, so it shouldn't be able
+  // to either set or beat a PR.
+  useEffect(() => {
+    getExerciseHistory(supabase, exerciseLibraryId ?? null, exerciseName).then((history) => {
+      const normalSets = history.filter((h) => h.technique === null)
+      if (normalSets.length === 0) {
+        setPersonalBestEst1RM(null)
+        return
+      }
+      setPersonalBestEst1RM(Math.max(...normalSets.map((s) => estimateOneRepMax(s.weight, s.reps))))
+    })
+  }, [exerciseLibraryId, exerciseName])
+
   // Flipping it also persists as the new default for next time, same
   // precedent as variant_id/training_phase already saving immediately.
   const handleToggleNutrition = async () => {
@@ -355,11 +381,13 @@ export default function SetLogger({
     // saved — the target/presets below are just a visual reference, not
     // enforced.
     const restTimeSeconds = restStartedAt !== null ? Math.round((Date.now() - restStartedAt) / 1000) : null
+    const weightNum = parseFloat(weight)
+    const repsNum = parseInt(reps)
 
     const { error } = await supabase.from('sets').insert({
       exercise_id: exerciseId,
-      weight: parseFloat(weight),
-      reps: parseInt(reps),
+      weight: weightNum,
+      reps: repsNum,
       completed: true,
       set_order: currentSetNumber,
       rest_time_seconds: restTimeSeconds,
@@ -373,6 +401,23 @@ export default function SetLogger({
       alert('Failed to save set')
       setLoading(false)
       return
+    }
+
+    // PR check - only for a real top-set attempt (not a drop/myo follow-on,
+    // and not a deload-week set, which is intentionally light and was never
+    // trying to be a PR). Silently updates the tracked best either way, so
+    // a second beat within the same session is still caught; only fires
+    // the celebration when there was real prior history to beat - a first-
+    // ever logged set for this exercise has nothing to celebrate against.
+    if (setType === 'normal' && !isDeloadWeek) {
+      const newEst1RM = estimateOneRepMax(weightNum, repsNum)
+      if (personalBestEst1RM != null && newEst1RM > personalBestEst1RM) {
+        setShowPrCelebration(true)
+        setTimeout(() => setShowPrCelebration(false), 4000)
+      }
+      if (personalBestEst1RM == null || newEst1RM > personalBestEst1RM) {
+        setPersonalBestEst1RM(newEst1RM)
+      }
     }
 
     // Prepare for next set
@@ -545,6 +590,17 @@ export default function SetLogger({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* PR celebration - brief, auto-dismissing, gold accent (same treatment
+          dashboard-client.tsx already uses for its own gold-accented callout)
+          rather than a new visual language. No confetti/emoji - a clean
+          bordered callout that fades in and clears itself. */}
+      {showPrCelebration && (
+        <div className="animate-in fade-in zoom-in-95 duration-300 border border-lapis-gold-500/40 rounded-lapis-md bg-lapis-gold-500/[0.08] px-4 py-3 flex items-center gap-2.5">
+          <Trophy className="w-4 h-4 text-lapis-gold-500 shrink-0" />
+          <p className="text-lapis-text-primary text-sm">New PR — that beat your previous best on this exercise.</p>
         </div>
       )}
 
