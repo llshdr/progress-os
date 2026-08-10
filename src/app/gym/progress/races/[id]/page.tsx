@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Flag, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react'
+import { Flag, ArrowLeft, ChevronDown, ChevronUp, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -757,6 +757,16 @@ export default function RaceDetailPage() {
       : []),
   ]
   const projectedFinishSeconds = snapshot ? estimateProjectedFinishSeconds(race.race_type, snapshot) : null
+  // Race-to-race comparison - same "actual vs. a reference time" pattern
+  // the Race Result card below already uses for target/projection, just
+  // applied against a real earlier result instead. Same race_type only
+  // (an Ironman result compared to a 10K would be meaningless), and the
+  // closest PRIOR one by date - pastRaceResults is already sorted most-
+  // recent-first (analyze-fitness.ts) and already excludes this race, so
+  // filtering to strictly-earlier dates and taking the first match is
+  // exactly "the last time I did this distance."
+  const priorSameTypeResult =
+    snapshot?.pastRaceResults.find((r) => r.raceType === race.race_type && r.raceDate < race.race_date) ?? null
   const courseRange =
     category === 'multisport' && snapshot
       ? estimateCourseFinishRange(race.race_type, level, snapshot.pastRaceResults, race.courseId, courseTimeBands[level] ?? null)
@@ -1032,6 +1042,14 @@ export default function RaceDetailPage() {
             {RACE_TYPE_DISTANCE[race.race_type] && <p className="text-lapis-text-disabled text-xs mt-1">{RACE_TYPE_DISTANCE[race.race_type]}</p>}
           </div>
         </div>
+
+        <Link
+          href={`/gym/progress/races/${race.id}/budget`}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2 hover:text-lapis-text-primary transition-colors mb-8"
+        >
+          <Wallet className="w-3.5 h-3.5" />
+          Budget
+        </Link>
 
         {step !== 'review' && (
           <div className="flex flex-wrap items-center gap-1 mb-8 text-xs">
@@ -1760,6 +1778,17 @@ export default function RaceDetailPage() {
                             })()}
                           </p>
                         ) : null}
+                        {priorSameTypeResult && (
+                          <p className="text-lapis-text-secondary text-sm">
+                            {(() => {
+                              const diff = race.resultDurationSeconds! - priorSameTypeResult.resultSeconds
+                              const label = priorSameTypeResult.courseOrLocation
+                                ? `your ${priorSameTypeResult.courseOrLocation} result`
+                                : `your ${new Date(priorSameTypeResult.raceDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} result`
+                              return `${diff <= 0 ? 'Faster' : 'Slower'} than ${label} (${formatDuration(priorSameTypeResult.resultSeconds)}) by ${formatDuration(Math.abs(diff))}`
+                            })()}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <div>
