@@ -54,17 +54,23 @@ export function selectActiveMesocycle(mesocycles: Mesocycle[], today: string): C
 }
 
 // The context sentence spliced into the AI Coach recommend route's
-// prompt, same tone/shape as that route's own raceContext. Deliberately
-// qualitative, never a numeric formula ("-10% this week") - the route is
-// already model-driven for weight/reps (unlike Races' periodization),
-// so this hands the model framing to reason with, the same way
-// phaseContext/volumeContext already do there.
+// prompt, same tone/shape as that route's own raceContext. Mostly
+// qualitative, never a numeric formula ("-10% this week") - the route
+// is already model-driven for weight/reps (unlike Races'
+// periodization), so this hands the model framing to reason with, the
+// same way phaseContext/volumeContext already do there. The deload
+// branch is the one deliberate exception: a concrete ~50% weight cut is
+// standard deload guidance (a 40-50% intensity reduction targets CNS
+// recovery specifically, which is driven by load, not volume) worth
+// stating as a number rather than leaving "reduce load" to the model's
+// own judgment of how much - reps/sets are left to the model's normal
+// reasoning since volume isn't what a deload is protecting.
 export function describeMesocycleContext(status: CurrentMesocycleStatus): string {
   const { mesocycle, currentWeek, isDeloadWeek, weeksUntilDeload } = status
   const label = mesocycle.label ? `"${mesocycle.label}"` : 'their current training block'
 
   if (isDeloadWeek) {
-    return `This lifter is in week ${currentWeek} of ${mesocycle.lengthWeeks} of ${label} - a planned deload week. Favor recovery: hold or reduce load/volume rather than chasing a new heavy top set, even if recent sets looked strong.`
+    return `This lifter is in week ${currentWeek} of ${mesocycle.lengthWeeks} of ${label} - a planned deload week. This overrides the "be ambitious" framing above for weight specifically: cut the recommended WEIGHT to roughly 50% of what you'd otherwise target this session (a standard 40-50% intensity reduction - deloads are for CNS recovery, which load drives, not volume). Keep reps and set count at their normal, non-deload targets - reason about those exactly as you would in any other week, don't reduce them just because it's a deload.`
   }
 
   const deloadNote = weeksUntilDeload != null ? ` (deload planned in ${weeksUntilDeload} week${weeksUntilDeload === 1 ? '' : 's'})` : ''

@@ -39,7 +39,7 @@ export async function getExerciseHistory(
   // built via string interpolation — an exercise name containing a comma or
   // other PostgREST-significant character would otherwise break or misbehave.
   const select =
-    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(id, weight, reps, rpe, rir, completed, created_at, set_type)'
+    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(id, weight, reps, rpe, rir, completed, created_at, set_type, is_deload_week)'
   const queries: PromiseLike<any>[] = []
 
   if (exerciseLibraryId) {
@@ -86,6 +86,16 @@ export async function getExerciseHistory(
 
     for (const set of row.sets ?? []) {
       if (!set.completed) continue
+      // A deload-week set is intentionally lighter by design (see
+      // mesocycle.ts) - not a real progression data point, so it's
+      // excluded here rather than tagged the way drop/myo sets are
+      // below. This shared function feeds both the AI Coach recommend
+      // route's history/prefill reasoning and gymSuggestions.ts's
+      // stall/regression detection (pure JS weight comparisons, no
+      // model in the loop to interpret a soft tag) - a real deload
+      // weight drop would otherwise misread as a stall or a regression
+      // in the latter.
+      if (set.is_deload_week) continue
       history.push({
         id: set.id,
         weight: typeof set.weight === 'string' ? parseFloat(set.weight) : set.weight,

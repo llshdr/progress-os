@@ -1,0 +1,26 @@
+-- Marks whether a set was logged during a planned deload week (see
+-- training_mesocycles, migration 058) - a real, always-computable fact
+-- at logging time (was there an active mesocycle whose
+-- deload_week_number matched the current week), not an "unknown"
+-- annotation the way set_type (059) or rir (075) are - so this is
+-- NOT NULL DEFAULT false rather than a nullable CHECK column. Existing
+-- rows default to false: deload flagging didn't exist when they were
+-- logged, so "not flagged" is the honest backfill, not a guess.
+--
+-- Written once at logging time by set-logger.tsx (a snapshot of the
+-- mesocycle config as it existed then - if the athlete edits the
+-- mesocycle's deload_week_number later, already-logged flags don't
+-- retroactively change, a deliberate, minor departure from this
+-- feature's usual "derive, never store" precedent, accepted because
+-- storing here is what keeps every read site a simple filter instead
+-- of re-deriving mesocycle status per historical set).
+--
+-- Used as a hard exclusion everywhere a "last real working set"
+-- baseline is read: fetchPreviousSet's prefill (same shape as its
+-- existing set_type exclusion) and getExerciseHistory - shared by the
+-- AI Coach recommend route's progression reasoning and
+-- gymSuggestions.ts's stall/regression detection, both of which would
+-- otherwise misread an intentionally-light deload set as a real
+-- progression data point.
+ALTER TABLE sets
+ADD COLUMN IF NOT EXISTS is_deload_week BOOLEAN NOT NULL DEFAULT false;

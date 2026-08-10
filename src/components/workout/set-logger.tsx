@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Check, X, Trash2, Pencil } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { getExerciseRecommendation, RecommendationResult } from '@/lib/ai-coach/client'
+import { getLocalDateString } from '@/lib/date'
+import { selectActiveMesocycle, type Mesocycle } from '@/lib/mesocycle'
 
 interface SetLoggerProps {
   exerciseId: string
@@ -89,6 +91,13 @@ export default function SetLogger({
   const [restStartedAt, setRestStartedAt] = useState<number | null>(null)
   const [restTarget, setRestTarget] = useState(90)
   const [restNow, setRestNow] = useState(Date.now())
+  // Whether TODAY falls in an active mesocycle's planned deload week -
+  // snapshotted onto each set logged during it (see handleSaveSet).
+  // Deload sets are intentionally light and shouldn't become a "last
+  // set"/progression baseline later - same exclusion idea this file
+  // already applies to drop/myo sets in fetchPreviousSet below, just a
+  // different reason a set isn't a real top-set data point.
+  const [isDeloadWeek, setIsDeloadWeek] = useState(false)
   const supabase = createClient()
 
   // Ticks the visible rest timer while it's running. Nothing to rest from
@@ -216,6 +225,36 @@ export default function SetLogger({
       })
   }, [])
 
+  // Whether today is a deload week - fetched once, not per exercise, same
+  // pattern as the nutrition-toggle default above. Same fetch-then-
+  // selectActiveMesocycle shape already used independently in
+  // dashboard-client.tsx/mesocycle-card.tsx/calendar/page.tsx.
+  useEffect(() => {
+    const fetchDeloadStatus = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('training_mesocycles')
+        .select('id, start_date, length_weeks, deload_week_number, label')
+        .eq('user_id', user.id)
+      if (error) return
+
+      const mesocycles: Mesocycle[] = (data ?? []).map((r) => ({
+        id: r.id,
+        startDate: r.start_date,
+        lengthWeeks: r.length_weeks,
+        deloadWeekNumber: r.deload_week_number,
+        label: r.label,
+      }))
+
+      setIsDeloadWeek(selectActiveMesocycle(mesocycles, getLocalDateString())?.isDeloadWeek ?? false)
+    }
+    fetchDeloadStatus()
+  }, [])
+
   // Flipping it also persists as the new default for next time, same
   // precedent as variant_id/training_phase already saving immediately.
   const handleToggleNutrition = async () => {
@@ -263,16 +302,19 @@ export default function SetLogger({
     } = await supabase.auth.getUser()
     if (!user) return
 
-    // Get the most recent completed NORMAL set for this exercise - a
-    // drop/myo follow-on is a reduced-weight/rest-pause bonus set, not a
-    // real top-set data point, so it should never become the "Last: X × Y"
-    // basis for next session's prefill.
+    // Get the most recent completed NORMAL, non-deload set for this
+    // exercise - a drop/myo follow-on is a reduced-weight/rest-pause
+    // bonus set, and a deload-week set is intentionally lighter by
+    // design (see mesocycle.ts) - neither is a real top-set data point,
+    // so neither should ever become the "Last: X × Y" basis for next
+    // session's prefill.
     const { data, error } = await supabase
       .from('sets')
       .select('weight, reps, created_at')
       .eq('exercise_id', exerciseId)
       .eq('completed', true)
       .is('set_type', null)
+      .eq('is_deload_week', false)
       .order('created_at', { ascending: false })
       .limit(1)
       .single()
@@ -323,6 +365,7 @@ export default function SetLogger({
       rest_time_seconds: restTimeSeconds,
       set_type: setType === 'normal' ? null : setType,
       rir,
+      is_deload_week: isDeloadWeek,
     })
 
     if (error) {
