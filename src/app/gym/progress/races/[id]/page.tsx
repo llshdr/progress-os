@@ -26,7 +26,7 @@ import {
 } from '@/lib/race-plan/periodization'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
-import { deriveCurrentFormLevel, deriveRunFormEvidence, TIER_ORDER } from '@/lib/race-plan/current-form'
+import { deriveCurrentFormLevel, deriveRunFormEvidence } from '@/lib/race-plan/current-form'
 import { slotsForWeek, ZONE_GUIDANCE, thresholdPaceHint, type PhaseTemplate, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import {
   FUELING_GUIDANCE,
@@ -156,7 +156,6 @@ const PHASE_LABELS: Record<TrainingPhase, string> = {
 }
 
 const DISCIPLINE_LABELS: Record<Discipline, string> = { swim: 'Swim', bike: 'Bike', run: 'Run' }
-const TIER_LABELS: Record<ExperienceLevel, string> = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }
 
 function formatWeekDate(dateString: string): string {
   return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -170,95 +169,61 @@ function formatDuration(totalSeconds: number): string {
   return `${minutes}m ${String(seconds).padStart(2, '0')}s`
 }
 
-function formatMargin(marginSeconds: number): string {
-  return marginSeconds >= 0 ? formatDuration(marginSeconds) : `${formatDuration(Math.abs(marginSeconds))} over`
-}
-
 const MARGIN_RISK_COLOR: Record<CutoffRiskFlag['risk'], string> = {
   comfortable: 'text-lapis-text-primary',
   watch: 'text-lapis-citrine',
   risk: 'text-lapis-garnet',
 }
 
-// Three separately-labeled mini-stats (matching the Swim/Bike/Run/Strength
-// stat pattern already used in the week card) instead of one dense
-// sentence - "16h projected / 17h cutoff / 1h margin" is easy to misread
-// as prose but hard to misread once each number has its own label.
-function CutoffMarginRow({ flag, range }: { flag: CutoffRiskFlag; range: ProjectedRaceTimeRange }) {
-  const projectedSlowEnd =
-    flag.segment === 'overall'
-      ? range.totalSecondsHigh
-      : flag.segment === 'swim'
-        ? (range.swimExitSecondsHigh ?? range.totalSecondsHigh)
-        : (range.bikeFinishSecondsHigh ?? range.totalSecondsHigh)
-
+// Qualitative-only, same pattern already proven in the Race Week card
+// below (cutoffRiskFlags.map -> flag.message, color-coded by risk tier) -
+// applied here too instead of the raw "Projected (slow) / Cutoff /
+// Margin" numbers this used to show. assessCutoffRisk itself (finish-
+// time.ts) is completely unchanged - it still computes the real margin
+// at full precision internally for every tier; flag.message was already
+// written as a plain-language, numberless sentence for all three tiers
+// (comfortable/watch/risk), it just wasn't rendered anywhere except the
+// risk tier (via CutoffRiskBanner) until now.
+function CutoffMarginRow({ flag }: { flag: CutoffRiskFlag }) {
   return (
-    <div className="flex items-center gap-6">
-      <span className="text-lapis-text-tertiary text-xs w-20 shrink-0 capitalize">{SEGMENT_LABEL[flag.segment]}</span>
-      <div>
-        <p className="text-xs text-lapis-text-tertiary mb-0.5">Projected (slow)</p>
-        <p className="text-lapis-text-primary text-sm">{formatDuration(projectedSlowEnd)}</p>
-      </div>
-      <div>
-        <p className="text-xs text-lapis-text-tertiary mb-0.5">Cutoff</p>
-        <p className="text-lapis-text-primary text-sm">{formatDuration(flag.cutoffSecondsFromStart)}</p>
-      </div>
-      <div>
-        <p className="text-xs text-lapis-text-tertiary mb-0.5">Margin</p>
-        <p className={`text-sm font-medium ${MARGIN_RISK_COLOR[flag.risk]}`}>{formatMargin(flag.marginSecondsSlowEnd)}</p>
-      </div>
+    <div className="flex items-start gap-3">
+      <span className="text-lapis-text-tertiary text-xs w-20 shrink-0 capitalize pt-px">{SEGMENT_LABEL[flag.segment]}</span>
+      <p className={`text-sm ${MARGIN_RISK_COLOR[flag.risk]}`}>{flag.message}</p>
     </div>
   )
 }
 
 // Shared between Snapshot and Review (Spectrum shows its own version via
-// ApproachSpectrum's props) so the number and its current-form
-// explanation - when the tier was re-derived from real recent activity,
-// not the frozen self-assessment answer - never drift between steps.
+// ApproachSpectrum's props). Deliberately never shows a computed
+// projection/course-band number - only the athlete's OWN stated target
+// (a real input they chose, not a number the app hands back to them) and
+// the current-form evidence note. A specific achievable-looking computed
+// number can act as a psychological ceiling ("shoot for the moon, land
+// among the stars"), so the underlying courseRange/projectedFinishSeconds
+// calculations keep running exactly as before (they still drive
+// assessCutoffRisk, pace targets, and assessGoalRealism*) - they're just
+// never rendered here. See CutoffMarginRow/CutoffRiskBanner below for how
+// the safety-relevant cutoff warning stays intact without showing a range.
 function FinishTimeCard({
   category,
   targetFinishSeconds,
-  projectedFinishSeconds,
-  courseRange,
   reason,
 }: {
   category: RaceCategory
   targetFinishSeconds: number | null
-  projectedFinishSeconds: number | null
-  courseRange: ProjectedRaceTimeRange | null
   reason: string | null
 }) {
-  if (category === 'run' && targetFinishSeconds == null && projectedFinishSeconds == null) return null
-  if (category === 'multisport' && targetFinishSeconds == null && courseRange == null) return null
   if (category !== 'run' && category !== 'multisport') return null
-
-  const label =
-    category === 'run'
-      ? targetFinishSeconds != null
-        ? 'Target Finish Time'
-        : 'Projected Finish Time'
-      : targetFinishSeconds != null
-        ? 'Target Finish Time'
-        : 'Projected Finish Range'
-
-  const value =
-    category === 'run'
-      ? formatDuration(targetFinishSeconds ?? projectedFinishSeconds!)
-      : targetFinishSeconds != null
-        ? formatDuration(targetFinishSeconds)
-        : `${formatDuration(courseRange!.totalSecondsLow)}–${formatDuration(courseRange!.totalSecondsHigh)}`
-
-  const showingProjection = category === 'multisport' && targetFinishSeconds == null && courseRange != null
-  const showsTrainingAssumption = showingProjection && courseRange!.source !== 'exact_course_result'
+  if (targetFinishSeconds == null && !reason) return null
 
   return (
     <div>
-      <p className="text-xs text-lapis-text-tertiary mb-1">{label}</p>
-      <p className="text-lapis-text-primary text-sm">{value}</p>
-      {showsTrainingAssumption && (
-        <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">Assumes you complete the training plan below - not a snapshot of your fitness today.</p>
+      {targetFinishSeconds != null && (
+        <>
+          <p className="text-xs text-lapis-text-tertiary mb-1">Target Finish Time</p>
+          <p className="text-lapis-text-primary text-sm">{formatDuration(targetFinishSeconds)}</p>
+        </>
       )}
-      {showingProjection && <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">{courseRange!.sourceNote}</p>}
       {reason && <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">{reason}</p>}
     </div>
   )
@@ -772,16 +737,6 @@ export default function RaceDetailPage() {
       ? estimateCourseFinishRange(race.race_type, level, snapshot.pastRaceResults, race.courseId, courseTimeBands[level] ?? null)
       : null
 
-  // Aspirational, clearly-secondary projection: reuses estimateCourseFinishRange
-  // verbatim with the NEXT tier up - zero new calculation. Gated on real
-  // evidence already existing (not shown before there's anything to
-  // project from) and undefined at the top tier (nothing further to show).
-  const nextTier = TIER_ORDER[TIER_ORDER.indexOf(currentForm.level) + 1] as ExperienceLevel | undefined
-  const aspirationalRange =
-    category === 'multisport' && nextTier && snapshot && currentForm.evidence !== 'insufficient'
-      ? estimateCourseFinishRange(race.race_type, nextTier, snapshot.pastRaceResults, race.courseId, courseTimeBands[nextTier] ?? null)
-      : null
-
   const cutoffRiskFlags: CutoffRiskFlag[] = courseRange ? assessCutoffRisk(courseRange, courseCutoffs) : []
   const hasCutoffRisk = cutoffRiskFlags.some((f) => f.risk === 'risk')
   const readinessFlags = category === 'multisport' && disciplineActivityFacts ? assessMultisportReadiness(disciplineActivityFacts, daysUntil) : []
@@ -826,18 +781,21 @@ export default function RaceDetailPage() {
   // regression dressed up as more precision. Gated on
   // currentForm.evidence !== 'insufficient' - narrowing only ever
   // happens once real training data actually exists to justify it.
+  //
+  // No numeric range is displayed pre-race anymore (see FinishTimeCard),
+  // so displayedCourseRange's only remaining consumer is the post-race
+  // Race Result comparison below - a retrospective "how did I do
+  // relative to the data" read once the race is already run, which
+  // doesn't carry the same psychological-ceiling risk a pre-race number
+  // does. sourceNote is left unmodified (no longer read anywhere) rather
+  // than building a string that cites the numeric range for nothing.
   const shadeResult =
     courseRange && currentForm.evidence !== 'insufficient'
       ? shadeRangeWithinTier(courseRange, race.race_type, realZone2PaceByDiscipline)
       : null
   const displayedCourseRange: ProjectedRaceTimeRange | null =
     courseRange && shadeResult?.shaded
-      ? {
-          ...courseRange,
-          totalSecondsLow: shadeResult.totalSecondsLow,
-          totalSecondsHigh: shadeResult.totalSecondsHigh,
-          sourceNote: `${courseRange.sourceNote} Narrowed using your own logged pace - the full range without that signal is ${formatDuration(courseRange.totalSecondsLow)}–${formatDuration(courseRange.totalSecondsHigh)}.`,
-        }
+      ? { ...courseRange, totalSecondsLow: shadeResult.totalSecondsLow, totalSecondsHigh: shadeResult.totalSecondsHigh }
       : courseRange
 
   // Opportunistic threshold-pace proxy per discipline - reuses the
@@ -1167,13 +1125,7 @@ export default function RaceDetailPage() {
 
             {(category === 'run' || category === 'multisport') && (
               <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
-                <FinishTimeCard
-                  category={category}
-                  targetFinishSeconds={targetFinishSeconds}
-                  projectedFinishSeconds={projectedFinishSeconds}
-                  courseRange={displayedCourseRange}
-                  reason={currentFormReason}
-                />
+                <FinishTimeCard category={category} targetFinishSeconds={targetFinishSeconds} reason={currentFormReason} />
               </div>
             )}
 
@@ -1273,7 +1225,7 @@ export default function RaceDetailPage() {
                   <div className={courseProfile ? 'mt-4 pt-4 border-t border-lapis-border-subtle space-y-3' : 'space-y-3'}>
                     <p className="text-lapis-text-tertiary text-xs">Cutoff safety margin</p>
                     {cutoffRiskFlags.map((f) => (
-                      <CutoffMarginRow key={f.segment} flag={f} range={courseRange} />
+                      <CutoffMarginRow key={f.segment} flag={f} />
                     ))}
                   </div>
                 )}
@@ -1310,10 +1262,6 @@ export default function RaceDetailPage() {
                 currentWeeklyCardioKm={snapshot.cardio.recentAvgWeeklyKm}
                 currentStrengthSessionsPerWeek={snapshot.strength.recentSessionsPerWeek}
                 showFinishTime={category === 'run' || courseRange != null}
-                projectedFinishSeconds={projectedFinishSeconds}
-                projectedFinishRange={displayedCourseRange ? { low: displayedCourseRange.totalSecondsLow, high: displayedCourseRange.totalSecondsHigh } : null}
-                finishRangeSource={displayedCourseRange?.source ?? null}
-                finishRangeSourceNote={displayedCourseRange?.sourceNote ?? null}
                 targetFinishSeconds={targetFinishSeconds}
                 onTargetFinishSecondsChange={setTargetFinishSeconds}
                 disciplineInputs={disciplineInputs}
@@ -1707,47 +1655,13 @@ export default function RaceDetailPage() {
               <div className="space-y-8">
                 <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
                   <h2 className="text-lg font-medium text-lapis-text-primary mb-3">Finish Time &amp; Projections</h2>
-                  <FinishTimeCard
-                    category={category}
-                    targetFinishSeconds={targetFinishSeconds}
-                    projectedFinishSeconds={projectedFinishSeconds}
-                    courseRange={displayedCourseRange}
-                    reason={currentFormReason}
-                  />
-
-                  {/* Only shown separately when a target is set - otherwise
-                      FinishTimeCard's own value above already IS the
-                      projection, and repeating it here would be the exact
-                      duplicate this reorg removed. */}
-                  {targetFinishSeconds != null && (displayedCourseRange || projectedFinishSeconds != null) && (
-                    <div className="pt-4 mt-4 border-t border-lapis-border-subtle">
-                      <p className="text-xs text-lapis-text-tertiary mb-1">Projected Finish</p>
-                      <p className="text-lapis-text-secondary text-sm">
-                        {displayedCourseRange
-                          ? `${formatDuration(displayedCourseRange.totalSecondsLow)}–${formatDuration(displayedCourseRange.totalSecondsHigh)}`
-                          : formatDuration(projectedFinishSeconds!)}
-                      </p>
-                    </div>
-                  )}
-
-                  {aspirationalRange && nextTier && (
-                    <div className="pt-4 mt-4 border-t border-lapis-border-subtle">
-                      <p className="text-xs text-lapis-text-tertiary mb-1">If You Progress Further</p>
-                      <p className="text-lapis-text-secondary text-sm">
-                        {formatDuration(aspirationalRange.totalSecondsLow)}–{formatDuration(aspirationalRange.totalSecondsHigh)}
-                      </p>
-                      <p className="text-lapis-text-tertiary text-xs mt-1 max-w-sm">
-                        If your real training reaches {TIER_LABELS[nextTier]}-level fitness by race day - the same tracking already updating your
-                        projection above - your range could look more like this. Not a promise, just where the evidence would point.
-                      </p>
-                    </div>
-                  )}
+                  <FinishTimeCard category={category} targetFinishSeconds={targetFinishSeconds} reason={currentFormReason} />
 
                   {cutoffRiskFlags.length > 0 && courseRange && (
                     <div className="pt-4 mt-4 border-t border-lapis-border-subtle space-y-3">
                       <p className="text-xs text-lapis-text-tertiary">Cutoff safety margin</p>
                       {cutoffRiskFlags.map((f) => (
-                        <CutoffMarginRow key={f.segment} flag={f} range={courseRange} />
+                        <CutoffMarginRow key={f.segment} flag={f} />
                       ))}
                     </div>
                   )}

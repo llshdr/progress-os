@@ -13,7 +13,6 @@ import {
   type DisciplineRampInputs,
 } from '@/lib/race-plan/periodization'
 import type { Discipline } from '@/lib/race-plan/self-assessment'
-import type { ProjectedRaceTimeRange } from '@/lib/race-plan/finish-time'
 import type { MuscleVolume } from '@/lib/volume-analysis'
 
 interface ApproachSpectrumProps {
@@ -22,10 +21,6 @@ interface ApproachSpectrumProps {
   currentWeeklyCardioKm: number
   currentStrengthSessionsPerWeek: number
   showFinishTime: boolean
-  projectedFinishSeconds: number | null
-  projectedFinishRange?: { low: number; high: number } | null
-  finishRangeSource?: ProjectedRaceTimeRange['source'] | null
-  finishRangeSourceNote?: string | null
   targetFinishSeconds: number | null
   onTargetFinishSecondsChange: (seconds: number | null) => void
   disciplineInputs?: DisciplineRampInputs
@@ -34,14 +29,6 @@ interface ApproachSpectrumProps {
 }
 
 const DISCIPLINE_LABELS: Record<Discipline, string> = { swim: 'Swim', bike: 'Bike', run: 'Run' }
-
-function formatDuration(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
-  return `${minutes}m ${String(seconds).padStart(2, '0')}s`
-}
 
 function parseDurationInput(hh: string, mm: string, ss: string): number | null {
   const h = parseInt(hh || '0', 10)
@@ -62,10 +49,6 @@ export default function ApproachSpectrum({
   currentWeeklyCardioKm,
   currentStrengthSessionsPerWeek,
   showFinishTime,
-  projectedFinishSeconds,
-  projectedFinishRange,
-  finishRangeSource,
-  finishRangeSourceNote,
   targetFinishSeconds,
   onTargetFinishSecondsChange,
   disciplineInputs,
@@ -144,23 +127,11 @@ export default function ApproachSpectrum({
       {showFinishTime && (
         <div className="space-y-2">
           <Label className="text-lapis-text-secondary">Target finish time (optional)</Label>
-          {projectedFinishRange ? (
-            <>
-              <p className="text-lapis-text-tertiary text-xs">
-                Estimated range: {formatDuration(projectedFinishRange.low)}–{formatDuration(projectedFinishRange.high)}. Override below if you have your own goal.
-              </p>
-              {finishRangeSource !== 'exact_course_result' && (
-                <p className="text-lapis-text-tertiary text-xs">Assumes you complete the training plan below - not a snapshot of your fitness today.</p>
-              )}
-              {finishRangeSourceNote && <p className="text-lapis-text-tertiary text-xs">{finishRangeSourceNote}</p>}
-            </>
-          ) : (
-            projectedFinishSeconds != null && (
-              <p className="text-lapis-text-tertiary text-xs">
-                Estimated from your data: {formatDuration(projectedFinishSeconds)}. Override below if you have your own goal.
-              </p>
-            )
-          )}
+          {/* Deliberately no computed estimate/range shown here - a specific
+              achievable-looking number can act as a psychological ceiling.
+              This is your own stated goal, not a number the app hands back
+              to you; currentFormReason (real evidence quality, never a
+              number) is the only context kept. */}
           {currentFormReason && <p className="text-lapis-text-tertiary text-xs">{currentFormReason}</p>}
           <div className="flex items-center gap-2">
             <Input
