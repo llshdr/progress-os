@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Target, Plus, CheckCircle2, Archive, RotateCcw, Trash2 } from 'lucide-react'
+import { Target, Milestone, Plus, CheckCircle2, Archive, RotateCcw, Trash2 } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import {
   fetchActiveActionItems,
@@ -296,9 +296,6 @@ export default function GoalsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
-                          {item.kind === 'goal' ? 'Goal' : 'Milestone'}
-                        </span>
                         {showAll && (
                           <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
                             {item.status}
@@ -324,15 +321,22 @@ export default function GoalsPage() {
                           </span>
                         )}
                       </div>
-                      <Link href={item.editHref} className="text-lg font-medium text-lapis-text-primary hover:text-lapis-text-secondary">
+                      <Link
+                        href={item.editHref}
+                        className="text-lg font-medium text-lapis-text-primary hover:text-lapis-text-secondary inline-flex items-center gap-2"
+                      >
+                        {item.kind === 'goal' ? (
+                          <Target className="w-4 h-4 text-lapis-text-disabled shrink-0" />
+                        ) : (
+                          <Milestone className="w-4 h-4 text-lapis-text-disabled shrink-0" />
+                        )}
                         {item.title}
                       </Link>
-                      <p className="text-lapis-text-secondary text-sm mt-1">
-                        <span className="text-lapis-text-tertiary">Next: </span>
-                        {item.nextAction || <span className="text-lapis-text-disabled italic">not set</span>}
+                      <p className="text-lapis-text-primary text-sm mt-1.5">
+                        {item.nextAction || <span className="text-lapis-text-disabled italic">No next step set</span>}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 shrink-0">
                       {item.status === 'active' ? (
                         <>
                           <button
@@ -361,7 +365,7 @@ export default function GoalsPage() {
                       )}
                       <button
                         onClick={() => openDeleteModal(item)}
-                        className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"
+                        className="p-2 rounded-lapis-sm opacity-40 hover:opacity-100 hover:bg-lapis-surface-2 transition-all"
                         title="Delete"
                       >
                         <Trash2 className="w-5 h-5 text-lapis-text-tertiary" />

@@ -27,6 +27,12 @@ interface GoalFormFieldsProps {
   dependsOnGoalId: string | null
   onDependsOnGoalIdChange: (value: string | null) => void
   availableGoals: { id: string; title: string }[]
+  // The goal detail page now has its own prominent, immediately-saving
+  // "what's next" editor (see goals/[id]/page.tsx) - hiding the field
+  // here avoids two separate places that edit the same column with two
+  // separate save paths. goals/new still shows it (there's no detail-
+  // page hero yet for a goal that doesn't exist).
+  hideNextAction?: boolean
 }
 
 // Shared by goals/new and the goal detail page - same fields, same shape,
@@ -51,6 +57,7 @@ export default function GoalFormFields({
   dependsOnGoalId,
   onDependsOnGoalIdChange,
   availableGoals,
+  hideNextAction = false,
 }: GoalFormFieldsProps) {
   return (
     <>
@@ -122,22 +129,24 @@ export default function GoalFormFields({
         </label>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="goal-next-action" className="text-lapis-text-secondary">
-          Next action
-        </Label>
-        <Input
-          id="goal-next-action"
-          type="text"
-          value={nextAction}
-          onChange={(e) => onNextActionChange(e.target.value)}
-          placeholder="What's the single next concrete step?"
-          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
-        />
-        <p className="text-lapis-text-tertiary text-xs">
-          You set this manually for now — the app isn&apos;t trying to infer it yet.
-        </p>
-      </div>
+      {!hideNextAction && (
+        <div className="space-y-2">
+          <Label htmlFor="goal-next-action" className="text-lapis-text-secondary">
+            Next action
+          </Label>
+          <Input
+            id="goal-next-action"
+            type="text"
+            value={nextAction}
+            onChange={(e) => onNextActionChange(e.target.value)}
+            placeholder="What's the single next concrete step?"
+            className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
+          />
+          <p className="text-lapis-text-tertiary text-xs">
+            You can always add more detail once you&apos;ve created the goal.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label className="text-lapis-text-secondary">Status</Label>
