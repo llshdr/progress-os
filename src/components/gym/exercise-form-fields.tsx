@@ -3,7 +3,19 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { MUSCLE_GROUPS, EQUIPMENT_TYPES, CATEGORIES, EXERCISE_TYPES, CARDIO_TYPES, CARDIO_TYPE_LABELS, type ExerciseType, type CardioType } from '@/lib/exercise-constants'
+import {
+  MUSCLE_GROUPS,
+  EQUIPMENT_TYPES,
+  CATEGORIES,
+  EXERCISE_TYPES,
+  CARDIO_TYPES,
+  CARDIO_TYPE_LABELS,
+  PRIMARY_LIFTS,
+  PRIMARY_LIFT_LABELS,
+  type ExerciseType,
+  type CardioType,
+  type PrimaryLift,
+} from '@/lib/exercise-constants'
 import { MUSCLE_TARGETS_BY_GROUP } from '@/lib/muscle-targets'
 
 interface ExerciseFormFieldsProps {
@@ -19,6 +31,8 @@ interface ExerciseFormFieldsProps {
   onToggleMuscleTarget: (target: string) => void
   cardioType: CardioType | null
   onCardioTypeChange: (value: CardioType) => void
+  primaryLift: PrimaryLift | null
+  onPrimaryLiftChange: (value: PrimaryLift | null) => void
   equipmentType: string
   onEquipmentTypeChange: (value: string) => void
   category: string
@@ -44,6 +58,8 @@ export default function ExerciseFormFields({
   onToggleMuscleTarget,
   cardioType,
   onCardioTypeChange,
+  primaryLift,
+  onPrimaryLiftChange,
   equipmentType,
   onEquipmentTypeChange,
   category,
@@ -183,6 +199,44 @@ export default function ExerciseFormFields({
             </div>
           </div>
         </>
+      )}
+
+      {exerciseType === 'strength' && (
+        <div>
+          <Label className="text-lapis-text-secondary mb-3 block">Leaderboard Lift (optional)</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button
+              type="button"
+              onClick={() => onPrimaryLiftChange(null)}
+              className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
+                primaryLift === null
+                  ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                  : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
+              }`}
+            >
+              None
+            </button>
+            {PRIMARY_LIFTS.map((lift) => (
+              <button
+                key={lift}
+                type="button"
+                onClick={() => onPrimaryLiftChange(lift)}
+                className={`p-3 rounded-lapis-sm border transition-all duration-200 text-sm ${
+                  primaryLift === lift
+                    ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                    : 'bg-lapis-surface-1 border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2'
+                }`}
+              >
+                {PRIMARY_LIFT_LABELS[lift]}
+              </button>
+            ))}
+          </div>
+          <p className="text-lapis-text-tertiary text-xs mt-2">
+            If this is one of the four tracked lifts, tagging it feeds the strength leaderboard (real logged sets → an
+            auto-estimated 1RM). Most people never need this - copying the matching exercise from the library already
+            tags it automatically.
+          </p>
+        </div>
       )}
 
       <div className="space-y-2">

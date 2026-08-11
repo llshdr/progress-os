@@ -64,3 +64,20 @@ export const CARDIO_TYPE_LABELS: Record<CardioType, string> = {
   walking: 'Walking',
   other: 'Other',
 }
+
+// Optional tag for the small, fixed set of lifts the public strength
+// leaderboard tracks (migration 080/081) - same additive, nullable-by-
+// default shape as CARDIO_TYPES above, just for strength exercises. Most
+// users never need to touch this: copying one of the four matching
+// exercise_catalog rows (or an exact-name match backfilled by migration
+// 080) already tags it automatically - this picker only matters for a
+// freehand-named exercise.
+export const PRIMARY_LIFTS = ['bench_press', 'back_squat', 'deadlift', 'overhead_press'] as const
+export type PrimaryLift = (typeof PRIMARY_LIFTS)[number]
+
+export const PRIMARY_LIFT_LABELS: Record<PrimaryLift, string> = {
+  bench_press: 'Bench Press',
+  back_squat: 'Back Squat',
+  deadlift: 'Deadlift',
+  overhead_press: 'Overhead Press',
+}

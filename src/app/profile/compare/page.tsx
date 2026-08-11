@@ -77,7 +77,17 @@ export default function CompareProfilesPage() {
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">
           How&apos;s Everyone Doing?
         </h1>
-        <p className="text-lapis-text-tertiary text-sm mb-8">Just for fun - nothing here but names, tiers, and pictures.</p>
+        <p className="text-lapis-text-tertiary text-sm mb-6">Just for fun - nothing here but names, tiers, and pictures.</p>
+
+        {/* A genuinely different, real-numbers page - deliberately not
+            blended into this one, which promises exactly the opposite
+            above. */}
+        <Link
+          href="/profile/leaderboard"
+          className="text-lapis-text-disabled hover:text-lapis-text-tertiary text-xs underline underline-offset-2 mb-8 inline-block"
+        >
+          See the strength leaderboard (real numbers) →
+        </Link>
 
         {loading ? (
           <PageSkeleton />

@@ -9,7 +9,7 @@ import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import CatalogSearch, { type CatalogEntry } from '@/components/gym/catalog-search'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
-import type { ExerciseType, CardioType } from '@/lib/exercise-constants'
+import type { ExerciseType, CardioType, PrimaryLift } from '@/lib/exercise-constants'
 import { inferMuscleTargets } from '@/lib/muscle-targets'
 import { suggestIsUnilateral } from '@/lib/unilateral'
 
@@ -21,6 +21,7 @@ export default function NewExercisePage() {
   const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>([])
   const [muscleTargets, setMuscleTargets] = useState<string[]>([])
   const [cardioType, setCardioType] = useState<CardioType | null>(null)
+  const [primaryLift, setPrimaryLift] = useState<PrimaryLift | null>(null)
   const [equipmentType, setEquipmentType] = useState('')
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
@@ -75,6 +76,7 @@ export default function NewExercisePage() {
     setSecondaryMuscleGroups([])
     setMuscleTargets(entry.muscle_targets ?? [])
     setCardioType((entry.cardio_type as CardioType | null) ?? null)
+    setPrimaryLift((entry.primary_lift as PrimaryLift | null) ?? null)
     setEquipmentType(entry.equipment_type)
     setCategory(entry.category)
     // The catalog's own is_unilateral is a real, curated answer - a
@@ -108,6 +110,7 @@ export default function NewExercisePage() {
       secondary_muscle_groups: exerciseType === 'cardio' || secondaryMuscleGroups.length === 0 ? null : secondaryMuscleGroups,
       muscle_targets: exerciseType === 'cardio' ? null : finalMuscleTargets,
       cardio_type: exerciseType === 'cardio' ? cardioType : null,
+      primary_lift: exerciseType === 'strength' ? primaryLift : null,
       equipment_type: equipmentType,
       category,
       notes: notes || null,
@@ -195,6 +198,8 @@ export default function NewExercisePage() {
               onToggleMuscleTarget={toggleMuscleTarget}
               cardioType={cardioType}
               onCardioTypeChange={setCardioType}
+              primaryLift={primaryLift}
+              onPrimaryLiftChange={setPrimaryLift}
               equipmentType={equipmentType}
               onEquipmentTypeChange={setEquipmentType}
               category={category}

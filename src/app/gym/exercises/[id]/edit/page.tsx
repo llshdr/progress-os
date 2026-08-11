@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import ExerciseVariantsManager from '@/components/gym/exercise-variants-manager'
-import type { ExerciseType, CardioType } from '@/lib/exercise-constants'
+import type { ExerciseType, CardioType, PrimaryLift } from '@/lib/exercise-constants'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 export default function EditExercisePage() {
@@ -20,6 +20,7 @@ export default function EditExercisePage() {
   const [secondaryMuscleGroups, setSecondaryMuscleGroups] = useState<string[]>([])
   const [muscleTargets, setMuscleTargets] = useState<string[]>([])
   const [cardioType, setCardioType] = useState<CardioType | null>(null)
+  const [primaryLift, setPrimaryLift] = useState<PrimaryLift | null>(null)
   const [equipmentType, setEquipmentType] = useState('')
   const [category, setCategory] = useState('')
   const [notes, setNotes] = useState('')
@@ -51,6 +52,7 @@ export default function EditExercisePage() {
     setSecondaryMuscleGroups(data.secondary_muscle_groups || [])
     setMuscleTargets(data.muscle_targets || [])
     setCardioType((data.cardio_type as CardioType | null) ?? null)
+    setPrimaryLift((data.primary_lift as PrimaryLift | null) ?? null)
     setEquipmentType(data.equipment_type)
     setCategory(data.category)
     setNotes(data.notes || '')
@@ -100,6 +102,7 @@ export default function EditExercisePage() {
         secondary_muscle_groups: exerciseType === 'cardio' || secondaryMuscleGroups.length === 0 ? null : secondaryMuscleGroups,
         muscle_targets: exerciseType === 'cardio' || muscleTargets.length === 0 ? null : muscleTargets,
         cardio_type: exerciseType === 'cardio' ? cardioType : null,
+        primary_lift: exerciseType === 'strength' ? primaryLift : null,
         equipment_type: equipmentType,
         category,
         notes: notes || null,
@@ -151,6 +154,8 @@ export default function EditExercisePage() {
             onToggleMuscleTarget={toggleMuscleTarget}
             cardioType={cardioType}
             onCardioTypeChange={setCardioType}
+            primaryLift={primaryLift}
+            onPrimaryLiftChange={setPrimaryLift}
             equipmentType={equipmentType}
             onEquipmentTypeChange={setEquipmentType}
             category={category}

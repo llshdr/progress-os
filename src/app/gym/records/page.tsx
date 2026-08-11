@@ -622,35 +622,42 @@ export default function RecordsPage() {
                 )}
 
                 {effectiveType === 'strength' ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="pr-weight" className="text-lapis-text-secondary">
-                        Weight (kg)
-                      </Label>
-                      <Input
-                        id="pr-weight"
-                        type="number"
-                        step="0.5"
-                        value={weight}
-                        onChange={(e) => setWeight(e.target.value)}
-                        placeholder="100"
-                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
-                      />
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="pr-weight" className="text-lapis-text-secondary">
+                          Weight (kg)
+                        </Label>
+                        <Input
+                          id="pr-weight"
+                          type="number"
+                          step="0.5"
+                          value={weight}
+                          onChange={(e) => setWeight(e.target.value)}
+                          placeholder="100"
+                          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pr-reps" className="text-lapis-text-secondary">
+                          Reps
+                        </Label>
+                        <Input
+                          id="pr-reps"
+                          type="number"
+                          value={reps}
+                          onChange={(e) => setReps(e.target.value)}
+                          placeholder="1"
+                          className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="pr-reps" className="text-lapis-text-secondary">
-                        Reps
-                      </Label>
-                      <Input
-                        id="pr-reps"
-                        type="number"
-                        value={reps}
-                        onChange={(e) => setReps(e.target.value)}
-                        placeholder="1"
-                        className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
-                      />
-                    </div>
-                  </div>
+                    {reps === '1' && (
+                      <p className="text-lapis-text-disabled text-xs">
+                        A 1-rep PR for Bench Press, Back Squat, Deadlift, or Overhead Press also feeds the strength leaderboard.
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
