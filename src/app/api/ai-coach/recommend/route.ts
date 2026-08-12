@@ -7,7 +7,7 @@ import { computeMuscleVolume } from '@/lib/volume-analysis'
 import { getLocalDateString } from '@/lib/date'
 import { raceTypeLabel } from '@/lib/race-constants'
 import { daysBetween } from '@/lib/goals'
-import { selectActiveMesocycle, describeMesocycleContext } from '@/lib/mesocycle'
+import { DELOAD_CONTEXT } from '@/lib/deload'
 
 const MIN_SESSIONS_FOR_RECOMMENDATION = 2
 const MAX_SETS_IN_PROMPT = 20
@@ -99,34 +99,20 @@ export async function POST(request: NextRequest) {
     cacheRaceSuffix = `race=${activeRace.id}:${currentWeek.weekStartDate}`
   }
 
-  // Mesocycle-aware context - same "code derives the fact, model reasons
-  // about it" pattern as raceContext above, using the athlete's own
-  // planned strength-training block (if any) rather than a generated
-  // schedule (see src/lib/mesocycle.ts for why).
-  const { data: mesocycleRows } = await supabase
-    .from('training_mesocycles')
-    .select('id, start_date, length_weeks, deload_week_number, label')
+  // Ad-hoc deload-aware context - same "code derives the fact, model
+  // reasons about it" pattern as raceContext above (see src/lib/deload.ts
+  // for the full reasoning behind the fixed instruction text).
+  const { data: deloadSettings } = await supabase
+    .from('user_settings')
+    .select('active_deload_started_at')
     .eq('user_id', user.id)
+    .maybeSingle()
+  const isDeloadActive = deloadSettings?.active_deload_started_at != null
 
-  const activeMesocycleStatus = mesocycleRows
-    ? selectActiveMesocycle(
-        mesocycleRows.map((r) => ({
-          id: r.id,
-          startDate: r.start_date,
-          lengthWeeks: r.length_weeks,
-          deloadWeekNumber: r.deload_week_number,
-          label: r.label,
-        })),
-        today
-      )
-    : null
+  const deloadContext = isDeloadActive ? `\n\n${DELOAD_CONTEXT}` : ''
+  const cacheDeloadSuffix = isDeloadActive ? 'deload=active' : 'deload=none'
 
-  const mesocycleContext = activeMesocycleStatus ? `\n\n${describeMesocycleContext(activeMesocycleStatus)}` : ''
-  const cacheMesocycleSuffix = activeMesocycleStatus
-    ? `meso=${activeMesocycleStatus.mesocycle.id}:${activeMesocycleStatus.currentWeek}`
-    : 'meso=none'
-
-  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}::nutrition=${includeNutrition}::${cacheRaceSuffix}::${cacheMesocycleSuffix}`
+  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}::nutrition=${includeNutrition}::${cacheRaceSuffix}::${cacheDeloadSuffix}`
 
   const { data: cachedRow } = await supabase
     .from('ai_coach_recommendations')
@@ -222,7 +208,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Same "code derives the fact, model reasons about it" pattern as
-  // raceContext/mesocycleContext - no ratio math (there's no clean,
+  // raceContext/deloadContext - no ratio math (there's no clean,
   // universal "unilateral load as % of bilateral load" formula, it
   // varies by exercise and person), just qualitative framing plus the
   // one real, citable piece of evidence available.
@@ -305,7 +291,7 @@ export async function POST(request: NextRequest) {
 
 Below is their recent set history for one exercise, most recent session first (weight in kg):
 
-${historyText}${variantContext}${techniqueContext}${rirContext}${muscleGroupContext}${unilateralContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${mesocycleContext}${sleepContext}
+${historyText}${variantContext}${techniqueContext}${rirContext}${muscleGroupContext}${unilateralContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${deloadContext}${sleepContext}
 
 Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale — if multiple factors above are relevant, mention at most the one or two most decision-relevant ones rather than trying to reference everything.`
 

@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { DISRUPTION_GUIDANCE } from '@/lib/disruptions'
-import { describeMesocycleOverlap, type Mesocycle } from '@/lib/mesocycle'
 
 export type DisruptionReason = 'travel' | 'illness' | 'injury' | 'other'
 
@@ -23,10 +22,6 @@ export interface TrainingDisruption {
 interface Props {
   disruptions: TrainingDisruption[]
   onChanged: () => void
-  // Optional - only Calendar and Races currently have this already
-  // fetched. When present, the dialog shows a one-line honest note if
-  // the chosen date range overlaps a deload vs. working week.
-  mesocycles?: Mesocycle[]
 }
 
 const REASON_OPTIONS: { value: DisruptionReason; label: string }[] = [
@@ -49,7 +44,7 @@ export function formatDateRange(start: string, end: string): string {
 // (benchmark-verification.ts) without touching real fitness-tier
 // derivation, which stays honest to logged activity regardless of why
 // a gap exists - see current-form.ts, deliberately untouched.
-export default function DisruptionDeclaration({ disruptions, onChanged, mesocycles = [] }: Props) {
+export default function DisruptionDeclaration({ disruptions, onChanged }: Props) {
   const [open, setOpen] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -145,10 +140,6 @@ export default function DisruptionDeclaration({ disruptions, onChanged, mesocycl
                   />
                 </div>
               </div>
-              {startDate && endDate && endDate >= startDate && (() => {
-                const overlapNote = describeMesocycleOverlap(mesocycles, startDate, endDate)
-                return overlapNote ? <p className="text-lapis-text-tertiary text-xs">{overlapNote}</p> : null
-              })()}
               <div className="space-y-2">
                 <Label className="text-lapis-text-secondary">Reason</Label>
                 <div className="flex gap-2">

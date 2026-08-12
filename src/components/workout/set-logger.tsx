@@ -7,8 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Check, X, Trash2, Pencil, Trophy, WifiOff } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { getExerciseRecommendation, RecommendationResult } from '@/lib/ai-coach/client'
-import { getLocalDateString } from '@/lib/date'
-import { selectActiveMesocycle, type Mesocycle } from '@/lib/mesocycle'
 import { getExerciseHistory } from '@/lib/ai-coach/getExerciseHistory'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { useOnlineStatus } from '@/lib/use-online-status'
@@ -94,13 +92,13 @@ export default function SetLogger({
   const [restStartedAt, setRestStartedAt] = useState<number | null>(null)
   const [restTarget, setRestTarget] = useState(90)
   const [restNow, setRestNow] = useState(Date.now())
-  // Whether TODAY falls in an active mesocycle's planned deload week -
-  // snapshotted onto each set logged during it (see handleSaveSet).
-  // Deload sets are intentionally light and shouldn't become a "last
-  // set"/progression baseline later - same exclusion idea this file
-  // already applies to drop/myo sets in fetchPreviousSet below, just a
-  // different reason a set isn't a real top-set data point.
-  const [isDeloadWeek, setIsDeloadWeek] = useState(false)
+  // Whether an ad-hoc deload is currently active - snapshotted onto each
+  // set logged during it (see handleSaveSet). Deload sets are
+  // intentionally light and shouldn't become a "last set"/progression
+  // baseline later - same exclusion idea this file already applies to
+  // drop/myo sets in fetchPreviousSet below, just a different reason a
+  // set isn't a real top-set data point.
+  const [isDeloadActive, setIsDeloadActive] = useState(false)
   // Best estimated 1RM among this exercise's real top-set history (drop/myo
   // and deload-week sets excluded - see fetchPersonalBest), null until
   // that history loads or there simply isn't any yet. Used only to detect
@@ -236,10 +234,10 @@ export default function SetLogger({
       })
   }, [])
 
-  // Whether today is a deload week - fetched once, not per exercise, same
-  // pattern as the nutrition-toggle default above. Same fetch-then-
-  // selectActiveMesocycle shape already used independently in
-  // dashboard-client.tsx/mesocycle-card.tsx/calendar/page.tsx.
+  // Whether an ad-hoc deload is currently active - fetched once, not per
+  // exercise, same pattern as the nutrition-toggle default above. Same
+  // field the gym Schedule page's DeloadCard reads/writes (see migration
+  // 083).
   useEffect(() => {
     const fetchDeloadStatus = async () => {
       const {
@@ -248,20 +246,13 @@ export default function SetLogger({
       if (!user) return
 
       const { data, error } = await supabase
-        .from('training_mesocycles')
-        .select('id, start_date, length_weeks, deload_week_number, label')
+        .from('user_settings')
+        .select('active_deload_started_at')
         .eq('user_id', user.id)
+        .maybeSingle()
       if (error) return
 
-      const mesocycles: Mesocycle[] = (data ?? []).map((r) => ({
-        id: r.id,
-        startDate: r.start_date,
-        lengthWeeks: r.length_weeks,
-        deloadWeekNumber: r.deload_week_number,
-        label: r.label,
-      }))
-
-      setIsDeloadWeek(selectActiveMesocycle(mesocycles, getLocalDateString())?.isDeloadWeek ?? false)
+      setIsDeloadActive(data?.active_deload_started_at != null)
     }
     fetchDeloadStatus()
   }, [])
@@ -332,10 +323,10 @@ export default function SetLogger({
 
     // Get the most recent completed NORMAL, non-deload set for this
     // exercise - a drop/myo follow-on is a reduced-weight/rest-pause
-    // bonus set, and a deload-week set is intentionally lighter by
-    // design (see mesocycle.ts) - neither is a real top-set data point,
-    // so neither should ever become the "Last: X × Y" basis for next
-    // session's prefill.
+    // bonus set, and a deload set is intentionally lighter by design
+    // (see deload.ts) - neither is a real top-set data point, so neither
+    // should ever become the "Last: X × Y" basis for next session's
+    // prefill.
     const { data, error } = await supabase
       .from('sets')
       .select('weight, reps, created_at')
@@ -395,7 +386,7 @@ export default function SetLogger({
       rest_time_seconds: restTimeSeconds,
       set_type: setType === 'normal' ? null : setType,
       rir,
-      is_deload_week: isDeloadWeek,
+      is_deload_week: isDeloadActive,
     })
 
     if (error) {
@@ -415,7 +406,7 @@ export default function SetLogger({
     // a second beat within the same session is still caught; only fires
     // the celebration when there was real prior history to beat - a first-
     // ever logged set for this exercise has nothing to celebrate against.
-    if (setType === 'normal' && !isDeloadWeek) {
+    if (setType === 'normal' && !isDeloadActive) {
       const newEst1RM = estimateOneRepMax(weightNum, repsNum)
       if (personalBestEst1RM != null && newEst1RM > personalBestEst1RM) {
         setShowPrCelebration(true)

@@ -31,7 +31,6 @@ import WeekView from '@/components/calendar/week-view'
 import DayPeekColumn from '@/components/calendar/day-peek-column'
 import { fetchScheduleSlots, WEEKDAY_NAMES, type ScheduleSlot } from '@/lib/gym-schedule'
 import { fetchActiveActionItems, type ActionItem } from '@/lib/goals'
-import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
 import { slotsForWeek, type PhaseTemplates } from '@/lib/race-plan/day-template'
 import type { TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
 import { raceTypeLabel } from '@/lib/race-constants'
@@ -83,7 +82,7 @@ export default function CalendarPage() {
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>([])
   const [activeRace, setActiveRace] = useState<{ raceDate: string; raceTypeLabel: string } | null>(null)
   const [racePlan, setRacePlan] = useState<{ weeks: TrainingWeekSkeleton[]; phaseTemplates: PhaseTemplates } | null>(null)
-  const [mesocycles, setMesocycles] = useState<Mesocycle[]>([])
+  const [deloadActive, setDeloadActive] = useState(false)
   const [goalItems, setGoalItems] = useState<ActionItem[]>([])
   const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>([])
   const [disruptions, setDisruptions] = useState<TrainingDisruption[]>([])
@@ -150,7 +149,6 @@ export default function CalendarPage() {
       settingsResult,
       slots,
       raceResult,
-      mesoResult,
       activeGoalItems,
       entriesResult,
       disruptionsResult,
@@ -161,7 +159,7 @@ export default function CalendarPage() {
     ] = await Promise.all([
       supabase
         .from('user_settings')
-        .select('schedule_mode, wake_time, sleep_time, show_today_suggestions, goal_sleep_hours')
+        .select('schedule_mode, wake_time, sleep_time, show_today_suggestions, goal_sleep_hours, active_deload_started_at')
         .eq('user_id', user.id)
         .maybeSingle(),
       fetchScheduleSlots(supabase, user.id),
@@ -173,7 +171,6 @@ export default function CalendarPage() {
         .order('race_date', { ascending: true })
         .limit(1)
         .maybeSingle(),
-      supabase.from('training_mesocycles').select('id, start_date, length_weeks, deload_week_number, label').eq('user_id', user.id),
       fetchActiveActionItems(supabase, user.id),
       supabase
         .from('calendar_entries')
@@ -206,6 +203,7 @@ export default function CalendarPage() {
     if (settingsResult.data?.sleep_time) setSleepTime(settingsResult.data.sleep_time)
     setShowTodaySuggestions(settingsResult.data?.show_today_suggestions ?? true)
     setGoalSleepHours(settingsResult.data?.goal_sleep_hours ?? null)
+    setDeloadActive(settingsResult.data?.active_deload_started_at != null)
     setActiveWorkoutId(activeWorkoutResult.data?.id ?? null)
     setScheduleSlots(slots)
     setSleepEntries((sleepResult.data ?? []).map((r: any) => ({ date: r.date, hoursSlept: r.hours_slept })))
@@ -224,15 +222,6 @@ export default function CalendarPage() {
       setRacePlan(null)
     }
 
-    setMesocycles(
-      (mesoResult.data ?? []).map((r) => ({
-        id: r.id,
-        startDate: r.start_date,
-        lengthWeeks: r.length_weeks,
-        deloadWeekNumber: r.deload_week_number,
-        label: r.label,
-      }))
-    )
     setGoalItems(activeGoalItems)
     setCalendarEntries(
       (entriesResult.data ?? []).map((r) => ({
@@ -434,8 +423,6 @@ export default function CalendarPage() {
       ? slotsForWeek(racePlan.phaseTemplates[matchedPlanWeek.phase]!, matchedPlanWeek)
       : null
 
-  const mesocycleStatus: CurrentMesocycleStatus | null = selectActiveMesocycle(mesocycles, date)
-
   // Only flagged when a real, user-set goal exists (Settings > Calendar >
   // Goal Sleep Hours) and the night falls meaningfully short of it (1+
   // hour) - no fixed clinical threshold invented here, this app has no
@@ -545,14 +532,7 @@ export default function CalendarPage() {
           </button>
           <div className="text-center">
             <p className="text-lapis-text-primary font-medium">{viewMode === 'week' ? formatWeekHeading(displayedWeekStart) : formatDayHeading(date)}</p>
-            {mesocycleStatus && (
-              <p className="text-lapis-text-tertiary text-xs mt-1">
-                {mesocycleStatus.mesocycle.label ? `${mesocycleStatus.mesocycle.label} — ` : ''}
-                {mesocycleStatus.isDeloadWeek
-                  ? 'Deload week'
-                  : `Week ${mesocycleStatus.currentWeek} of ${mesocycleStatus.mesocycle.lengthWeeks}`}
-              </p>
-            )}
+            {deloadActive && date === today && <p className="text-lapis-text-tertiary text-xs mt-1">Deload active</p>}
             {viewMode === 'day' && isBadSleepNight && (
               <p className="text-lapis-citrine/70 text-xs mt-1">Slept {sleepEntryForDate!.hoursSlept}h, below your {goalSleepHours}h goal</p>
             )}
@@ -780,7 +760,7 @@ export default function CalendarPage() {
         </div>
 
         <div className="mt-6">
-          <DisruptionDeclaration disruptions={disruptions} onChanged={refetchDisruptions} mesocycles={mesocycles} />
+          <DisruptionDeclaration disruptions={disruptions} onChanged={refetchDisruptions} />
         </div>
       </div>
 
@@ -990,7 +970,6 @@ export default function CalendarPage() {
           return (
             <TravelPrepDialog
               entry={travelPrepEntry}
-              mesocycles={mesocycles}
               open={travelPrepEntryId !== null}
               onOpenChange={(open) => !open && setTravelPrepEntryId(null)}
               onDisruptionDeclared={refetchDisruptions}

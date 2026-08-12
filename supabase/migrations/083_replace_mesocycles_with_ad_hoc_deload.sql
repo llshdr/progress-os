@@ -1,0 +1,32 @@
+-- Replaces the fixed-length mesocycle system (migration 058) with a much
+-- simpler ad-hoc deload concept - same simplification philosophy as the
+-- Goals redesign: predetermined-length blocks require planning too far
+-- ahead, and the only two effects that ever mattered from the old system
+-- (the AI Coach's ~50% weight-cut instruction, and excluding deload sets
+-- from progression baselines via sets.is_deload_week) never actually
+-- depended on knowing a block's total length or a scheduled future
+-- deload week - only "is a deload active right now."
+--
+-- A single nullable date, not a new table: start/end are both single
+-- taps with no fields to fill in (see deload-card.tsx), and there is
+-- deliberately no history to preserve here (unlike sets.is_deload_week,
+-- which stays untouched and remains the real permanent record of which
+-- sets were lifted light). NULL = no active deload. Set to today on
+-- "Start Deload," cleared back to NULL on "End Deload" - open-ended by
+-- design, never a stored end date.
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS active_deload_started_at DATE;
+
+-- training_mesocycles itself is dropped outright, not left as an unused/
+-- ignored table. This is a deliberate exception to this app's usual
+-- "never delete data" precedent, which exists to protect real logged
+-- user ACTIVITY (a worked-out day, a nutrition entry) even after the
+-- feature reading it changes shape. These rows were never that - they
+-- were scheduling CONFIGURATION ("I'm planning a 6-week block starting
+-- Tuesday") for a feature being retired outright, not a record of
+-- something the athlete did. The signal that actually mattered from
+-- this table - which sets were lifted light for CNS recovery - is
+-- already permanently captured on sets.is_deload_week, completely
+-- independent of whether this table exists. No other table references
+-- training_mesocycles via foreign key (confirmed before writing this
+-- migration), so dropping it has no cascading effect.
+DROP TABLE IF EXISTS training_mesocycles;

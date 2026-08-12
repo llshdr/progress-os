@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { formatDateRange } from '@/components/disruption-declaration'
-import { describeMesocycleOverlap, type Mesocycle } from '@/lib/mesocycle'
 import { TRAVEL_DISCIPLINE_LABELS, TRAVEL_CHECKLIST_ITEMS, TRAVEL_NO_GYM_GUIDE, TRAVEL_TIMEZONE_NOTE, type TravelDiscipline } from '@/lib/travel-prep'
 import type { CalendarEntry } from '@/lib/calendar'
 
@@ -13,7 +12,6 @@ const ALL_DISCIPLINES = Object.keys(TRAVEL_DISCIPLINE_LABELS) as TravelDisciplin
 
 interface Props {
   entry: CalendarEntry
-  mesocycles: Mesocycle[]
   open: boolean
   onOpenChange: (open: boolean) => void
   onDisruptionDeclared: () => void
@@ -23,7 +21,7 @@ interface Props {
 // auto-detected from a title, never auto-opened. Everything here is
 // static/generic (no destination-specific content) and the packing
 // checklist is plain local state, not persisted - see travel-prep.ts.
-export default function TravelPrepDialog({ entry, mesocycles, open, onOpenChange, onDisruptionDeclared }: Props) {
+export default function TravelPrepDialog({ entry, open, onOpenChange, onDisruptionDeclared }: Props) {
   const [disciplines, setDisciplines] = useState<TravelDiscipline[]>([])
   const [checked, setChecked] = useState<Record<string, boolean>>({})
   const [declaring, setDeclaring] = useState(false)
@@ -37,8 +35,6 @@ export default function TravelPrepDialog({ entry, mesocycles, open, onOpenChange
   const toggleChecked = (item: string) => {
     setChecked((prev) => ({ ...prev, [item]: !prev[item] }))
   }
-
-  const overlapNote = describeMesocycleOverlap(mesocycles, entry.startDate, entry.endDate)
 
   const handleDeclareDisruption = async () => {
     const {
@@ -72,8 +68,6 @@ export default function TravelPrepDialog({ entry, mesocycles, open, onOpenChange
         </DialogHeader>
 
         <div className="space-y-4">
-          {overlapNote && <p className="text-lapis-text-tertiary text-xs border border-lapis-border-subtle rounded-lapis-sm px-3 py-2">{overlapNote}</p>}
-
           <div className="space-y-2">
             <p className="text-lapis-text-secondary text-sm font-medium">What are you keeping up?</p>
             <div className="flex flex-wrap gap-2">

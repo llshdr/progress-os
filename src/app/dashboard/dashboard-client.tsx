@@ -9,7 +9,6 @@ import { Dumbbell, BookOpen, Scale, LayoutTemplate, TrendingUp, Flame, Flag } fr
 import Link from 'next/link'
 import TodaySuggestionsSection from '@/components/ai-coach/today-suggestions-section'
 import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
-import { selectActiveMesocycle, type Mesocycle, type CurrentMesocycleStatus } from '@/lib/mesocycle'
 import { computeGymStreakWeeks } from '@/lib/gym-streak'
 import { filterWorkoutsCountingTowardGoal } from '@/lib/workout-goal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -60,7 +59,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const [previousWeight, setPreviousWeight] = useState<WeightEntry | null>(null)
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
   const [userName, setUserName] = useState<string>('')
-  const [mesocycleStatus, setMesocycleStatus] = useState<CurrentMesocycleStatus | null>(null)
+  const [deloadActive, setDeloadActive] = useState(false)
   const [todayRace, setTodayRace] = useState<TodayRace | null>(null)
 
   const motivationalQuotes = [
@@ -165,24 +164,14 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       // local variables above.
       setStreakWeeks(await computeGymStreakWeeks(supabase, user.id, resolvedWeeklyGoal, resolvedCountCardio))
 
-      // Active training block, if any - reuses the exact same derivation
-      // the gym Schedule page's MesocycleCard already uses, just a
-      // different render location (see mesocycle.ts).
-      const { data: mesocycleRows } = await supabase
-        .from('training_mesocycles')
-        .select('id, start_date, length_weeks, deload_week_number, label')
+      // Active ad-hoc deload, if any - same field the gym Schedule page's
+      // DeloadCard reads/writes (see migration 083).
+      const { data: deloadSettings } = await supabase
+        .from('user_settings')
+        .select('active_deload_started_at')
         .eq('user_id', user.id)
-
-      if (mesocycleRows) {
-        const mesocycles: Mesocycle[] = mesocycleRows.map((r) => ({
-          id: r.id,
-          startDate: r.start_date,
-          lengthWeeks: r.length_weeks,
-          deloadWeekNumber: r.deload_week_number,
-          label: r.label,
-        }))
-        setMesocycleStatus(selectActiveMesocycle(mesocycles, getLocalDateString()))
-      }
+        .maybeSingle()
+      setDeloadActive(deloadSettings?.active_deload_started_at != null)
 
       // Race-day quick-log entry point (Races Part D) - only ever shown
       // the day of a declared race, and only until a result is logged
@@ -336,12 +325,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           </h1>
           <p className="text-lapis-text-tertiary text-lg mb-1">{getCurrentDate()}</p>
           <p className="text-lapis-text-secondary text-sm">{getRandomQuote()}</p>
-          {mesocycleStatus && (
-            <p className="text-lapis-text-tertiary text-sm mt-1">
-              {mesocycleStatus.mesocycle.label ? `${mesocycleStatus.mesocycle.label} — ` : ''}
-              {mesocycleStatus.isDeloadWeek ? 'Deload week' : `Week ${mesocycleStatus.currentWeek} of ${mesocycleStatus.mesocycle.lengthWeeks}`}
-            </p>
-          )}
+          {deloadActive && <p className="text-lapis-text-tertiary text-sm mt-1">Deload active</p>}
         </div>
 
         {/* Race Day - one tap to the existing, already-simple Race Result

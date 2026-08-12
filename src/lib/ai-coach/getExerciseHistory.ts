@@ -87,7 +87,7 @@ export async function getExerciseHistory(
     for (const set of row.sets ?? []) {
       if (!set.completed) continue
       // A deload-week set is intentionally lighter by design (see
-      // mesocycle.ts) - not a real progression data point, so it's
+      // deload.ts) - not a real progression data point, so it's
       // excluded here rather than tagged the way drop/myo sets are
       // below. This shared function feeds both the AI Coach recommend
       // route's history/prefill reasoning and gymSuggestions.ts's

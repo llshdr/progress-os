@@ -20,7 +20,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import VolumeInsightCard from '@/components/gym/volume-insight-card'
 import ScheduleWizard from '@/components/gym/schedule-wizard'
 import ScheduledVolumeCard from '@/components/gym/scheduled-volume-card'
-import MesocycleCard from '@/components/gym/mesocycle-card'
+import DeloadCard from '@/components/gym/deload-card'
 import {
   fetchScheduleSlots,
   computeNextSlot,
@@ -456,7 +456,7 @@ export default function SchedulePage() {
 
         {userId && (
           <div className="mb-6">
-            <MesocycleCard userId={userId} />
+            <DeloadCard userId={userId} />
           </div>
         )}
 
