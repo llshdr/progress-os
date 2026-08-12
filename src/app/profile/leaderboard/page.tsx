@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ThumbsUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -43,6 +43,8 @@ type LeaderboardRow = {
   tested: number | null
 }
 
+type Reaction = { targetUserId: string; lift: PrimaryLift; reactorUserId: string }
+
 // A real, numeric leaderboard - deliberately a separate page from
 // /profile/compare, whose own copy promises "nothing here but names,
 // tiers, and pictures." Reading real 1RM numbers into that page would
@@ -57,6 +59,7 @@ type LeaderboardRow = {
 export default function LeaderboardPage() {
   const [profiles, setProfiles] = useState<PublicProfile[]>([])
   const [liftRecords, setLiftRecords] = useState<PublicLiftRecord[]>([])
+  const [reactions, setReactions] = useState<Reaction[]>([])
   const [ownUserId, setOwnUserId] = useState<string | null>(null)
   const [activeLift, setActiveLift] = useState<PrimaryLift>('bench_press')
   const [loading, setLoading] = useState(true)
@@ -86,7 +89,52 @@ export default function LeaderboardPage() {
 
     setProfiles(profileRows ?? [])
     setLiftRecords(liftRows ?? [])
+    await fetchReactions()
     setLoading(false)
+  }
+
+  // Separate from fetchAll so toggling a reaction doesn't need to
+  // refetch profiles/lift records too. All lifts fetched at once (this
+  // table stays small) rather than refetching on every tab switch.
+  const fetchReactions = async () => {
+    const { data, error } = await supabase.from('leaderboard_reactions').select('target_user_id, lift, reactor_user_id')
+    if (error) {
+      console.error('Error fetching leaderboard reactions:', error)
+      return
+    }
+    setReactions((data ?? []).map((r) => ({ targetUserId: r.target_user_id, lift: r.lift as PrimaryLift, reactorUserId: r.reactor_user_id })))
+  }
+
+  // Toggle - insert if not yet reacted, delete if already reacted. The
+  // DB's own UNIQUE/CHECK constraints are the real guard (one reaction
+  // per person per lift per target, never on your own row); this is
+  // just deciding which of insert/delete to attempt.
+  const handleToggleReaction = async (targetUserId: string) => {
+    if (!ownUserId || targetUserId === ownUserId) return
+
+    const alreadyReacted = reactions.some((r) => r.targetUserId === targetUserId && r.lift === activeLift && r.reactorUserId === ownUserId)
+
+    if (alreadyReacted) {
+      const { error } = await supabase
+        .from('leaderboard_reactions')
+        .delete()
+        .eq('target_user_id', targetUserId)
+        .eq('lift', activeLift)
+        .eq('reactor_user_id', ownUserId)
+      if (error) {
+        console.error('Error removing reaction:', error)
+        return
+      }
+    } else {
+      const { error } = await supabase
+        .from('leaderboard_reactions')
+        .insert({ target_user_id: targetUserId, lift: activeLift, reactor_user_id: ownUserId })
+      if (error) {
+        console.error('Error adding reaction:', error)
+        return
+      }
+    }
+    fetchReactions()
   }
 
   const profileById = new Map(profiles.map((p) => [p.user_id, p]))
@@ -176,6 +224,45 @@ export default function LeaderboardPage() {
                         {row.estimated != null && `Estimated: ${Math.round(row.estimated)} kg`}
                       </p>
                     </div>
+                    {(() => {
+                      const rowReactions = reactions.filter((r) => r.targetUserId === row.userId && r.lift === activeLift)
+                      const reactorNames = rowReactions
+                        .map((r) => profileById.get(r.reactorUserId)?.display_name)
+                        .filter((n): n is string => Boolean(n))
+                      const titleText = reactorNames.length > 0 ? reactorNames.join(', ') : undefined
+
+                      // Own row: a plain count (if any), no button - can't
+                      // kudos yourself, same rule the DB itself enforces.
+                      if (row.userId === ownUserId) {
+                        return (
+                          rowReactions.length > 0 && (
+                            <span
+                              title={titleText}
+                              className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle"
+                            >
+                              <ThumbsUp className="w-3.5 h-3.5" />
+                              {rowReactions.length}
+                            </span>
+                          )
+                        )
+                      }
+
+                      const hasReacted = rowReactions.some((r) => r.reactorUserId === ownUserId)
+                      return (
+                        <button
+                          onClick={() => handleToggleReaction(row.userId)}
+                          title={titleText ?? 'Give kudos'}
+                          className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs border transition-colors ${
+                            hasReacted
+                              ? 'bg-lapis-accent-500 text-lapis-text-primary border-lapis-border'
+                              : 'bg-lapis-surface-2 text-lapis-text-tertiary border-lapis-border-subtle hover:bg-lapis-surface-2 hover:text-lapis-text-primary'
+                          }`}
+                        >
+                          <ThumbsUp className={`w-3.5 h-3.5 ${hasReacted ? 'fill-current' : ''}`} />
+                          {rowReactions.length > 0 && rowReactions.length}
+                        </button>
+                      )
+                    })()}
                   </div>
                 ))}
               </div>
