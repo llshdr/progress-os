@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Plus, Archive, MoreVertical, Copy, Trash2, LayoutTemplate } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 type Template = {
   id: string
@@ -20,6 +21,7 @@ type Template = {
 export default function WorkoutTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [showDeleteTemplateModal, setShowDeleteTemplateModal] = useState(false)
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null)
@@ -44,6 +46,7 @@ export default function WorkoutTemplatesPage() {
 
     if (error) {
       console.error('Error fetching templates:', error)
+      setLoadError(true)
     } else {
       const templatesWithCount = (data || []).map((template: any) => ({
         ...template,
@@ -193,7 +196,10 @@ export default function WorkoutTemplatesPage() {
         {/* Templates List */}
         {loading ? (
           <PageSkeleton />
-        ) : filteredTemplates.length === 0 ? (
+        ) : (
+          <>
+            {loadError && <LoadErrorBanner message="Couldn't load your workout templates. Try refreshing." />}
+            {filteredTemplates.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
             <LayoutTemplate className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">
@@ -267,6 +273,8 @@ export default function WorkoutTemplatesPage() {
               </div>
             ))}
           </div>
+        )}
+          </>
         )}
       </div>
 

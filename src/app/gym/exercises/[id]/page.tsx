@@ -11,6 +11,7 @@ import ExerciseProgressChart, { type ExerciseSessionPoint } from '@/components/g
 import CardioProgressChart, { type CardioSessionPoint } from '@/components/gym/cardio-progress-chart'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 type Exercise = {
   id: string
@@ -84,6 +85,7 @@ export default function ExerciseDetailPage() {
   const [cardioEntries, setCardioEntries] = useState<CardioEntry[]>([])
   const [cardioStatistics, setCardioStatistics] = useState<CardioStatistics | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -139,6 +141,7 @@ export default function ExerciseDetailPage() {
 
     if (byLibraryId.error || byName.error) {
       console.error('Error fetching workouts:', byLibraryId.error || byName.error)
+      setLoadError(true)
       setLoading(false)
       return
     }
@@ -257,6 +260,7 @@ export default function ExerciseDetailPage() {
 
     if (instancesError) {
       console.error('Error fetching cardio exercise instances:', instancesError)
+      setLoadError(true)
       return
     }
 
@@ -279,6 +283,7 @@ export default function ExerciseDetailPage() {
 
     if (logsError) {
       console.error('Error fetching cardio logs:', logsError)
+      setLoadError(true)
       return
     }
 
@@ -397,6 +402,7 @@ export default function ExerciseDetailPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load this exercise's full history. Try refreshing." />}
         {/* Header */}
         <div className="mb-8">
           <Link

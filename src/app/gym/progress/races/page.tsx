@@ -21,6 +21,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { RACE_TYPES, RACE_TYPE_DISTANCE, raceTypeLabel, type RaceType } from '@/lib/race-constants'
 import { getLocalDateString } from '@/lib/date'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 type RaceCourse = { id: string; race_type: string; name: string }
 
@@ -51,6 +52,7 @@ export default function RacesPage() {
   const [races, setRaces] = useState<Race[]>([])
   const [courses, setCourses] = useState<RaceCourse[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [raceType, setRaceType] = useState<RaceType>('ironman')
@@ -92,6 +94,7 @@ export default function RacesPage() {
 
     if (racesError) console.error('Error fetching races:', racesError)
     if (coursesError) console.error('Error fetching race courses:', coursesError)
+    if (racesError || coursesError) setLoadError(true)
 
     const courseList = courseRows ?? []
     setCourses(courseList)
@@ -389,7 +392,10 @@ export default function RacesPage() {
 
         {loading ? (
           <PageSkeleton />
-        ) : races.length === 0 ? (
+        ) : (
+          <>
+            {loadError && <LoadErrorBanner message="Couldn't load your race history. Try refreshing." />}
+            {races.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
             <Flag className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary">No races yet — add one to start tracking your race history.</p>
@@ -418,6 +424,8 @@ export default function RacesPage() {
               )}
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
 

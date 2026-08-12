@@ -19,6 +19,7 @@ import Link from 'next/link'
 import { getLocalWeekStartString } from '@/lib/date'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { Target, CheckCircle2, Archive, RotateCcw, Trash2 } from 'lucide-react'
 import type { ActionItemStatus } from '@/lib/goals'
 
@@ -44,6 +45,7 @@ function weekEndDate(weekStart: string): string {
 export default function GoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newGoal, setNewGoal] = useState({ title: '', description: '' })
   const [showDeleteGoalModal, setShowDeleteGoalModal] = useState(false)
@@ -72,6 +74,7 @@ export default function GoalsPage() {
 
     if (error) {
       console.error('Error fetching goals:', error)
+      setLoadError(true)
     } else {
       setGoals(data || [])
     }
@@ -144,6 +147,7 @@ export default function GoalsPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load this week's goals. Try refreshing." />}
         <div className="flex items-center gap-3 mb-8">
           <Link href="/gym/progress" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back

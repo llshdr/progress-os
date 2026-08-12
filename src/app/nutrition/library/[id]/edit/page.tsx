@@ -9,6 +9,7 @@ import Link from 'next/link'
 import FoodFormFields from '@/components/nutrition/food-form-fields'
 import type { MealTag } from '@/lib/food-constants'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 export default function EditFoodPage() {
   const params = useParams()
@@ -21,6 +22,7 @@ export default function EditFoodPage() {
   const [defaultMealTag, setDefaultMealTag] = useState<MealTag | null>(null)
   const [ingredients, setIngredients] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
 
@@ -33,6 +35,7 @@ export default function EditFoodPage() {
 
     if (error) {
       console.error('Error fetching food:', error)
+      setLoadError(true)
       setLoading(false)
       return
     }
@@ -86,6 +89,7 @@ export default function EditFoodPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load this food. Try refreshing." />}
         <Link href="/nutrition/library" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>

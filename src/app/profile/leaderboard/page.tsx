@@ -6,6 +6,7 @@ import { ArrowLeft, ThumbsUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { PRIMARY_LIFTS, PRIMARY_LIFT_LABELS, type PrimaryLift } from '@/lib/exercise-constants'
 
 type PublicProfile = {
@@ -63,6 +64,7 @@ export default function LeaderboardPage() {
   const [ownUserId, setOwnUserId] = useState<string | null>(null)
   const [activeLift, setActiveLift] = useState<PrimaryLift>('bench_press')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -86,6 +88,7 @@ export default function LeaderboardPage() {
 
     if (profileError) console.error('Error fetching profiles:', profileError)
     if (liftError) console.error('Error fetching lift records:', liftError)
+    if (profileError || liftError) setLoadError(true)
 
     setProfiles(profileRows ?? [])
     setLiftRecords(liftRows ?? [])
@@ -169,6 +172,7 @@ export default function LeaderboardPage() {
           <PageSkeleton />
         ) : (
           <>
+            {loadError && <LoadErrorBanner message="Couldn't load the leaderboard. Try refreshing." />}
             <div className="flex flex-wrap gap-2 mb-8">
               {PRIMARY_LIFTS.map((lift) => (
                 <button

@@ -22,6 +22,7 @@ import SleepChart from '@/components/sleep/sleep-chart'
 import SleepInsightCard from '@/components/sleep/sleep-insight-card'
 import { computeSleepPerformanceCorrelation, MIN_NIGHTS_PER_BUCKET, type NextDayWorkout, type SleepPerformanceCorrelation } from '@/lib/sleep-performance'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { Moon } from 'lucide-react'
 
 type SleepEntry = {
@@ -40,6 +41,7 @@ export default function SleepPage() {
   const [tempUnit, setTempUnit] = useState<TemperatureUnit>('c')
   const [goalSleepHours, setGoalSleepHours] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newEntry, setNewEntry] = useState({
     date: getLocalDateString(),
@@ -142,6 +144,7 @@ export default function SleepPage() {
 
     if (error) {
       console.error('Error fetching sleep entries:', error)
+      setLoadError(true)
     } else {
       setEntries(data || [])
     }
@@ -217,6 +220,7 @@ export default function SleepPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load your sleep history. Try refreshing." />}
         <div className="flex items-center gap-3 mb-8">
           <Link href="/gym/progress" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back

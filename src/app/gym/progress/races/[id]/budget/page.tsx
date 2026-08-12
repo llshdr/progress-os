@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,6 +37,7 @@ export default function RaceBudgetPage() {
   const [items, setItems] = useState<BudgetItem[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [loadError, setLoadError] = useState(false)
 
   const [budgetInput, setBudgetInput] = useState('')
   const [savingBudget, setSavingBudget] = useState(false)
@@ -73,6 +75,7 @@ export default function RaceBudgetPage() {
 
     if (raceError) console.error('Error fetching race:', raceError)
     if (itemsError) console.error('Error fetching budget items:', itemsError)
+    if (itemsError) setLoadError(true)
 
     if (!raceRow) {
       setNotFound(true)
@@ -183,6 +186,7 @@ export default function RaceBudgetPage() {
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load all of your budget expenses. Try refreshing." />}
         <Link
           href={`/gym/progress/races/${raceId}`}
           className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"

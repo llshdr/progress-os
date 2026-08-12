@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 export default function AccountSettingsPage() {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
@@ -40,6 +42,7 @@ export default function AccountSettingsPage() {
 
     if (error) {
       console.error('Error fetching profile:', error)
+      setLoadError(true)
     }
     setDisplayName(profile?.full_name ?? '')
     setLoading(false)
@@ -104,6 +107,8 @@ export default function AccountSettingsPage() {
         </Link>
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-8">Account</h1>
+
+        {loadError && <LoadErrorBanner message="Couldn't load your account details. Try refreshing." />}
 
         <div className="max-w-md">
           {loading ? (

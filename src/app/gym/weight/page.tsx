@@ -21,6 +21,7 @@ import { displayToKg, formatWeight, kgToDisplay, type WeightUnit } from '@/lib/w
 import WeightChart from '@/components/weight/weight-chart'
 import WeightInsightCard from '@/components/weight/weight-insight-card'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { Scale } from 'lucide-react'
 
 type WeightEntry = {
@@ -38,6 +39,7 @@ export default function WeightPage() {
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg')
   const [goalWeightKg, setGoalWeightKg] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newEntry, setNewEntry] = useState({
     weight: '',
@@ -86,6 +88,7 @@ export default function WeightPage() {
 
     if (error) {
       console.error('Error fetching entries:', error)
+      setLoadError(true)
     } else {
       setEntries(data || [])
     }
@@ -169,6 +172,7 @@ export default function WeightPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load your weight history. Try refreshing." />}
         <div className="flex items-center gap-3 mb-8">
           <Link href="/gym/progress" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back

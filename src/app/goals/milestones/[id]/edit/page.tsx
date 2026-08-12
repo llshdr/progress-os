@@ -11,6 +11,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import MilestoneFormFields from '@/components/goals/milestone-form-fields'
 import type { ActionItemStatus } from '@/lib/goals'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 export default function EditMilestonePage() {
   const params = useParams()
@@ -24,6 +25,7 @@ export default function EditMilestonePage() {
   const [goalOptions, setGoalOptions] = useState<{ id: string; title: string }[]>([])
   const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const supabase = createClient()
@@ -42,6 +44,7 @@ export default function EditMilestonePage() {
 
     if (error) {
       console.error('Error fetching milestone:', error)
+      setLoadError(true)
       setLoading(false)
       return
     }
@@ -116,6 +119,7 @@ export default function EditMilestonePage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load this milestone. Try refreshing." />}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <Link href={backHref} className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back

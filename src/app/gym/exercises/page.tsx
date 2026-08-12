@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Plus, Search, Star, Archive, Trash2, Pencil, Dumbbell } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 type Exercise = {
   id: string
@@ -33,6 +34,7 @@ export default function ExerciseLibraryPage() {
   const [searching, setSearching] = useState(false)
 
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFavorites, setShowFavorites] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
@@ -78,6 +80,7 @@ export default function ExerciseLibraryPage() {
 
     if (error) {
       console.error('Error fetching exercises:', error)
+      setLoadError(true)
     } else {
       setExercises((prev) => (append ? [...prev, ...(data || [])] : data || []))
       setHasMore((data?.length ?? 0) === PAGE_SIZE)
@@ -290,7 +293,10 @@ export default function ExerciseLibraryPage() {
         {/* Exercise List */}
         {loading || searching ? (
           <PageSkeleton />
-        ) : filteredExercises.length === 0 ? (
+        ) : (
+          <>
+            {loadError && <LoadErrorBanner message="Couldn't load your exercise library. Try refreshing." />}
+            {filteredExercises.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
             <Dumbbell className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">
@@ -414,6 +420,8 @@ export default function ExerciseLibraryPage() {
                 </button>
               </div>
             )}
+          </>
+        )}
           </>
         )}
       </div>

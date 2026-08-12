@@ -12,6 +12,7 @@ import { getLocalWeekStartString, getLocalDateString } from '@/lib/date'
 import { computeGymStreakWeeks } from '@/lib/gym-streak'
 import { filterWorkoutsCountingTowardGoal } from '@/lib/workout-goal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { raceTypeLabel, type RaceType } from '@/lib/race-constants'
 
 interface DashboardClientProps {
@@ -50,6 +51,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(null)
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0)
   const [weeklyGoal, setWeeklyGoal] = useState(5)
@@ -263,6 +265,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -318,6 +321,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load some of your dashboard data. Try refreshing." />}
         {/* Top Section */}
         <div className="mb-8">
           <h1 className="font-display italic text-4xl font-medium tracking-tight text-lapis-text-primary mb-2">

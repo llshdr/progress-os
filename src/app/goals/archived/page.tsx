@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Archive, ArrowLeft, RotateCcw, Trash2 } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 type ArchivedGoal = {
   id: string
@@ -24,6 +25,7 @@ type ArchivedGoal = {
 export default function ArchivedGoalsPage() {
   const [goals, setGoals] = useState<ArchivedGoal[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [itemToDelete, setItemToDelete] = useState<ArchivedGoal | null>(null)
   const supabase = createClient()
@@ -50,6 +52,7 @@ export default function ArchivedGoalsPage() {
 
     if (error) {
       console.error('Error fetching archived goals:', error)
+      setLoadError(true)
     } else {
       setGoals(data ?? [])
     }
@@ -100,7 +103,10 @@ export default function ArchivedGoalsPage() {
 
         {loading ? (
           <PageSkeleton />
-        ) : goals.length === 0 ? (
+        ) : (
+          <>
+            {loadError && <LoadErrorBanner message="Couldn't load your archived goals. Try refreshing." />}
+            {goals.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
             <Archive className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary">No archived goals yet</p>
@@ -169,6 +175,8 @@ export default function ArchivedGoalsPage() {
                 </div>
               ))}
             </div>
+          </>
+        )}
           </>
         )}
       </div>

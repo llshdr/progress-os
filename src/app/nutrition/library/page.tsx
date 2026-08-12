@@ -8,6 +8,7 @@ import { Plus, Search, Archive, Trash2, Pencil, Apple } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { mealTagLabel } from '@/lib/food-constants'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 type FoodTemplate = {
   id: string
@@ -23,6 +24,7 @@ type FoodTemplate = {
 export default function FoodLibraryPage() {
   const [foods, setFoods] = useState<FoodTemplate[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -50,6 +52,7 @@ export default function FoodLibraryPage() {
 
     if (error) {
       console.error('Error fetching food library:', error)
+      setLoadError(true)
     } else {
       setFoods(data || [])
     }
@@ -131,7 +134,10 @@ export default function FoodLibraryPage() {
 
         {loading ? (
           <PageSkeleton />
-        ) : filteredFoods.length === 0 ? (
+        ) : (
+          <>
+            {loadError && <LoadErrorBanner message="Couldn't load your food library. Try refreshing." />}
+            {filteredFoods.length === 0 ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
             <Apple className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
             <p className="text-lapis-text-tertiary mb-4">{searchQuery ? 'No foods found' : 'No saved foods yet'}</p>
@@ -199,6 +205,8 @@ export default function FoodLibraryPage() {
               </div>
             ))}
           </div>
+        )}
+          </>
         )}
       </div>
 

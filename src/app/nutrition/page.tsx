@@ -25,6 +25,7 @@ import type { CaloriePoint } from '@/lib/nutrition-trend'
 import MealTagPicker from '@/components/nutrition/meal-tag-picker'
 import { MEAL_TAGS, mealTagLabel, type MealTag } from '@/lib/food-constants'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { useOnlineStatus } from '@/lib/use-online-status'
 
 const MIN_ENTRIES_FOR_TREND = 3
@@ -102,6 +103,7 @@ export default function NutritionPage() {
   // the quick-repeat button below just reuses whatever this already holds.
   const [lastIntraWorkoutItem, setLastIntraWorkoutItem] = useState<FoodItem | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const isOnline = useOnlineStatus()
@@ -144,6 +146,7 @@ export default function NutritionPage() {
 
     if (foodsError) {
       console.error('Error fetching food library:', foodsError)
+      setLoadError(true)
     }
     setLibraryFoods(foods || [])
 
@@ -168,6 +171,7 @@ export default function NutritionPage() {
 
     if (entryError) {
       console.error('Error fetching nutrition entry:', entryError)
+      setLoadError(true)
     }
     setTodayEntry(entry ?? null)
 
@@ -179,6 +183,7 @@ export default function NutritionPage() {
 
     if (entriesError) {
       console.error('Error fetching nutrition entries:', entriesError)
+      setLoadError(true)
     }
     setAllEntries(entries || [])
 
@@ -193,6 +198,7 @@ export default function NutritionPage() {
 
       if (itemsError) {
         console.error('Error fetching food items:', itemsError)
+        setLoadError(true)
       }
       setFoodItems(items || [])
     } else {
@@ -475,6 +481,7 @@ export default function NutritionPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load some of your nutrition data. Try refreshing." />}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">

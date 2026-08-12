@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { rankTierLabel } from '@/lib/rank'
 
 type PublicProfile = {
@@ -37,6 +38,7 @@ export default function CompareProfilesPage() {
   const [profiles, setProfiles] = useState<PublicProfile[]>([])
   const [ownUserId, setOwnUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export default function CompareProfilesPage() {
 
     if (error) {
       console.error('Error fetching profiles:', error)
+      setLoadError(true)
     } else {
       setProfiles(data || [])
     }
@@ -92,7 +95,9 @@ export default function CompareProfilesPage() {
         {loading ? (
           <PageSkeleton />
         ) : (
-          <div className="space-y-3">
+          <>
+            {loadError && <LoadErrorBanner message="Couldn't load everyone's profiles. Try refreshing." />}
+            <div className="space-y-3">
             {profiles.map((profile) => (
               <div
                 key={profile.user_id}
@@ -125,7 +130,8 @@ export default function CompareProfilesPage() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </AppLayout>

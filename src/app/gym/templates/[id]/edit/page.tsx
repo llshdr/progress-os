@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import ExerciseAlternativesManager from '@/components/gym/exercise-alternatives-manager'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 type Template = {
   id: string
@@ -63,6 +64,7 @@ export default function EditTemplatePage() {
   const [templateExercises, setTemplateExercises] = useState<TemplateExercise[]>([])
   const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showAddExercise, setShowAddExercise] = useState(false)
   const [name, setName] = useState('')
@@ -128,6 +130,7 @@ export default function EditTemplatePage() {
 
     if (exercisesError) {
       console.error('Error fetching template exercises:', exercisesError)
+      setLoadError(true)
     } else {
       setTemplateExercises(exercisesData || [])
     }
@@ -277,6 +280,7 @@ export default function EditTemplatePage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load this template's exercises. Try refreshing." />}
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <Link href="/gym/templates" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">

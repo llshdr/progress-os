@@ -10,6 +10,7 @@ import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import ExerciseVariantsManager from '@/components/gym/exercise-variants-manager'
 import type { ExerciseType, CardioType, PrimaryLift } from '@/lib/exercise-constants'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 export default function EditExercisePage() {
   const params = useParams()
@@ -26,6 +27,7 @@ export default function EditExercisePage() {
   const [notes, setNotes] = useState('')
   const [isUnilateral, setIsUnilateral] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
 
@@ -42,6 +44,7 @@ export default function EditExercisePage() {
 
     if (error) {
       console.error('Error fetching exercise:', error)
+      setLoadError(true)
       setLoading(false)
       return
     }
@@ -129,6 +132,7 @@ export default function EditExercisePage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load this exercise. Try refreshing." />}
         <Link href="/gym/exercises" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>

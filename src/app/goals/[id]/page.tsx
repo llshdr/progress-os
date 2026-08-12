@@ -13,6 +13,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import GoalFormFields from '@/components/goals/goal-form-fields'
 import type { ActionItemStatus, GoalScope } from '@/lib/goals'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 type LinkedMilestone = {
   id: string
@@ -50,6 +51,7 @@ export default function GoalDetailPage() {
   const [availableGoals, setAvailableGoals] = useState<{ id: string; title: string }[]>([])
   const [prerequisite, setPrerequisite] = useState<{ title: string; status: ActionItemStatus } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [linkedMilestones, setLinkedMilestones] = useState<LinkedMilestone[]>([])
   const [generatingPlan, setGeneratingPlan] = useState(false)
@@ -99,6 +101,7 @@ export default function GoalDetailPage() {
 
     if (error) {
       console.error('Error fetching goal:', error)
+      setLoadError(true)
       setLoading(false)
       return
     }
@@ -298,6 +301,7 @@ export default function GoalDetailPage() {
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load this goal. Try refreshing." />}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
           <Link href="/goals" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
             ← Back

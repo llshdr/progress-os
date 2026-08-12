@@ -9,6 +9,7 @@ import { rankTierLabel, computeRankBreakdown, type RankBreakdown, type ModuleNam
 import RankSparkline, { type RankHistoryPoint } from '@/components/profile/rank-sparkline'
 import { filterWorkoutsCountingTowardGoal } from '@/lib/workout-goal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { Users } from 'lucide-react'
 
 type PublicProfile = {
@@ -61,6 +62,7 @@ export default function ProfilePage() {
   const [own, setOwn] = useState<PublicProfile | null>(null)
   const [others, setOthers] = useState<PublicProfile[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [rankUpTier, setRankUpTier] = useState<number | null>(null)
   const [breakdown, setBreakdown] = useState<RankBreakdown | null>(null)
@@ -90,6 +92,7 @@ export default function ProfilePage() {
 
     if (ownError) {
       console.error('Error fetching own profile:', ownError)
+      setLoadError(true)
     } else if (ownRow) {
       setOwn(ownRow)
       await checkRankUp(user.id, ownRow.rank)
@@ -104,6 +107,7 @@ export default function ProfilePage() {
 
     if (othersError) {
       console.error('Error fetching other profiles:', othersError)
+      setLoadError(true)
     } else {
       setOthers(othersRows || [])
     }
@@ -230,6 +234,7 @@ export default function ProfilePage() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load some of your profile data. Try refreshing." />}
         <div className="mb-8">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Profile</h1>
           <p className="text-lapis-text-tertiary text-sm">Your rank and the people you're sharing progress with</p>
