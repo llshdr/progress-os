@@ -6,6 +6,8 @@ import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Clock, Calendar } from 'lucide-react'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
+import { formatDuration } from '@/lib/format'
 
 type Workout = {
   id: string
@@ -36,6 +38,7 @@ export default function WorkoutsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -59,6 +62,7 @@ export default function WorkoutsPage() {
 
     if (error) {
       console.error('Error fetching workouts:', error)
+      setLoadError(true)
     } else {
       const mapped: Workout[] = (data || []).map((w: any) => ({
         id: w.id,
@@ -95,19 +99,17 @@ export default function WorkoutsPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
-  const formatDuration = (startedAt: string, completedAt: string) => {
-    const start = new Date(startedAt)
-    const end = new Date(completedAt)
-    const minutes = Math.floor((end.getTime() - start.getTime()) / 60000)
-    if (minutes < 60) return `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
-  }
+  // Fixed elapsed time between two real, already-known timestamps - a
+  // completed workout's duration never changes once set, so no ticking
+  // needed here (unlike the active-session timer on the workout detail
+  // page, which shares this same formatter but computes against `now`).
+  const workoutDurationSeconds = (startedAt: string, completedAt: string) =>
+    (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 1000
 
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadError && <LoadErrorBanner message="Couldn't load your workout history. Try refreshing." />}
         <Link href="/gym/train" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
@@ -190,7 +192,7 @@ export default function WorkoutsPage() {
                                   <span>•</span>
                                   <span className="font-data tabular-nums flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
-                                    {formatDuration(workout.started_at, workout.completed_at!)}
+                                    {formatDuration(workoutDurationSeconds(workout.started_at, workout.completed_at!), { precision: 'minute' })}
                                   </span>
                                 </>
                               )}

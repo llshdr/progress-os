@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Check, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
+import { formatDuration } from '@/lib/format'
 
 interface CardioLoggerProps {
   exerciseId: string
@@ -79,12 +80,6 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
     const minutes = Math.floor(paceMinutesPerKm)
     const seconds = Math.round((paceMinutesPerKm - minutes) * 60)
     return `${minutes}:${String(seconds).padStart(2, '0')} /km`
-  }
-
-  const formatDuration = (totalSeconds: number): string => {
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
-    return seconds === 0 ? `${minutes} min` : `${minutes}m ${seconds}s`
   }
 
   const handleSave = async () => {

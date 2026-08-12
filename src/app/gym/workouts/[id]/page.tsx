@@ -10,6 +10,7 @@ import SetLogger from '@/components/workout/set-logger'
 import CardioLogger from '@/components/workout/cardio-logger'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { formatDuration } from '@/lib/format'
 
 type Workout = {
   id: string
@@ -56,12 +57,25 @@ export default function CurrentWorkoutPage() {
   const [showDeleteWorkoutModal, setShowDeleteWorkoutModal] = useState(false)
   const [showDeleteExerciseModal, setShowDeleteExerciseModal] = useState(false)
   const [exerciseToDelete, setExerciseToDelete] = useState<string | null>(null)
+  const [now, setNow] = useState<Date | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
     fetchWorkoutData()
     fetchLibraryExercises()
   }, [params.id])
+
+  // Live-ticks the header's elapsed-time display while a session is still
+  // in progress - previously this only recomputed on unrelated re-renders
+  // (logging a set, etc.), so the timer visibly stalled between them.
+  // Stops entirely once the workout is completed, since completed_at is
+  // then a fixed point and there's nothing left to tick toward.
+  useEffect(() => {
+    if (!workout || workout.completed_at) return
+    setNow(new Date())
+    const interval = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(interval)
+  }, [workout?.id, workout?.completed_at])
 
   const fetchLibraryExercises = async () => {
     const {
@@ -287,14 +301,15 @@ export default function CurrentWorkoutPage() {
     setShowDeleteExerciseModal(true)
   }
 
-  const formatDuration = (startedAt: string) => {
-    const start = new Date(startedAt)
-    const now = new Date()
-    const minutes = Math.floor((now.getTime() - start.getTime()) / 60000)
-    if (minutes < 60) return `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
+  // Fixed once completed (uses the real completed_at endpoint, not
+  // whatever "now" happens to be at render time - previously this kept
+  // growing forever for a completed workout instead of staying at the
+  // real session length). While still in progress, ticks against the
+  // live `now` state above.
+  const workoutElapsedSeconds = (w: Workout): number => {
+    const start = new Date(w.started_at).getTime()
+    const end = w.completed_at ? new Date(w.completed_at).getTime() : (now ?? new Date()).getTime()
+    return (end - start) / 1000
   }
 
   if (loading) {
@@ -376,7 +391,7 @@ export default function CurrentWorkoutPage() {
             <div className="flex items-center gap-3 text-lapis-text-tertiary text-sm">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {formatDuration(workout.started_at)}
+                {formatDuration(workoutElapsedSeconds(workout), { precision: 'minute' })}
               </span>
               <span>•</span>
               <span>{exercises.length} exercises</span>

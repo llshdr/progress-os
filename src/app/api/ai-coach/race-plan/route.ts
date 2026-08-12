@@ -5,6 +5,7 @@ import { analyzeCurrentFitness } from '@/lib/race-plan/analyze-fitness'
 import { computeTrainingWeeks, RACE_APPROACHES, RACE_APPROACH_LABELS, type RaceApproach, type TrainingPhase } from '@/lib/race-plan/periodization'
 import { raceTypeLabel, type RaceType } from '@/lib/race-constants'
 import { getLocalDateString } from '@/lib/date'
+import { formatDuration } from '@/lib/format'
 import { daysBetween } from '@/lib/goals'
 import { computeTensionFlags } from '@/lib/race-plan/tension'
 import {
@@ -46,14 +47,6 @@ function formatPace(secondsPerKm: number): string {
   const minutes = Math.floor(secondsPerKm / 60)
   const seconds = Math.round(secondsPerKm % 60)
   return `${minutes}:${String(seconds).padStart(2, '0')} /km`
-}
-
-function formatDuration(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
-  return `${minutes}m ${String(seconds).padStart(2, '0')}s`
 }
 
 function buildSelfAssessmentSummary(assessment: SelfAssessment | null): string {

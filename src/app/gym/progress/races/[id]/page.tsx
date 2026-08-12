@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { raceTypeLabel, RACE_TYPE_DISTANCE, type RaceType } from '@/lib/race-constants'
 import { getLocalDateString, getLocalWeekStart, getLocalWeekdayIndex } from '@/lib/date'
+import { formatDuration } from '@/lib/format'
 import { daysBetween } from '@/lib/goals'
 import { fetchCardioActivity, type CardioActivity } from '@/lib/cardio-stats'
 import { analyzeCurrentFitness, type FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
@@ -159,14 +160,6 @@ const DISCIPLINE_LABELS: Record<Discipline, string> = { swim: 'Swim', bike: 'Bik
 
 function formatWeekDate(dateString: string): string {
   return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function formatDuration(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
-  return `${minutes}m ${String(seconds).padStart(2, '0')}s`
 }
 
 const MARGIN_RISK_COLOR: Record<CutoffRiskFlag['risk'], string> = {
