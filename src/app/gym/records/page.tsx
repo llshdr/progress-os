@@ -18,9 +18,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
+import { formatDuration } from '@/lib/format'
 import { MUSCLE_GROUPS, EXERCISE_TYPES, type ExerciseType } from '@/lib/exercise-constants'
 import { fetchCardioActivity, bucketWeeklyCardioDistance, type CardioActivity } from '@/lib/cardio-stats'
+import { getLocalDateString } from '@/lib/date'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
+import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { computeStrengthFacts } from '@/lib/race-plan/analyze-fitness'
 import { computeGymProgressionSignal } from '@/lib/gym-progression'
 import { upsertGymProgressionSignal } from '@/lib/rank-progression'
@@ -118,7 +121,14 @@ function computeLoadWindow(
 ): LoadWindow {
   const cutoff = new Date(today)
   cutoff.setDate(cutoff.getDate() - days)
-  const sessionCount = workoutDates.filter((d) => new Date(d) > cutoff).length
+  // workoutDates are date-only strings (workouts.date) - compared as a
+  // local-calendar-date string, not via `new Date(d)`, which would parse
+  // as UTC midnight and shift the window boundary by the user's UTC
+  // offset. rirEntries' own .date is already a real timestamp
+  // (created_at), so it's a precise instant on both sides and safe to
+  // compare directly against cutoff.
+  const cutoffDateStr = getLocalDateString(cutoff)
+  const sessionCount = workoutDates.filter((d) => d > cutoffDateStr).length
   const rirValues = rirEntries.filter((e) => new Date(e.date) > cutoff).map((e) => e.rir)
   return {
     sessionCount,
@@ -133,12 +143,6 @@ function formatPace(secondsPerKm: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')} /km`
 }
 
-function formatDuration(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return seconds === 0 ? `${minutes} min` : `${minutes}m ${seconds}s`
-}
-
 function formatActivityDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
@@ -151,6 +155,7 @@ export default function RecordsPage() {
   const [cardioMuscleGroupById, setCardioMuscleGroupById] = useState<Map<string, string>>(new Map())
   const [loadStats, setLoadStats] = useState<{ sevenDay: LoadWindow; twentyEightDay: LoadWindow } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [muscleFilter, setMuscleFilter] = useState<string | null>(null)
   // Null covers both "never logged" and "too stale to trust" - the ratio
   // PR below is simply omitted in either case, never guessed at.
@@ -192,6 +197,7 @@ export default function RecordsPage() {
 
     if (libraryError) {
       console.error('Error fetching exercise library:', libraryError)
+      setLoadError(true)
       setLoading(false)
       return
     }
@@ -212,6 +218,7 @@ export default function RecordsPage() {
 
     if (instancesError) {
       console.error('Error fetching exercise instances:', instancesError)
+      setLoadError(true)
       setLoading(false)
       return
     }
@@ -734,6 +741,7 @@ export default function RecordsPage() {
           <PageSkeleton />
         ) : (
           <>
+            {loadError && <LoadErrorBanner message="Couldn't load all of your records data. Try refreshing." />}
             {loadStats && (loadStats.sevenDay.sessionCount > 0 || loadStats.twentyEightDay.sessionCount > 0) && (
               <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-8">
                 <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Training Load</h2>

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getLocalWeekStart } from '@/lib/date'
+import { getLocalDateString, getLocalWeekStart } from '@/lib/date'
 
 export interface CardioActivity {
   date: string
@@ -106,10 +106,46 @@ export function bucketWeeklyCardioDistance(activities: CardioActivity[], weeksSh
   }
 
   for (const activity of activities) {
-    const activityWeekStart = getLocalWeekStart(new Date(activity.date))
+    // T00:00:00 anchors this as local midnight - bare `new Date(activity.date)`
+    // parses a date-only string as UTC midnight, which for anyone west of
+    // UTC can land on the wrong local weekday and misassign the activity
+    // to the previous week's bucket.
+    const activityWeekStart = getLocalWeekStart(new Date(activity.date + 'T00:00:00'))
     const bucket = weeks.find((w) => w.start.getTime() === activityWeekStart.getTime())
     if (bucket) bucket.totalKm += activity.distanceKm
   }
 
   return weeks
+}
+
+// last-4-weeks / 4-weeks-before-that split, for before/after trend
+// comparisons - shared by analyzeCurrentFitness (analyze-fitness.ts) and
+// computeDisciplineActivityFacts (discipline-weakness.ts), which used to
+// each reimplement this independently (and would silently drift from each
+// other if either changed). Cutoffs are local-calendar-date strings
+// compared directly against activity.date's own date-only string, never
+// raw Date instants - comparing a Date.now()-anchored instant against
+// `new Date(dateOnlyString)` (parsed as UTC midnight) shifts the
+// effective window boundary by the user's UTC offset, occasionally
+// mis-bucketing a boundary-day activity.
+export interface RecentPriorActivityWindow {
+  recent: CardioActivity[] // last 4 weeks
+  prior: CardioActivity[] // the 4 weeks before that
+  window: CardioActivity[] // last 8 weeks total (recent + prior)
+}
+
+function localDateNDaysAgo(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  return getLocalDateString(d)
+}
+
+export function splitRecentAndPriorActivity(activities: CardioActivity[]): RecentPriorActivityWindow {
+  const fourWeeksAgo = localDateNDaysAgo(28)
+  const eightWeeksAgo = localDateNDaysAgo(56)
+  return {
+    recent: activities.filter((a) => a.date >= fourWeeksAgo),
+    prior: activities.filter((a) => a.date >= eightWeeksAgo && a.date < fourWeeksAgo),
+    window: activities.filter((a) => a.date >= eightWeeksAgo),
+  }
 }

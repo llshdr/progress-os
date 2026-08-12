@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { fetchCardioActivity, bucketWeeklyCardioDistance, averagePace } from '@/lib/cardio-stats'
+import { fetchCardioActivity, bucketWeeklyCardioDistance, averagePace, splitRecentAndPriorActivity } from '@/lib/cardio-stats'
 import { computeMuscleVolume, type MuscleVolume } from '@/lib/volume-analysis'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
 import { getLocalWeekStart, getLocalDateString } from '@/lib/date'
@@ -223,11 +223,7 @@ export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: st
   const weeklyDistanceKm = weeklyBuckets.map((w) => Math.round(w.totalKm * 10) / 10)
   const weeksActive = weeklyBuckets.filter((w) => w.totalKm > 0).length
 
-  const fourWeeksAgo = new Date(Date.now() - 28 * DAY_MS)
-  const eightWeeksAgo = new Date(Date.now() - 56 * DAY_MS)
-  const recentActivities = activities.filter((a) => new Date(a.date) >= fourWeeksAgo)
-  const priorActivities = activities.filter((a) => new Date(a.date) >= eightWeeksAgo && new Date(a.date) < fourWeeksAgo)
-  const windowActivities = activities.filter((a) => new Date(a.date) >= eightWeeksAgo)
+  const { recent: recentActivities, prior: priorActivities, window: windowActivities } = splitRecentAndPriorActivity(activities)
 
   const recentAvgWeeklyKm = recentActivities.reduce((sum, a) => sum + a.distanceKm, 0) / 4
   const recentAvgSessionsPerWeek = recentActivities.length / 4

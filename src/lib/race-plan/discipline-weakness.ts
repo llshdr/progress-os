@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { fetchCardioActivity, bucketWeeklyCardioDistance, averagePace, type CardioActivity } from '@/lib/cardio-stats'
+import { fetchCardioActivity, bucketWeeklyCardioDistance, averagePace, splitRecentAndPriorActivity, type CardioActivity } from '@/lib/cardio-stats'
 import type { Discipline, MultisportSelfAssessment } from '@/lib/race-plan/self-assessment'
 import type { CardioType } from '@/lib/exercise-constants'
 
@@ -66,15 +66,12 @@ export async function computeDisciplineActivityFacts(supabase: SupabaseClient): 
     if (discipline) byDiscipline[discipline].push(activity)
   }
 
-  const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
-  const eightWeeksAgo = new Date(Date.now() - 56 * 24 * 60 * 60 * 1000)
   const result = {} as Record<Discipline, DisciplineActivityFacts>
 
   for (const discipline of ['swim', 'bike', 'run'] as Discipline[]) {
     const activitiesForDiscipline = byDiscipline[discipline]
     const weeklyBuckets = bucketWeeklyCardioDistance(activitiesForDiscipline, 8)
-    const recent = activitiesForDiscipline.filter((a) => new Date(a.date) >= fourWeeksAgo)
-    const prior = activitiesForDiscipline.filter((a) => new Date(a.date) >= eightWeeksAgo && new Date(a.date) < fourWeeksAgo)
+    const { recent, prior } = splitRecentAndPriorActivity(activitiesForDiscipline)
 
     result[discipline] = {
       weeksActiveOf8: weeklyBuckets.filter((w) => w.totalKm > 0).length,
