@@ -39,10 +39,18 @@ async function getRecentlyTrainedExercises(supabase: SupabaseClient): Promise<Re
 
 async function getExerciseTrendCandidates(supabase: SupabaseClient): Promise<SuggestionCandidate[]> {
   const recentExercises = await getRecentlyTrainedExercises(supabase)
+  // Independent lookups (one per recently-trained exercise, capped at
+  // RECENT_EXERCISE_LIMIT) - fetched concurrently rather than one at a
+  // time. Promise.all preserves recentExercises' order, so candidate
+  // display order is unchanged.
+  const histories = await Promise.all(
+    recentExercises.map((ex) => getExerciseHistory(supabase, ex.exerciseLibraryId, ex.exerciseName))
+  )
   const candidates: SuggestionCandidate[] = []
 
-  for (const ex of recentExercises) {
-    const history = await getExerciseHistory(supabase, ex.exerciseLibraryId, ex.exerciseName)
+  for (let i = 0; i < recentExercises.length; i++) {
+    const ex = recentExercises[i]
+    const history = histories[i]
     if (history.length === 0) continue
 
     const bestWeightBySession = new Map<string, number>()
