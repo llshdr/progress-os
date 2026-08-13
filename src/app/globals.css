@@ -179,17 +179,28 @@
   * {
     @apply border-border outline-ring/50;
   }
+  body {
+    @apply bg-background text-foreground;
+  }
   /* overflow-x-hidden is a containment backstop, not a fix for any one bug:
-     nothing else in the layout chain (main, page wrappers, html) clips
+     nothing else in the layout chain (main, page wrappers, body) clips
      horizontal overflow, so content that refuses to shrink anywhere in the
      app has an unobstructed path to becoming real page-level horizontal
      scroll (confirmed via the Exercise Library investigation). No part of
      this app relies on intentional horizontal scrolling (checked app-wide
-     for overflow-x-auto/scroll - none exist), so this is safe globally. */
-  body {
-    @apply bg-background text-foreground overflow-x-hidden;
-  }
+     for overflow-x-auto/scroll - none exist), so this is safe globally.
+
+     Lives on html, not body: body's own overflow-x-hidden broke
+     position: fixed on the mobile bottom nav on iOS Safari specifically -
+     a well-documented WebKit quirk where non-visible overflow on body
+     causes fixed descendants to stop tracking the true viewport and
+     scroll away with the page instead (see the investigation this fix
+     followed). html doesn't propagate its own overflow down to body the
+     way html's overflow propagates UP to the viewport (CSS Overflow
+     Module 3's propagation rule only runs root -> viewport, never
+     root -> body), so the same containment backstop applies with none of
+     the iOS side effect. */
   html {
-    @apply font-sans bg-lapis-bg;
+    @apply font-sans bg-lapis-bg overflow-x-hidden;
   }
 }
