@@ -11,6 +11,7 @@ import { filterWorkoutsCountingTowardGoal } from '@/lib/workout-goal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { Users } from 'lucide-react'
+import { resizeImageFile } from '@/lib/image'
 
 type PublicProfile = {
   user_id: string
@@ -20,42 +21,6 @@ type PublicProfile = {
 }
 
 const MODULE_LABEL: Record<ModuleName, string> = { goals: 'Goals', gym: 'Gym', nutrition: 'Nutrition' }
-
-// Downscale/compress client-side before upload - keeps avatar files small
-// without needing any server-side image processing.
-function resizeImageFile(file: File, maxSize = 512): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const url = URL.createObjectURL(file)
-    img.onload = () => {
-      const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.round(img.width * scale)
-      canvas.height = Math.round(img.height * scale)
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        URL.revokeObjectURL(url)
-        reject(new Error('Canvas not supported'))
-        return
-      }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      canvas.toBlob(
-        (blob) => {
-          URL.revokeObjectURL(url)
-          if (blob) resolve(blob)
-          else reject(new Error('Failed to encode image'))
-        },
-        'image/jpeg',
-        0.85
-      )
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('Failed to load image'))
-    }
-    img.src = url
-  })
-}
 
 export default function ProfilePage() {
   const [userId, setUserId] = useState<string | null>(null)

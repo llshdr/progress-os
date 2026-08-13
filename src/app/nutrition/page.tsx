@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Apple, BookOpen, Plus, X, WifiOff } from 'lucide-react'
+import { Apple, BookOpen, ChefHat, Plus, X, WifiOff } from 'lucide-react'
 import Link from 'next/link'
 import { getLocalDateString } from '@/lib/date'
 import { getEffectiveTarget, type TrainingIntensity, type TrainingPhase } from '@/lib/nutrition'
@@ -507,6 +507,12 @@ export default function NutritionPage() {
               <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-secondary hover:bg-lapis-surface-2 transition-colors text-sm">
                 <BookOpen className="w-4 h-4" />
                 Library
+              </button>
+            </Link>
+            <Link href="/nutrition/cookbook">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-secondary hover:bg-lapis-surface-2 transition-colors text-sm">
+                <ChefHat className="w-4 h-4" />
+                Cookbook
               </button>
             </Link>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
