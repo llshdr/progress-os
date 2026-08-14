@@ -20,7 +20,7 @@ import { celsiusToDisplay, displayToCelsius, formatTemperature, type Temperature
 import { getLocalDateString } from '@/lib/date'
 import SleepChart from '@/components/sleep/sleep-chart'
 import SleepInsightCard from '@/components/sleep/sleep-insight-card'
-import { computeSleepPerformanceCorrelation, MIN_NIGHTS_PER_BUCKET, type NextDayWorkout, type SleepPerformanceCorrelation } from '@/lib/sleep-performance'
+import { computeSleepPerformanceCorrelation, MIN_NIGHTS_PER_BUCKET, type SameDayWorkout, type SleepPerformanceCorrelation } from '@/lib/sleep-performance'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { Moon } from 'lucide-react'
@@ -101,7 +101,7 @@ export default function SleepPage() {
       rirsByDate.set(date, list)
     }
 
-    const workoutsByDate = new Map<string, NextDayWorkout>()
+    const workoutsByDate = new Map<string, SameDayWorkout>()
     for (const w of workoutRows ?? []) {
       if (workoutsByDate.has(w.date)) continue
       const rirs = rirsByDate.get(w.date) ?? []
@@ -325,7 +325,7 @@ export default function SleepPage() {
           performanceCorrelation.belowAverage.nightCount >= MIN_NIGHTS_PER_BUCKET &&
           performanceCorrelation.aboveOrAtAverage.nightCount >= MIN_NIGHTS_PER_BUCKET && (
             <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
-              <h3 className="text-lg font-medium text-lapis-text-primary mb-1">Sleep &amp; Next-Day Training</h3>
+              <h3 className="text-lg font-medium text-lapis-text-primary mb-1">Sleep &amp; Same-Day Training</h3>
               <p className="text-lapis-text-tertiary text-sm mb-4">
                 Nights split against your own average ({performanceCorrelation.personalAverageHours.toFixed(1)}h) - not a fixed target, just what&apos;s
                 typical for you.
@@ -336,11 +336,11 @@ export default function SleepPage() {
                     Below average ({performanceCorrelation.belowAverage.nightCount} nights)
                   </p>
                   <p className="text-lapis-text-primary font-semibold">
-                    {Math.round(performanceCorrelation.belowAverage.nextDayWorkoutRate * 100)}% trained next day
+                    {Math.round(performanceCorrelation.belowAverage.sameDayWorkoutRate * 100)}% trained that day
                   </p>
-                  {performanceCorrelation.belowAverage.avgNextDayRir != null && (
+                  {performanceCorrelation.belowAverage.avgSameDayRir != null && (
                     <p className="text-lapis-text-tertiary text-xs mt-0.5">
-                      Avg RIR {performanceCorrelation.belowAverage.avgNextDayRir.toFixed(1)}
+                      Avg RIR {performanceCorrelation.belowAverage.avgSameDayRir.toFixed(1)}
                     </p>
                   )}
                 </div>
@@ -349,11 +349,11 @@ export default function SleepPage() {
                     At/above average ({performanceCorrelation.aboveOrAtAverage.nightCount} nights)
                   </p>
                   <p className="text-lapis-text-primary font-semibold">
-                    {Math.round(performanceCorrelation.aboveOrAtAverage.nextDayWorkoutRate * 100)}% trained next day
+                    {Math.round(performanceCorrelation.aboveOrAtAverage.sameDayWorkoutRate * 100)}% trained that day
                   </p>
-                  {performanceCorrelation.aboveOrAtAverage.avgNextDayRir != null && (
+                  {performanceCorrelation.aboveOrAtAverage.avgSameDayRir != null && (
                     <p className="text-lapis-text-tertiary text-xs mt-0.5">
-                      Avg RIR {performanceCorrelation.aboveOrAtAverage.avgNextDayRir.toFixed(1)}
+                      Avg RIR {performanceCorrelation.aboveOrAtAverage.avgSameDayRir.toFixed(1)}
                     </p>
                   )}
                 </div>
