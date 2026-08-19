@@ -218,7 +218,13 @@ async function computeWeightTrend(supabase: SupabaseClient, userId: string): Pro
 // ScheduledVolumeCard). Callable directly from a client component, same as
 // fetchCardioActivity/computeMuscleVolume already are.
 export async function analyzeCurrentFitness(supabase: SupabaseClient, userId: string, excludeRaceId?: string): Promise<FitnessSnapshot> {
-  const activities = await fetchCardioActivity(supabase)
+  // Commute rides excluded, same reasoning as computeDisciplineActivityFacts
+  // (discipline-weakness.ts) - this snapshot's cardio facts feed the
+  // periodization ramp's baseline and every AI-facing fitness summary, and
+  // guaranteed transportation riding isn't a training signal. Declared
+  // commute volume is handled separately, subtracted directly from
+  // prescribed bike km (see periodization.ts).
+  const activities = (await fetchCardioActivity(supabase)).filter((a) => a.source !== 'commute')
   const weeklyBuckets = bucketWeeklyCardioDistance(activities, 8)
   const weeklyDistanceKm = weeklyBuckets.map((w) => Math.round(w.totalKm * 10) / 10)
   const weeksActive = weeklyBuckets.filter((w) => w.totalKm > 0).length

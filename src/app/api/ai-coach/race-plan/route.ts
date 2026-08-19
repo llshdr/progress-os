@@ -199,9 +199,19 @@ export async function POST(request: NextRequest) {
   // and is what the weakest-discipline emphasis below reacts to.
   const hasCutoffRisk = cutoffFlags.some((f) => f.risk === 'risk')
 
+  // Declared, stable guaranteed commute (e.g. biking to work) - migration
+  // 086. Only relevant for the multisport bike ramp, but fetched
+  // unconditionally since it's a single cheap row read either way.
+  const { data: settingsRow } = await supabase
+    .from('user_settings')
+    .select('commute_bike_km_per_week')
+    .eq('user_id', user.id)
+    .maybeSingle()
+  const commuteBikeKmPerWeek = settingsRow?.commute_bike_km_per_week ?? undefined
+
   const disciplineInputs =
     category === 'multisport' && disciplineWeakness && disciplineActivityFacts
-      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order, level, hasCutoffRisk }
+      ? { activityFacts: disciplineActivityFacts, order: disciplineWeakness.order, level, hasCutoffRisk, commuteBikeKmPerWeek }
       : undefined
 
   // Unlike the per-exercise recommend route, this deliberately has no

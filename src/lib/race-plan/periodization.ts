@@ -161,6 +161,14 @@ export interface DisciplineRampInputs {
   // when true, the weakest discipline gets extra emphasis on top of its
   // existing RANK_ADJUSTMENT bump (see CUTOFF_RISK_WEAKEST_BOOST below).
   hasCutoffRisk?: boolean
+  // A declared, stable guaranteed commute (e.g. biking to work) -
+  // user_settings.commute_bike_km_per_week, migration 086. Subtracted
+  // from prescribed bike km each week (see applyCommuteReduction below)
+  // so a guaranteed commute counts toward the weekly bike target instead
+  // of stacking on top of it. Deliberately declared, not derived from
+  // logged commute rides - reacting to recent logs would make prescribed
+  // volume spike on a week the athlete happened to skip commuting.
+  commuteBikeKmPerWeek?: number
 }
 
 // Extra emphasis on the weakest discipline specifically when a real
@@ -189,6 +197,17 @@ function disciplineBaselineKm(discipline: Discipline, level: ExperienceLevel, ac
   // targeted), but never understates a real, already-established habit.
   const levelFloor = LEVEL_PEAK_KM[level][discipline] * BASE_START_FRACTION_OF_PEAK
   return Math.max(activityFacts.recentAvgWeeklyKm, levelFloor)
+}
+
+// Bike only, never race week - RACE_WEEK_TOKEN_KM is already a tiny fixed
+// pre-race shakeout, not a ramp-derived number, and subtracting a real
+// weekly commute from it risks pushing an already-minimal token toward
+// zero for no reason tied to the taper's own intent. Floored at 0 - a
+// commute that already meets or exceeds the ramp's own bike target for
+// that week means zero additional prescribed bike volume, not negative.
+function applyCommuteReduction(km: number, discipline: Discipline, isRaceWeek: boolean, commuteBikeKmPerWeek: number): number {
+  if (discipline !== 'bike' || isRaceWeek || commuteBikeKmPerWeek <= 0) return km
+  return Math.max(0, Math.round((km - commuteBikeKmPerWeek) * 10) / 10)
 }
 
 // ─── Acclimation (pre-Base) ───────────────────────────────────────────
@@ -249,7 +268,8 @@ function computeAcclimationWeeks(
   weeksNeeded: number,
   approach: RaceApproach,
   currentStrengthSessionsPerWeek: number,
-  endKm: Record<Discipline, number>
+  endKm: Record<Discipline, number>,
+  commuteBikeKmPerWeek: number
 ): TrainingWeekSkeleton[] {
   const startKm = {} as Record<Discipline, number>
   for (const d of DISCIPLINES) {
@@ -272,7 +292,8 @@ function computeAcclimationWeeks(
     let totalKm = 0
     let totalSessions = 0
     for (const d of DISCIPLINES) {
-      const km = Math.round((startKm[d] + (endKm[d] - startKm[d]) * progress) * 10) / 10
+      const rawKm = Math.round((startKm[d] + (endKm[d] - startKm[d]) * progress) * 10) / 10
+      const km = applyCommuteReduction(rawKm, d, false, commuteBikeKmPerWeek)
       const sessions = km > 0 ? Math.max(1, Math.min(DISCIPLINE_MAX_SESSIONS[d], Math.round(km / TYPICAL_SESSION_KM[d]))) : 0
       disciplines[d] = { km, sessions }
       totalKm += km
@@ -684,13 +705,22 @@ export function computeTrainingWeeks(
   // the acclimation-to-Base boundary - using the real week-0 value
   // instead closes that gap, matching the "continuous, not a jump"
   // requirement this block was designed around.
+  const commuteBikeKmPerWeek = disciplineInputs?.commuteBikeKmPerWeek ?? 0
+
   let acclimationWeeks: TrainingWeekSkeleton[] = []
   if (weeksNeeded > 0 && disciplineInputs && disciplineBaselines && disciplinePeaks) {
     const firstRealWeekKm = {} as Record<Discipline, number>
     for (const d of DISCIPLINES) {
       firstRealWeekKm[d] = rampValue(disciplineBaselines[d], disciplinePeaks[d], 'base', 0, rampWeeks, allocation, 0)
     }
-    acclimationWeeks = computeAcclimationWeeks(requestedStartMonday, weeksNeeded, approach, currentStrengthSessionsPerWeek, firstRealWeekKm)
+    acclimationWeeks = computeAcclimationWeeks(
+      requestedStartMonday,
+      weeksNeeded,
+      approach,
+      currentStrengthSessionsPerWeek,
+      firstRealWeekKm,
+      commuteBikeKmPerWeek
+    )
   }
 
   let taperIndex = 0
@@ -724,9 +754,10 @@ export function computeTrainingWeeks(
     if (disciplineBaselines && disciplinePeaks) {
       const built = {} as { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget }
       for (const d of DISCIPLINES) {
-        const km = isRaceWeek
+        const rawKm = isRaceWeek
           ? RACE_WEEK_TOKEN_KM[d]
           : Math.round(rampValue(disciplineBaselines[d], disciplinePeaks[d], phase, i, rampWeeks, allocation, taperIndex) * 10) / 10
+        const km = applyCommuteReduction(rawKm, d, isRaceWeek, commuteBikeKmPerWeek)
         // Sessions derived FROM km (not rounded independently) - a
         // non-zero km target always implies at least one session, and
         // vice versa, so the two numbers can never disagree.

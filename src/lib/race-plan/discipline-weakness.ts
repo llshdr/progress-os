@@ -58,7 +58,16 @@ export function classifyDiscipline(exerciseName: string, cardioType?: string | n
 // name-keyword guess (and then to "unclassified, not counted toward any
 // discipline") when it isn't, rather than the whole thing failing.
 export async function computeDisciplineActivityFacts(supabase: SupabaseClient): Promise<Record<Discipline, DisciplineActivityFacts>> {
-  const activities = await fetchCardioActivity(supabase)
+  // Commute rides excluded - this feeds deriveCurrentFormLevel's tier
+  // re-derivation and disciplineBaselineKm's Base-phase starting volume
+  // (periodization.ts), and a guaranteed transportation ride is not a
+  // fitness signal - counting it here could silently promote someone to
+  // a higher effective tier (or inflate their Base-phase starting
+  // volume) purely from commuting, not real training. Declared commute
+  // volume is instead subtracted from prescribed bike km directly (see
+  // DisciplineRampInputs.commuteBikeKmPerWeek) - a separate, deliberate
+  // input, not derived from these logs.
+  const activities = (await fetchCardioActivity(supabase)).filter((a) => a.source !== 'commute')
   const byDiscipline: Record<Discipline, CardioActivity[]> = { swim: [], bike: [], run: [] }
 
   for (const activity of activities) {

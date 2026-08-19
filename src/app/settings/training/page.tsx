@@ -26,6 +26,7 @@ export default function TrainingSettingsPage() {
   const [trainingIntensity, setTrainingIntensity] = useState<TrainingIntensity>('mild')
   const [openWaterSeasonStart, setOpenWaterSeasonStart] = useState('')
   const [openWaterSeasonEnd, setOpenWaterSeasonEnd] = useState('')
+  const [commuteBikeKmPerWeek, setCommuteBikeKmPerWeek] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -47,7 +48,7 @@ export default function TrainingSettingsPage() {
     const { data } = await supabase
       .from('user_settings')
       .select(
-        'weekly_workout_goal, count_cardio_toward_workout_goal, weight_unit, goal_weight, training_phase, training_intensity, open_water_season_start_month, open_water_season_end_month'
+        'weekly_workout_goal, count_cardio_toward_workout_goal, weight_unit, goal_weight, training_phase, training_intensity, open_water_season_start_month, open_water_season_end_month, commute_bike_km_per_week'
       )
       .eq('user_id', user.id)
       .maybeSingle()
@@ -69,6 +70,7 @@ export default function TrainingSettingsPage() {
     }
     if (data?.open_water_season_start_month) setOpenWaterSeasonStart(String(data.open_water_season_start_month))
     if (data?.open_water_season_end_month) setOpenWaterSeasonEnd(String(data.open_water_season_end_month))
+    if (data?.commute_bike_km_per_week) setCommuteBikeKmPerWeek(String(data.commute_bike_km_per_week))
     setLoading(false)
   }
 
@@ -112,6 +114,7 @@ export default function TrainingSettingsPage() {
         training_intensity: trainingIntensity,
         open_water_season_start_month: openWaterSeasonStart ? parseInt(openWaterSeasonStart, 10) : null,
         open_water_season_end_month: openWaterSeasonEnd ? parseInt(openWaterSeasonEnd, 10) : null,
+        commute_bike_km_per_week: commuteBikeKmPerWeek ? parseFloat(commuteBikeKmPerWeek) : null,
       },
       { onConflict: 'user_id' }
     )
@@ -340,6 +343,36 @@ export default function TrainingSettingsPage() {
                       ))}
                     </select>
                   </div>
+                </div>
+              </div>
+
+              <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+                <h2 className="text-lg font-medium text-lapis-text-primary mb-1">Bike Commute</h2>
+                <p className="text-lapis-text-tertiary text-sm mb-4">
+                  If you have a regular guaranteed commute ride (e.g. biking to work most days), a multisport race
+                  plan subtracts it from your prescribed weekly bike volume instead of stacking extra training on
+                  top of it - so a plan built assuming ~140km/week of commuting doesn&apos;t also ask for that much
+                  again. Leave blank if this doesn&apos;t apply to you; nothing is guessed on your behalf. This is a
+                  stable, declared number, not derived from logged rides - it only changes here, not automatically
+                  from what you log.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="commute-km" className="text-lapis-text-secondary">
+                    Guaranteed commute (km/week)
+                  </Label>
+                  <Input
+                    id="commute-km"
+                    type="number"
+                    step="0.1"
+                    min={0}
+                    value={commuteBikeKmPerWeek}
+                    onChange={(e) => {
+                      setCommuteBikeKmPerWeek(e.target.value)
+                      setSaved(false)
+                    }}
+                    placeholder="e.g. 140 for ~28km round trip, 5 days/week"
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary placeholder:text-lapis-text-disabled"
+                  />
                 </div>
               </div>
 

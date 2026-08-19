@@ -11,6 +11,15 @@ export interface CardioActivity {
   // CardioType) - classifyDiscipline prefers this over guessing from
   // exerciseName. Null for exercises created before this field existed.
   cardioType: string | null
+  // 'commute' = guaranteed transportation riding (e.g. biking to work),
+  // not a chosen training stimulus - see migration 086. Race-plan
+  // consumers (discipline-weakness.ts, analyze-fitness.ts) filter these
+  // out before computing fitness/prescription signals so commute volume
+  // can't inflate perceived fitness or double-count against prescribed
+  // training; general-purpose views (Records' Weekly Distance, exercise
+  // history) intentionally keep showing everything, since the athlete
+  // still wants to see their real total riding somewhere.
+  source: 'training' | 'commute'
 }
 
 export interface WeeklyCardioBucket {
@@ -57,7 +66,7 @@ export async function fetchCardioActivity(supabase: SupabaseClient): Promise<Car
 
   const { data: logs, error: logsError } = await supabase
     .from('cardio_logs')
-    .select('exercise_id, distance_km, duration_seconds')
+    .select('exercise_id, distance_km, duration_seconds, source')
     .in('exercise_id', Array.from(instanceMeta.keys()))
 
   if (logsError) {
@@ -79,6 +88,7 @@ export async function fetchCardioActivity(supabase: SupabaseClient): Promise<Car
         distanceKm: typeof log.distance_km === 'string' ? parseFloat(log.distance_km) : log.distance_km,
         durationSeconds: log.duration_seconds,
         cardioType: library?.cardioType ?? null,
+        source: (log.source as 'training' | 'commute' | null) ?? 'training',
       }
     })
     .filter((e): e is CardioActivity => e !== null)
