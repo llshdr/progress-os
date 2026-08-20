@@ -22,6 +22,13 @@ export interface HistoricalSet {
   // number, not a real top-set strength signal - see the recommend
   // route's own handling of this.
   technique: 'drop' | 'myo' | null
+  // Workout-level (not per-set) post-session rating, migration 087 - the
+  // whole workout's own session_feedback, same value repeated across
+  // every set that belongs to it. A genuinely different signal from
+  // rpe/rir: those ask "how hard was this specific set," this asks "was
+  // the session as prescribed calibrated right" - see the recommend
+  // route's own handling of this.
+  sessionFeedback: 'too_easy' | 'just_right' | 'could_not_complete' | null
 }
 
 const MAX_WORKOUTS = 6
@@ -39,7 +46,7 @@ export async function getExerciseHistory(
   // built via string interpolation — an exercise name containing a comma or
   // other PostgREST-significant character would otherwise break or misbehave.
   const select =
-    'id, variant:exercise_variants(label), workout:workouts!inner(date), sets(id, weight, reps, rpe, rir, completed, created_at, set_type, is_deload_week)'
+    'id, variant:exercise_variants(label), workout:workouts!inner(date, session_feedback), sets(id, weight, reps, rpe, rir, completed, created_at, set_type, is_deload_week)'
   const queries: PromiseLike<any>[] = []
 
   if (exerciseLibraryId) {
@@ -83,6 +90,7 @@ export async function getExerciseHistory(
     if (!workoutDate) continue
 
     const variantLabel: string | null = row.variant?.label ?? null
+    const sessionFeedback: HistoricalSet['sessionFeedback'] = row.workout?.session_feedback ?? null
 
     for (const set of row.sets ?? []) {
       if (!set.completed) continue
@@ -106,6 +114,7 @@ export async function getExerciseHistory(
         createdAt: set.created_at,
         variantLabel,
         technique: set.set_type ?? null,
+        sessionFeedback,
       })
     }
   }

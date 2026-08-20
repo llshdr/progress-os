@@ -12,6 +12,20 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { formatDuration } from '@/lib/format'
 
+type SessionFeedback = 'too_easy' | 'just_right' | 'could_not_complete'
+
+// Same labels/shape as cardio-logger.tsx's SESSION_FEEDBACK_OPTIONS - one
+// concept, two tables (workouts here for strength, cardio_logs there),
+// not a shared column (see migration 087: a set of resistance work and a
+// continuous cardio effort are different enough training modalities that
+// conflating "was this calibrated right" into one column would blur what
+// each is actually reporting on).
+const SESSION_FEEDBACK_OPTIONS: { value: SessionFeedback; label: string }[] = [
+  { value: 'too_easy', label: 'Too easy' },
+  { value: 'just_right', label: 'Just right' },
+  { value: 'could_not_complete', label: "Couldn't complete" },
+]
+
 type Workout = {
   id: string
   date: string
@@ -20,6 +34,7 @@ type Workout = {
   started_at: string
   completed_at: string | null
   template_name?: string | null
+  session_feedback: SessionFeedback | null
 }
 
 type Exercise = {
@@ -254,6 +269,18 @@ export default function CurrentWorkoutPage() {
     }
   }
 
+  // Toggle-off on re-tap, same precedent as leaderboard reactions - saves
+  // immediately rather than waiting for Complete, so it's captured
+  // whether or not the athlete completes the workout in this same visit.
+  const handleSetSessionFeedback = async (value: SessionFeedback) => {
+    if (!workout) return
+    const newValue = workout.session_feedback === value ? null : value
+    setWorkout((prev) => (prev ? { ...prev, session_feedback: newValue } : prev))
+
+    const { error } = await supabase.from('workouts').update({ session_feedback: newValue }).eq('id', params.id)
+    if (error) console.error('Error saving session feedback:', error)
+  }
+
   const handleReopenWorkout = async () => {
     const { error } = await supabase
       .from('workouts')
@@ -396,6 +423,30 @@ export default function CurrentWorkoutPage() {
               <span>•</span>
               <span>{exercises.length} exercises</span>
             </div>
+            {workout.completed_at ? (
+              workout.session_feedback && (
+                <p className="text-lapis-text-tertiary text-xs mt-2">
+                  {SESSION_FEEDBACK_OPTIONS.find((o) => o.value === workout.session_feedback)?.label}
+                </p>
+              )
+            ) : (
+              <div className="flex items-center gap-2 mt-3">
+                <span className="text-lapis-text-tertiary text-xs shrink-0">How&apos;s it going? (optional)</span>
+                {SESSION_FEEDBACK_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleSetSessionFeedback(option.value)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                      workout.session_feedback === option.value
+                        ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                        : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <button

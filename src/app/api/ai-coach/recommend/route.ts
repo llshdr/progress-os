@@ -112,7 +112,14 @@ export async function POST(request: NextRequest) {
   const deloadContext = isDeloadActive ? `\n\n${DELOAD_CONTEXT}` : ''
   const cacheDeloadSuffix = isDeloadActive ? 'deload=active' : 'deload=none'
 
-  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}::nutrition=${includeNutrition}::${cacheRaceSuffix}::${cacheDeloadSuffix}`
+  // session_feedback can be set (or changed) on the most recent workout
+  // AFTER its sets were already logged - latestSetId alone wouldn't catch
+  // that, so this cache key includes it explicitly, same "extra suffix so
+  // a fact that isn't a new set still invalidates the cache" pattern as
+  // cacheRaceSuffix/cacheDeloadSuffix above.
+  const cacheSessionFeedbackSuffix = `feedback=${history[0]?.sessionFeedback ?? 'none'}`
+
+  const cacheKey = `${exerciseLibraryId || exerciseName}::${variantLabel ?? ''}::nutrition=${includeNutrition}::${cacheRaceSuffix}::${cacheDeloadSuffix}::${cacheSessionFeedbackSuffix}`
 
   const { data: cachedRow } = await supabase
     .from('ai_coach_recommendations')
@@ -166,14 +173,21 @@ export async function POST(request: NextRequest) {
   const promptHistory = history.slice(0, MAX_SETS_IN_PROMPT)
   const hasTechniqueInfo = promptHistory.some((h) => h.technique !== null)
   const hasRirInfo = promptHistory.some((h) => h.rir !== null)
+  const hasSessionFeedbackInfo = promptHistory.some((h) => h.sessionFeedback !== null)
   const TECHNIQUE_TAG: Record<'drop' | 'myo', string> = { drop: 'drop set', myo: 'myo-rep' }
+  const SESSION_FEEDBACK_TAG: Record<'too_easy' | 'just_right' | 'could_not_complete', string> = {
+    too_easy: 'felt too easy',
+    just_right: 'felt just right',
+    could_not_complete: "couldn't complete as planned",
+  }
 
   const historyText = promptHistory
     .map((set) => {
       const variantSuffix = hasVariantInfo ? ` [${set.variantLabel ?? 'no variant specified'}]` : ''
       const techniqueSuffix = set.technique ? ` [${TECHNIQUE_TAG[set.technique]}]` : ''
       const rirSuffix = set.rir != null ? ` @RIR ${set.rir}` : ''
-      return `${set.workoutDate}: ${set.weight}kg x ${set.reps}${set.rpe ? ` @RPE ${set.rpe}` : ''}${rirSuffix}${variantSuffix}${techniqueSuffix}`
+      const sessionFeedbackSuffix = set.sessionFeedback ? ` [session ${SESSION_FEEDBACK_TAG[set.sessionFeedback]}]` : ''
+      return `${set.workoutDate}: ${set.weight}kg x ${set.reps}${set.rpe ? ` @RPE ${set.rpe}` : ''}${rirSuffix}${variantSuffix}${techniqueSuffix}${sessionFeedbackSuffix}`
     })
     .join('\n')
 
@@ -205,6 +219,19 @@ export async function POST(request: NextRequest) {
   let rirContext = ''
   if (hasRirInfo) {
     rirContext = `\n\nLines tagged @RIR show reps in reserve at the time (0 = trained to failure, higher numbers mean it felt easier, on a 0-10 scale). This is the lifter's own real-time read of how hard a set was, not a derived estimate - weight the most recent sets' RIR more heavily than older ones as the freshest signal of how much they have left in the tank right now.`
+  }
+
+  // Lines tagged [session ...] carry the lifter's own post-WORKOUT rating
+  // (migration 087) - the same value repeats across every set from that
+  // workout, since it's a whole-session judgment, not a per-set one
+  // (distinct from @RIR above: this asks "was the session as prescribed
+  // calibrated right," not "how hard was this specific set"). Only added
+  // when the shown history actually contains a tagged row, same
+  // "only speak up when relevant" precedent as the other optional context
+  // blocks here.
+  let sessionFeedbackContext = ''
+  if (hasSessionFeedbackInfo) {
+    sessionFeedbackContext = `\n\nLines tagged [session ...] carry the lifter's own rating of that ENTIRE workout, not this specific set - "felt too easy" means the whole session was underdosed, so a more assertive jump is reasonable if this exercise's own sets support it; "couldn't complete as planned" means something in that session didn't go as prescribed (fatigue, time, injury caution), so read that day's sets more conservatively even if the numbers alone look fine. "felt just right" needs no special caution either way.`
   }
 
   // Same "code derives the fact, model reasons about it" pattern as
@@ -291,7 +318,7 @@ export async function POST(request: NextRequest) {
 
 Below is their recent set history for one exercise, most recent session first (weight in kg):
 
-${historyText}${variantContext}${techniqueContext}${rirContext}${muscleGroupContext}${unilateralContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${deloadContext}${sleepContext}
+${historyText}${variantContext}${techniqueContext}${rirContext}${sessionFeedbackContext}${muscleGroupContext}${unilateralContext}${phaseContext}${nutritionContext}${volumeContext}${raceContext}${deloadContext}${sleepContext}
 
 Recommend the weight and reps for their NEXT set on this exercise as an ambitious target to attempt. Keep the reasoning to one short sentence covering your main rationale — if multiple factors above are relevant, mention at most the one or two most decision-relevant ones rather than trying to reference everything.`
 
