@@ -151,23 +151,45 @@ export function computeRestrictedStrengthDays(hardDays: Set<number>): Set<number
 // total (from computeTrainingWeeks) - a day template can never disagree
 // with the week card it's describing, since easy/technique slots
 // implicitly cede share as the key slot's grows.
+//
+// protectedKeyKm (bike only, set when a guaranteed commute applies - see
+// DisciplineTarget.protectedKeyKm/commuteAdjustedDisciplineWeek in
+// periodization.ts): when present, the key slot's km comes directly from
+// this fixed value instead of being re-derived via share/total below.
+// Re-deriving it here from weekDisciplineTotalKm was the exact
+// circularity the commute-load investigation found - this function
+// would silently re-shrink the "protected" key value on every render.
+// Non-key slots still split by share, but against what's actually left
+// AFTER the protected key ride (weekDisciplineTotalKm - protectedKeyKm),
+// not the full total, so they never silently absorb km that's already
+// spoken for. Progression's within-phase ramp-in still applies to the
+// protected value itself (unaffected discipline/weeks - protectedKeyKm
+// undefined - behave exactly as before, byte-for-byte).
 export function enduranceSlotKmForWeek(
   slot: EnduranceSlot,
   siblingSlots: EnduranceSlot[],
   weekIndexWithinPhase: number,
-  weekDisciplineTotalKm: number
+  weekDisciplineTotalKm: number,
+  protectedKeyKm?: number | null
 ): number {
   // Bounded linear ramp from startShareFraction*target up to the target
   // itself (never past it) - a previous compounding-%-per-interval model
   // could overshoot its own stored target share; this can't.
-  const rawShare = (s: EnduranceSlot) => {
-    if (!s.progression) return s.shareOfWeeklyTotal
-    const progress = Math.min(1, weekIndexWithinPhase / Math.max(1, s.progression.rampWeeks))
-    return s.shareOfWeeklyTotal * (s.progression.startShareFraction + (1 - s.progression.startShareFraction) * progress)
+  const rampedFraction = (progression: SlotProgression) => {
+    const progress = Math.min(1, weekIndexWithinPhase / Math.max(1, progression.rampWeeks))
+    return progression.startShareFraction + (1 - progression.startShareFraction) * progress
   }
 
-  const total = siblingSlots.reduce((sum, s) => sum + rawShare(s), 0)
-  return total > 0 ? weekDisciplineTotalKm * (rawShare(slot) / total) : 0
+  if (protectedKeyKm != null && slot.role === 'key') {
+    return slot.progression ? protectedKeyKm * rampedFraction(slot.progression) : protectedKeyKm
+  }
+
+  const rawShare = (s: EnduranceSlot) => (s.progression ? s.shareOfWeeklyTotal * rampedFraction(s.progression) : s.shareOfWeeklyTotal)
+
+  const remainingKm = protectedKeyKm != null ? Math.max(0, weekDisciplineTotalKm - protectedKeyKm) : weekDisciplineTotalKm
+  const nonKeySiblings = protectedKeyKm != null ? siblingSlots.filter((s) => s.role !== 'key') : siblingSlots
+  const total = nonKeySiblings.reduce((sum, s) => sum + rawShare(s), 0)
+  return total > 0 ? remainingKm * (rawShare(slot) / total) : 0
 }
 
 // Real Ironman weeks are built around ONE clearly dominant long session

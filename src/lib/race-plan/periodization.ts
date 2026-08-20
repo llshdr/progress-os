@@ -21,6 +21,40 @@ export type TrainingPhase = 'base' | 'build' | 'peak' | 'taper'
 export interface DisciplineTarget {
   km: number
   sessions: number
+  // Bike only, set only when a guaranteed commute (user_settings.
+  // commute_bike_km_per_week) actually applies - the key/long ride's
+  // fixed absolute km target for this week, computed once from this
+  // week's own rawKm and never re-derived from `km`/`sessions` above.
+  // day-template.ts's enduranceSlotKmForWeek uses this directly for the
+  // key slot instead of re-splitting `km` by share, which is what
+  // caused the key ride to silently shrink as commute volume grew (see
+  // the commute-load investigation this fixes). Undefined for swim/run
+  // and for bike when no commute is set - those keep computing the key
+  // slot's km via the ordinary share-based split, unchanged.
+  protectedKeyKm?: number
+}
+
+// Real, computed weekly bike load once a guaranteed commute is part of
+// the picture - both numbers compare against a DIFFERENT ceiling on
+// purpose (see the commute-load investigation): combinedExceedsWeekTarget
+// checks this week's OWN phase-appropriate target (rawKm, which ramps
+// within Base/Build and shrinks in Taper), so severity is never
+// understated in early weeks or falsely inflated in Taper by comparing
+// against a flat, phase-blind number. commuteAloneNearsPeakCeiling checks
+// the athlete's absolute peak ceiling instead, since it's answering a
+// different question ("is the guaranteed floor volume alone already near
+// this athlete's real capacity") that a phase-relative comparison doesn't
+// fit. Both null when no commute is set or on the literal race week (see
+// commuteAdjustedDisciplineWeek's own exemption, matching the reasoning
+// already established for RACE_WEEK_TOKEN_KM).
+export interface CombinedBikeLoad {
+  ratio: number // combinedLoad / rawKm - always shown alongside deltaKm, never alone (a ratio against a small Taper-week target can read as scarier than a bigger absolute Base-week overage actually is)
+  deltaKm: number // combinedLoad - rawKm, the absolute overage in km
+  combinedExceedsWeekTarget: boolean
+  // Unsourced, reasonable-default judgment call, not a cited research
+  // figure - same honesty precedent as BASE_START_FRACTION_OF_PEAK and
+  // the acclimation weeks split elsewhere in this file.
+  commuteAloneNearsPeakCeiling: boolean
 }
 
 export interface TrainingWeekSkeleton {
@@ -51,6 +85,9 @@ export interface TrainingWeekSkeleton {
   // precision for elsewhere). Purely additive; false for every week
   // unless explicitly flagged.
   isSimulationWeek: boolean
+  // See CombinedBikeLoad above. Null whenever no commute is declared or
+  // this is the literal race week.
+  combinedBikeLoad: CombinedBikeLoad | null
 }
 
 const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
@@ -205,9 +242,107 @@ function disciplineBaselineKm(discipline: Discipline, level: ExperienceLevel, ac
 // zero for no reason tied to the taper's own intent. Floored at 0 - a
 // commute that already meets or exceeds the ramp's own bike target for
 // that week means zero additional prescribed bike volume, not negative.
-function applyCommuteReduction(km: number, discipline: Discipline, isRaceWeek: boolean, commuteBikeKmPerWeek: number): number {
-  if (discipline !== 'bike' || isRaceWeek || commuteBikeKmPerWeek <= 0) return km
-  return Math.max(0, Math.round((km - commuteBikeKmPerWeek) * 10) / 10)
+// Deliberate local duplicate of day-template.ts's KEY_SHARE.bike, bike
+// only - periodization.ts is the more foundational module (day-template.ts
+// already imports types from here, not the other way around), same
+// precedent already established for MIN_WEEKS_AFTER_ACCLIMATION duplicating
+// milestone-sessions.ts's own bar rather than creating a reverse import.
+// If day-template.ts's KEY_SHARE.bike ever changes, this needs to change
+// with it - not auto-derived, so check both when touching either.
+const BIKE_KEY_SHARE: Record<number, number> = { 1: 1.0, 2: 0.8, 3: 0.75 }
+
+function bikeKeyShareForSessionCount(sessions: number): number {
+  return BIKE_KEY_SHARE[sessions] ?? BIKE_KEY_SHARE[Math.max(...Object.keys(BIKE_KEY_SHARE).map(Number))]
+}
+
+// Bike only, never race week - RACE_WEEK_TOKEN_KM is already a tiny fixed
+// pre-race shakeout, not a ramp-derived number, and subtracting a real
+// weekly commute from it risks pushing an already-minimal token toward
+// zero for no reason tied to the taper's own intent.
+//
+// Resolves a real circularity a naive "subtract commute from the weekly
+// total, then let the day-template's KEY_SHARE re-split whatever's left"
+// approach has: re-deriving session count from a commute-reduced total
+// and reapplying KEY_SHARE to it shrinks the "protected" key value on
+// every pass (see the commute-load investigation this fixes). Instead:
+// the key/long ride's absolute km is computed ONCE, from this week's own
+// rawKm and its own pre-commute session count, and never re-entered into
+// any later share/session computation - `protectedKeyKm` on the returned
+// DisciplineTarget carries this fixed value all the way to
+// day-template.ts's enduranceSlotKmForWeek, which uses it directly for
+// the key slot instead of re-deriving it.
+//
+// Commute credits against the EASY/base-aerobic portion specifically,
+// never the key ride: a guaranteed commute legitimately substitutes for
+// junk-mile easy riding (it's real Zone 1-2 aerobic volume), but never
+// for the one long, continuous, race-specific session - two split rides
+// to work and back aren't the same training stimulus as one long ride,
+// no matter how much total weekly km they add up to.
+function commuteAdjustedDisciplineWeek(
+  discipline: Discipline,
+  rawKm: number,
+  isRaceWeek: boolean,
+  commuteBikeKmPerWeek: number
+): DisciplineTarget {
+  const naiveSessions = Math.max(1, Math.min(DISCIPLINE_MAX_SESSIONS[discipline], Math.round(rawKm / TYPICAL_SESSION_KM[discipline])))
+
+  if (discipline !== 'bike' || isRaceWeek || commuteBikeKmPerWeek <= 0) {
+    return { km: rawKm, sessions: rawKm > 0 ? naiveSessions : 0 }
+  }
+
+  const keyKm = Math.round(rawKm * bikeKeyShareForSessionCount(naiveSessions) * 10) / 10
+  const easyKmUncommuted = Math.max(0, Math.round((rawKm - keyKm) * 10) / 10)
+  const additionalEasyKm = Math.max(0, Math.round((easyKmUncommuted - commuteBikeKmPerWeek) * 10) / 10)
+  const easySessionsUncommuted = naiveSessions - 1
+  // Preserves the exact session count the uncommuted design would have
+  // had at commute=0 (ratio=1 -> full easySessionsUncommuted, matching
+  // today's shipped behavior with zero regression), interpolating down
+  // to 0 easy sessions as commute credit approaches/exceeds the whole
+  // easy pool - never re-derived from a km/TYPICAL_SESSION_KM division,
+  // which would silently disagree with the uncommuted session count at
+  // commute=0 (checked: round(45.9/45)=1, not the 2 easy sessions the
+  // current shipped system actually produces there).
+  const easySessions = easyKmUncommuted > 0 ? Math.round(easySessionsUncommuted * (additionalEasyKm / easyKmUncommuted)) : 0
+
+  return {
+    km: Math.round((keyKm + additionalEasyKm) * 10) / 10,
+    sessions: 1 + easySessions,
+    protectedKeyKm: keyKm,
+  }
+}
+
+// Unsourced, reasonable-default judgment call (see CombinedBikeLoad) -
+// not a cited research figure.
+const COMMUTE_ALONE_NEAR_PEAK_FRACTION = 0.8
+
+function computeCombinedBikeLoad(
+  rawKm: number,
+  totalPrescribedKm: number,
+  commuteBikeKmPerWeek: number,
+  bikePeakKm: number,
+  isRaceWeek: boolean
+): CombinedBikeLoad | null {
+  if (commuteBikeKmPerWeek <= 0 || isRaceWeek) return null
+
+  const combinedLoad = commuteBikeKmPerWeek + totalPrescribedKm
+  return {
+    ratio: rawKm > 0 ? Math.round((combinedLoad / rawKm) * 100) / 100 : 0,
+    deltaKm: Math.round((combinedLoad - rawKm) * 10) / 10,
+    // Compared against THIS WEEK's own rawKm (phase-appropriate target,
+    // ramps within Base/Build, shrinks in Taper) - not the athlete's
+    // flat absolute peak ceiling, which would understate severity in
+    // early Base/Build (checked: a 60km/week commute at Base week 0
+    // produces a 103% overage against that week's own 58.5km target,
+    // but doesn't even trigger against the flat 183.75km peak ceiling
+    // at all - a real false negative, not just an understatement).
+    combinedExceedsWeekTarget: combinedLoad > rawKm,
+    // Compared against the athlete's absolute peak ceiling on purpose -
+    // this is a different question ("is the guaranteed floor volume
+    // alone already near this athlete's real capacity"), not a
+    // progressive-overload/this-week question the phase-relative
+    // comparison above answers.
+    commuteAloneNearsPeakCeiling: commuteBikeKmPerWeek >= bikePeakKm * COMMUTE_ALONE_NEAR_PEAK_FRACTION,
+  }
 }
 
 // ─── Acclimation (pre-Base) ───────────────────────────────────────────
@@ -269,7 +404,8 @@ function computeAcclimationWeeks(
   approach: RaceApproach,
   currentStrengthSessionsPerWeek: number,
   endKm: Record<Discipline, number>,
-  commuteBikeKmPerWeek: number
+  commuteBikeKmPerWeek: number,
+  bikePeakKm: number
 ): TrainingWeekSkeleton[] {
   const startKm = {} as Record<Discipline, number>
   for (const d of DISCIPLINES) {
@@ -291,13 +427,14 @@ function computeAcclimationWeeks(
     const disciplines = {} as { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget }
     let totalKm = 0
     let totalSessions = 0
+    let bikeRawKm = 0
     for (const d of DISCIPLINES) {
       const rawKm = Math.round((startKm[d] + (endKm[d] - startKm[d]) * progress) * 10) / 10
-      const km = applyCommuteReduction(rawKm, d, false, commuteBikeKmPerWeek)
-      const sessions = km > 0 ? Math.max(1, Math.min(DISCIPLINE_MAX_SESSIONS[d], Math.round(km / TYPICAL_SESSION_KM[d]))) : 0
-      disciplines[d] = { km, sessions }
-      totalKm += km
-      totalSessions += sessions
+      const target = commuteAdjustedDisciplineWeek(d, rawKm, false, commuteBikeKmPerWeek)
+      disciplines[d] = target
+      totalKm += target.km
+      totalSessions += target.sessions
+      if (d === 'bike') bikeRawKm = rawKm
     }
 
     return {
@@ -310,6 +447,7 @@ function computeAcclimationWeeks(
       targetStrengthSessions,
       isAcclimation: true,
       isSimulationWeek: false,
+      combinedBikeLoad: computeCombinedBikeLoad(bikeRawKm, disciplines.bike.km, commuteBikeKmPerWeek, bikePeakKm, false),
     }
   })
 }
@@ -719,7 +857,8 @@ export function computeTrainingWeeks(
       approach,
       currentStrengthSessionsPerWeek,
       firstRealWeekKm,
-      commuteBikeKmPerWeek
+      commuteBikeKmPerWeek,
+      disciplinePeaks.bike
     )
   }
 
@@ -751,24 +890,23 @@ export function computeTrainingWeeks(
 
     let disciplines: TrainingWeekSkeleton['disciplines'] = null
     let brickSessions: number | null = null
+    let combinedBikeLoad: CombinedBikeLoad | null = null
     if (disciplineBaselines && disciplinePeaks) {
       const built = {} as { swim: DisciplineTarget; bike: DisciplineTarget; run: DisciplineTarget }
+      let bikeRawKm = 0
       for (const d of DISCIPLINES) {
         const rawKm = isRaceWeek
           ? RACE_WEEK_TOKEN_KM[d]
           : Math.round(rampValue(disciplineBaselines[d], disciplinePeaks[d], phase, i, rampWeeks, allocation, taperIndex) * 10) / 10
-        const km = applyCommuteReduction(rawKm, d, isRaceWeek, commuteBikeKmPerWeek)
-        // Sessions derived FROM km (not rounded independently) - a
-        // non-zero km target always implies at least one session, and
-        // vice versa, so the two numbers can never disagree.
-        const sessions = km > 0 ? Math.max(1, Math.min(DISCIPLINE_MAX_SESSIONS[d], Math.round(km / TYPICAL_SESSION_KM[d]))) : 0
-        built[d] = { km, sessions }
+        built[d] = commuteAdjustedDisciplineWeek(d, rawKm, isRaceWeek, commuteBikeKmPerWeek)
+        if (d === 'bike') bikeRawKm = rawKm
       }
       disciplines = built
       // Race week itself never includes a training brick, regardless of
       // phase - by then it's taper/rest, not a fresh simulated-fatigue
       // session.
       brickSessions = isRaceWeek ? 0 : BRICK_SESSIONS_BY_PHASE[phase]
+      combinedBikeLoad = computeCombinedBikeLoad(bikeRawKm, built.bike.km, commuteBikeKmPerWeek, disciplinePeaks.bike, isRaceWeek)
     }
 
     if (phase === 'taper') taperIndex += 1
@@ -783,6 +921,7 @@ export function computeTrainingWeeks(
       targetStrengthSessions,
       isAcclimation: false,
       isSimulationWeek: i === simulationWeekIndex,
+      combinedBikeLoad,
     }
   })]
 }

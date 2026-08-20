@@ -39,7 +39,8 @@ interface Props {
 
 function kmForSlot(slot: EnduranceSlot, sameTypeSlots: EnduranceSlot[], week: TrainingWeekSkeleton, weekIndexWithinPhase: number): number {
   const totalKm = slot.type === 'cardio' ? week.targetCardioKm : (week.disciplines?.[slot.type].km ?? 0)
-  return enduranceSlotKmForWeek(slot, sameTypeSlots, weekIndexWithinPhase, totalKm)
+  const protectedKeyKm = slot.type === 'cardio' ? null : week.disciplines?.[slot.type].protectedKeyKm
+  return enduranceSlotKmForWeek(slot, sameTypeSlots, weekIndexWithinPhase, totalKm, protectedKeyKm)
 }
 
 function paceLabelForSlot(

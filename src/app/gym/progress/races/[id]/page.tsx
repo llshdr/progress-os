@@ -24,6 +24,7 @@ import {
   type RaceApproach,
   type TrainingPhase,
   type DisciplineTarget,
+  type CombinedBikeLoad,
 } from '@/lib/race-plan/periodization'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PHASE_NUTRITION_GUIDANCE, assessNutritionPhaseTension } from '@/lib/race-plan/nutrition-phase'
@@ -125,6 +126,7 @@ type PlanWeek = {
   focusNote: string
   isAcclimation: boolean
   isSimulationWeek: boolean
+  combinedBikeLoad: CombinedBikeLoad | null
 }
 
 type Plan = {
@@ -1576,6 +1578,21 @@ export default function RaceDetailPage() {
                                   <p className="text-lapis-text-tertiary text-sm">{week.focusNote}</p>
                                   {week.isSimulationWeek && (
                                     <p className="text-lapis-citrine/80 text-xs mt-2">{RACE_SIMULATION_GUIDANCE}</p>
+                                  )}
+                                  {week.combinedBikeLoad?.combinedExceedsWeekTarget && (
+                                    <p className="text-lapis-garnet/90 text-xs mt-2">
+                                      Guaranteed commute pushes this week&apos;s total bike load {week.combinedBikeLoad.ratio.toFixed(2)}x
+                                      over this week&apos;s own target ({week.combinedBikeLoad.deltaKm > 0 ? '+' : ''}
+                                      {week.combinedBikeLoad.deltaKm}km) - the key/long ride itself stays at its real distance, not shrunk to
+                                      compensate.
+                                    </p>
+                                  )}
+                                  {week.combinedBikeLoad?.commuteAloneNearsPeakCeiling && (
+                                    <p className="text-lapis-garnet/90 text-xs mt-2">
+                                      Your declared commute alone is already close to (or over) the safe weekly bike ceiling for your level,
+                                      before any dedicated training - worth discussing with a coach or physician given how much of it is fixed,
+                                      non-negotiable riding.
+                                    </p>
                                   )}
 
                                   {phaseTemplate && (

@@ -105,12 +105,24 @@ export default function PhaseTemplateDialog({
     return week.disciplines ? week.disciplines[type].km : 0
   }
 
+  const weekProtectedKeyKm = (type: EnduranceSlot['type'], weekIndex: number): number | null => {
+    if (type === 'cardio') return null
+    const week = weeksInPhase[weekIndex]
+    return week?.disciplines?.[type].protectedKeyKm ?? null
+  }
+
   const kmRangeLabel = (slot: EnduranceSlot): string => {
     const siblings = edited.enduranceSlots.filter((s) => s.type === slot.type)
-    const startKm = enduranceSlotKmForWeek(slot, siblings, 0, weekDisciplineTotalKm(slot.type, 0))
+    const startKm = enduranceSlotKmForWeek(slot, siblings, 0, weekDisciplineTotalKm(slot.type, 0), weekProtectedKeyKm(slot.type, 0))
     if (!slot.progression) return `${formatSlotKm(startKm)} (flat)`
     const peakIndex = weeksInPhase.length - 1
-    const peakKm = enduranceSlotKmForWeek(slot, siblings, peakIndex, weekDisciplineTotalKm(slot.type, peakIndex))
+    const peakKm = enduranceSlotKmForWeek(
+      slot,
+      siblings,
+      peakIndex,
+      weekDisciplineTotalKm(slot.type, peakIndex),
+      weekProtectedKeyKm(slot.type, peakIndex)
+    )
     return `${formatSlotKm(startKm)} → ${formatSlotKm(peakKm)} across the phase`
   }
 
