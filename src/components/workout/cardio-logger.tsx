@@ -7,12 +7,22 @@ import { Input } from '@/components/ui/input'
 import { Check, Pencil, Trash2, ChevronDown, ChevronUp, Bike } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { formatDuration } from '@/lib/format'
+import { classifyDiscipline } from '@/lib/race-plan/discipline-weakness'
+import { getLocalDateString } from '@/lib/date'
 
 interface CardioLoggerProps {
   exerciseId: string
   exerciseName: string
   onComplete?: () => void
 }
+
+type SessionFeedback = 'too_easy' | 'just_right' | 'could_not_complete'
+
+const SESSION_FEEDBACK_OPTIONS: { value: SessionFeedback; label: string }[] = [
+  { value: 'too_easy', label: 'Too easy' },
+  { value: 'just_right', label: 'Just right' },
+  { value: 'could_not_complete', label: "Couldn't complete" },
+]
 
 interface SavedCardioLog {
   id: string
@@ -22,6 +32,7 @@ interface SavedCardioLog {
   perceivedEffort: number | null
   elevationGainM: number | null
   source: 'training' | 'commute'
+  sessionFeedback: SessionFeedback | null
 }
 
 // Distance/duration only - just enough to prefill the quick-repeat
@@ -44,6 +55,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
   const [perceivedEffort, setPerceivedEffort] = useState('')
   const [elevationGainM, setElevationGainM] = useState('')
   const [isCommute, setIsCommute] = useState(false)
+  const [sessionFeedback, setSessionFeedback] = useState<SessionFeedback | null>(null)
   const [showMoreDetails, setShowMoreDetails] = useState(false)
   const [savedLog, setSavedLog] = useState<SavedCardioLog | null>(null)
   // Most recent commute-tagged log across ANY exercise (not just this
@@ -57,6 +69,10 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  // Genuine, computed acknowledgment shown after a successful save - see
+  // showLoggedAcknowledgment for what "genuine" means here and what it
+  // deliberately doesn't claim.
+  const [ackMessage, setAckMessage] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -67,7 +83,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
   const fetchSavedLog = async () => {
     const { data, error } = await supabase
       .from('cardio_logs')
-      .select('id, distance_km, duration_seconds, avg_heart_rate, perceived_effort, elevation_gain_m, source')
+      .select('id, distance_km, duration_seconds, avg_heart_rate, perceived_effort, elevation_gain_m, source, session_feedback')
       .eq('exercise_id', exerciseId)
       .maybeSingle()
 
@@ -80,6 +96,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
         perceivedEffort: data.perceived_effort,
         elevationGainM: data.elevation_gain_m,
         source: (data.source as 'training' | 'commute' | null) ?? 'training',
+        sessionFeedback: (data.session_feedback as SessionFeedback | null) ?? null,
       })
       setDistanceKm(String(data.distance_km))
       setDurationMinutes(String(data.duration_seconds / 60))
@@ -87,6 +104,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
       setPerceivedEffort(data.perceived_effort != null ? String(data.perceived_effort) : '')
       setElevationGainM(data.elevation_gain_m != null ? String(data.elevation_gain_m) : '')
       setIsCommute(data.source === 'commute')
+      setSessionFeedback((data.session_feedback as SessionFeedback | null) ?? null)
       setShowMoreDetails(data.avg_heart_rate != null || data.perceived_effort != null || data.elevation_gain_m != null)
       setEditing(false)
     } else {
@@ -116,6 +134,73 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
     setIsCommute(true)
   }
 
+  // Genuine, computed acknowledgment - NOT a re-run of the full
+  // assessBenchmarkCompliance verdict (behind/watch/on-track), which
+  // needs course profile + pace-target + disruption-range data this
+  // small, generic logging component has no business re-fetching just
+  // for a toast (checked: that pipeline alone needs course_id, target
+  // finish time, self-assessment comfort data, and activity facts -
+  // most of the race page's own fetch chain). Instead: a real, cheap
+  // fact - does an active race's CURRENT week actually track this
+  // discipline - using the same lightweight "soonest upcoming race with
+  // a plan" lookup already established in recommend/route.ts's
+  // raceContext. Two honest tiers, never a fabricated specific verdict;
+  // silent (no message) when there's no active race at all, since
+  // there's nothing this feature can honestly say then.
+  const showLoggedAcknowledgment = async () => {
+    const discipline = classifyDiscipline(exerciseName)
+    if (!discipline) {
+      setAckMessage(null)
+      return
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const today = getLocalDateString()
+    const { data: activeRace } = await supabase
+      .from('races')
+      .select('id, race_date')
+      .eq('user_id', user.id)
+      .gte('race_date', today)
+      .order('race_date', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (!activeRace) {
+      setAckMessage(null)
+      return
+    }
+
+    const { data: planRow } = await supabase.from('race_training_plans').select('weeks').eq('race_id', activeRace.id).maybeSingle()
+
+    const weeks = (planRow?.weeks ?? []) as {
+      weekStartDate: string
+      disciplines: Record<string, { sessions: number }> | null
+      targetCardioSessions: number
+    }[]
+
+    let currentWeek: (typeof weeks)[number] | null = null
+    for (const week of weeks) {
+      if (week.weekStartDate <= today) currentWeek = week
+      else break
+    }
+
+    const isTrackedThisWeek = currentWeek
+      ? currentWeek.disciplines
+        ? (currentWeek.disciplines[discipline]?.sessions ?? 0) > 0
+        : currentWeek.targetCardioSessions > 0
+      : false
+
+    setAckMessage(
+      isTrackedThisWeek
+        ? `Logged — counts toward this week's ${discipline} training in your race plan.`
+        : "Logged — counted toward your race plan's fitness read, applied next time you regenerate."
+    )
+  }
+
   const formatPace = (distance: number, durationSeconds: number): string => {
     if (distance <= 0) return 'N/A'
     const paceMinutesPerKm = durationSeconds / 60 / distance
@@ -141,6 +226,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
         perceived_effort: perceivedEffort ? parseInt(perceivedEffort, 10) : null,
         elevation_gain_m: elevationGainM ? parseInt(elevationGainM, 10) : null,
         source: isCommute ? 'commute' : 'training',
+        session_feedback: sessionFeedback,
       },
       { onConflict: 'exercise_id' }
     )
@@ -154,6 +240,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
 
     setLoading(false)
     fetchSavedLog()
+    showLoggedAcknowledgment()
   }
 
   const handleDelete = async () => {
@@ -167,6 +254,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
       return
     }
 
+    setAckMessage(null)
     setSavedLog(null)
     setDistanceKm('')
     setDurationMinutes('')
@@ -174,6 +262,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
     setPerceivedEffort('')
     setElevationGainM('')
     setIsCommute(false)
+    setSessionFeedback(null)
     setShowMoreDetails(false)
     setEditing(true)
   }
@@ -214,10 +303,19 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
                     .join(' · ')}
                 </p>
               )}
+              {savedLog.sessionFeedback && (
+                <p className="text-lapis-text-tertiary text-xs">
+                  {SESSION_FEEDBACK_OPTIONS.find((o) => o.value === savedLog.sessionFeedback)?.label}
+                </p>
+              )}
+              {ackMessage && <p className="text-lapis-jade/80 text-xs pt-1">{ackMessage}</p>}
             </div>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setEditing(true)}
+                onClick={() => {
+                  setAckMessage(null)
+                  setEditing(true)
+                }}
                 className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
               >
                 <Pencil className="w-4 h-4" />
@@ -274,6 +372,26 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
               <input type="checkbox" checked={isCommute} onChange={(e) => setIsCommute(e.target.checked)} />
               This was a commute ride, not dedicated training
             </label>
+
+            <div className="space-y-2">
+              <label className="text-lapis-text-secondary text-sm">How did it feel? (optional)</label>
+              <div className="flex gap-2">
+                {SESSION_FEEDBACK_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSessionFeedback(sessionFeedback === option.value ? null : option.value)}
+                    className={`flex-1 px-3 py-2 rounded-lapis-sm text-xs font-medium transition-colors ${
+                      sessionFeedback === option.value
+                        ? 'bg-lapis-accent-500 text-lapis-text-primary'
+                        : 'bg-lapis-surface-2 text-lapis-text-secondary hover:bg-lapis-surface-2'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div>
               <button
@@ -348,6 +466,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
                     setPerceivedEffort(savedLog.perceivedEffort != null ? String(savedLog.perceivedEffort) : '')
                     setElevationGainM(savedLog.elevationGainM != null ? String(savedLog.elevationGainM) : '')
                     setIsCommute(savedLog.source === 'commute')
+                    setSessionFeedback(savedLog.sessionFeedback)
                   }}
                   variant="outline"
                   className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 h-14 px-4"
