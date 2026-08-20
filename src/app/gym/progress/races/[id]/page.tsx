@@ -1213,7 +1213,26 @@ export default function RaceDetailPage() {
                     {courseProfile.elevationGainM != null && <p className="text-lapis-text-secondary text-sm">Elevation gain: ~{courseProfile.elevationGainM}m</p>}
                     {courseProfile.swimNotes && <p className="text-lapis-text-secondary text-sm">Swim: {courseProfile.swimNotes}</p>}
                     {courseProfile.bikeNotes && <p className="text-lapis-text-secondary text-sm">Bike: {courseProfile.bikeNotes}</p>}
+                    {/* Gated on difficultyFactor (already the existing signal for
+                        "this course is meaningfully different from the flat-course
+                        default," not a hardcoded course-name check) rather than
+                        telling the athlete to distrust the numeric Zone 2 pace
+                        target shown elsewhere on this page - it reframes that
+                        number as a whole-course average instead, which is both
+                        true and non-contradictory with it. */}
+                    {courseProfile.bikeNotes && courseProfile.difficultyFactor > 1.0 && (
+                      <p className="text-lapis-text-tertiary text-xs pl-4">
+                        Given the terrain above, your Zone 2 pace target here is a whole-course average, not a pace to hold at every point -
+                        expect real variance by grade at the same steady effort.
+                      </p>
+                    )}
                     {courseProfile.runNotes && <p className="text-lapis-text-secondary text-sm">Run: {courseProfile.runNotes}</p>}
+                    {courseProfile.runNotes && courseProfile.difficultyFactor > 1.0 && (
+                      <p className="text-lapis-text-tertiary text-xs pl-4">
+                        Same here - your run Zone 2 pace target is a whole-course average, not a pace to hold at every point, given the
+                        terrain above.
+                      </p>
+                    )}
                   </div>
                 )}
                 {cutoffRiskFlags.length > 0 && courseRange && (
