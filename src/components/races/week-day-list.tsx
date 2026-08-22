@@ -1,8 +1,16 @@
 import { TrendingUp } from 'lucide-react'
-import { enduranceSlotKmForWeek, effectiveSlotRole, ZONE_GUIDANCE, type EnduranceSlot, type SlotRole, type WeekSlots } from '@/lib/race-plan/day-template'
+import {
+  enduranceSlotKmForWeek,
+  effectiveSlotRole,
+  sameDayEnduranceSlot,
+  ZONE_GUIDANCE,
+  type EnduranceSlot,
+  type SlotRole,
+  type WeekSlots,
+} from '@/lib/race-plan/day-template'
 import type { TrainingWeekSkeleton, RaceApproach } from '@/lib/race-plan/periodization'
 import type { Discipline, ExperienceLevel } from '@/lib/race-plan/self-assessment'
-import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, ROLE_LABEL, formatSlotKm, DAY_ABBREVIATIONS } from '@/components/races/day-slot-display'
+import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, ROLE_LABEL, STRENGTH_FOCUS_LABEL, formatSlotKm, DAY_ABBREVIATIONS } from '@/components/races/day-slot-display'
 import { TRANSITION_GUIDANCE } from '@/lib/race-plan/race-day-prep'
 import { paceTargetForWeek } from '@/lib/race-plan/pace-targets'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
@@ -149,12 +157,28 @@ export default function WeekDayList({
                   </span>
                 )
               })}
-              {strength.map((_, i) => (
-                <span key={`strength-${i}`} className="flex items-center gap-1 text-xs text-lapis-text-secondary">
-                  <STRENGTH_ICON className="w-3.5 h-3.5 text-lapis-text-tertiary" />
-                  Strength
-                </span>
-              ))}
+              {strength.map((slot, i) => {
+                // hardDays already guarantees strength never shares a day
+                // with a key/threshold/vo2max/brick slot, so whatever
+                // this finds is structurally a fine, easy/technique
+                // pairing - see sameDayEnduranceSlot's own comment.
+                const sameDaySlot = sameDayEnduranceSlot(day, slots.enduranceSlots)
+                return (
+                  <span key={`strength-${i}`} className="flex items-center gap-1 text-xs text-lapis-text-secondary">
+                    <STRENGTH_ICON className="w-3.5 h-3.5 text-lapis-text-tertiary" />
+                    Strength
+                    {slot.focus && <span className="text-lapis-text-tertiary">({STRENGTH_FOCUS_LABEL[slot.focus]})</span>}
+                    {sameDaySlot && (
+                      <span
+                        className="text-lapis-text-disabled"
+                        title={`Same day as ${TYPE_LABEL[sameDaySlot.type]} (${ROLE_LABEL[sameDaySlot.role]}) - fine to pair; sequence matters less than which day (same-session order has small effect on most adaptations).`}
+                      >
+                        ·
+                      </span>
+                    )}
+                  </span>
+                )
+              })}
             </div>
           </div>
         )

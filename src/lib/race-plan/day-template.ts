@@ -25,11 +25,25 @@ export interface EnduranceSlot {
   time?: string | null
 }
 
+// Not a full exercise-level muscle system - the smallest tag that
+// enables real body-part-specific interference logic (see
+// restrictedDaysForFocus below). Deterministically assigned by
+// strengthFocusForSessionCount at generation time, not read from the
+// model - buildPhaseTemplate is deterministic/code-computed and the AI
+// call's own response schema has no per-slot strength data to reuse.
+export type StrengthFocus = 'upper' | 'lower' | 'full_body'
+
 export interface StrengthSlot {
   day: number
   // See EnduranceSlot.time above - same optional, never-guessed, phase-
   // level convention.
   time?: string | null
+  // Optional (not every existing stored plan has this - it's purely
+  // additive JSONB, no migration): undefined means a slot generated
+  // before this field existed. See restrictedDaysForFocus for how that
+  // case is handled safely (falls back to the old, more conservative
+  // blanket restriction rather than assuming flexibility it can't verify).
+  focus?: StrengthFocus
 }
 
 export interface PhaseTemplate {
@@ -143,6 +157,84 @@ const DISCIPLINES: Discipline[] = ['swim', 'bike', 'run']
 // already cited in STRENGTH_SEQUENCING_NOTES (periodization.ts).
 export function computeRestrictedStrengthDays(hardDays: Set<number>): Set<number> {
   return new Set([...hardDays].map((d) => (d + 1) % 7))
+}
+
+// A reasonable default split, not independently sourced - same honesty
+// precedent as BASE_START_FRACTION_OF_PEAK/the acclimation weeks split
+// elsewhere in this feature. Deliberately stays within upper/lower/
+// full_body (never invents a finer split like push/pull/legs) - that's
+// the whole point of keeping this the smallest honest tag, not a full
+// exercise-level muscle system.
+const STRENGTH_FOCUS_ROTATION: Record<number, StrengthFocus[]> = {
+  1: ['full_body'],
+  2: ['upper', 'lower'],
+  3: ['upper', 'lower', 'full_body'],
+  4: ['upper', 'lower', 'upper', 'lower'],
+  5: ['upper', 'lower', 'upper', 'lower', 'full_body'],
+}
+
+function strengthFocusForSessionCount(sessions: number): StrengthFocus[] {
+  const table = STRENGTH_FOCUS_ROTATION[sessions]
+  if (table) return table
+  // Beyond the known range (shouldn't happen - STRENGTH_SESSION_CAPS
+  // tops out at 5) - a safe fallback rather than crashing or returning
+  // too few entries.
+  return Array.from({ length: sessions }, (_, i) => (i % 2 === 0 ? 'upper' : 'lower'))
+}
+
+// A full-body session typically includes real lower-body loading -
+// treated identically to a dedicated lower-body day, not a partial/
+// discounted restriction. There's no real data to size a fractional
+// adjustment confidently, and this feature's own precedent throughout
+// is to stay conservative rather than fabricate that precision.
+export function involvesLowerBody(focus: StrengthFocus): boolean {
+  return focus === 'lower' || focus === 'full_body'
+}
+
+// Muscle-group-aware day-after restriction, grounded in real concurrent-
+// training research (cited in full in STRENGTH_SEQUENCING_NOTES's own
+// neighborhood, periodization.ts):
+//  - Interference is muscle-group-specific, not systemic - lower-body
+//    endurance doesn't meaningfully hurt upper-body strength outcomes
+//    (Wilson et al.-style concurrent-training meta-analyses).
+//  - Running specifically causes measurable interference with
+//    hypertrophy/strength; cycling showed no significant interference in
+//    the same analysis.
+//  - Swimming causes LESS interference than running (lower inflammatory/
+//    mechanical load) - concurrent resistance training alongside
+//    swimming has even shown performance benefits, not just neutral
+//    coexistence.
+// So: only RUN's hard days (key/threshold/vo2max + brick, since a brick
+// always has a run leg) ever trigger the day-after restriction, and only
+// for focuses that involve the lower body - upper gets none at all. The
+// SAME-day block (hardDays, unchanged, computed by the caller) stays
+// universal across every discipline and focus - the cited research
+// frames same-day hard+hard pairing as a general fatigue/recovery-
+// capacity risk, not a muscle-specific molecular one, so that part was
+// never discipline-specific to begin with.
+//
+// focus undefined means a strength slot generated before this field
+// existed (no migration - purely additive JSONB) - falls back to the
+// full, unfiltered hardDays (allHardDays, every discipline) rather than
+// assuming a flexibility that was never actually verified for that slot,
+// so old plans' behavior stays exactly as conservative as it always was.
+export function restrictedDaysForFocus(focus: StrengthFocus | undefined, runHardDays: Set<number>, allHardDays: Set<number>): Set<number> {
+  if (focus == null) return computeRestrictedStrengthDays(allHardDays)
+  if (!involvesLowerBody(focus)) return new Set()
+  return computeRestrictedStrengthDays(runHardDays)
+}
+
+// The one endurance slot (if any) sharing a day with a strength slot -
+// used for the same-day sequencing note (see STRENGTH_SEQUENCING_NOTES's
+// own citation: same-session order has small/negligible effect on most
+// adaptations, so this is informational, not a new restriction. The
+// real risk - pairing hard+hard the same day - is already prevented by
+// hardDays blocking strength from ever sharing a day with a key/
+// threshold/vo2max/brick slot in the first place, so whatever this
+// finds is structurally guaranteed to be an easy/technique slot, a
+// genuinely fine pairing per that same guidance).
+export function sameDayEnduranceSlot(day: number, enduranceSlots: EnduranceSlot[]): EnduranceSlot | null {
+  return enduranceSlots.find((s) => s.day === day) ?? null
 }
 
 // weekIndexWithinPhase: 0-based index of the week within its phase.
@@ -321,6 +413,31 @@ export function assignDays(count: number, blockedDays: Set<number>, preferredSta
   return days
 }
 
+// Long/key endurance sessions default to a weekend day (assumes more
+// available time then) rather than wherever assignDays' plain Monday-
+// start round-robin happens to land - a thin wrapper around assignDays,
+// not a separate mechanism: only the FIRST (key) day gets the weekend
+// preference, the rest are placed by the exact same unmodified assignDays
+// call as before. Falls back to assignDays' own round-robin (starting
+// from day 0, same as the un-decomposed original call) when both
+// weekend days are already taken - never fights or duplicates the
+// existing hardDay/restrictedDay logic, since those are computed
+// downstream from wherever slots end up, never fed back into placement.
+function assignKeyDayThenRest(count: number, blockedDays: Set<number>, preferredKeyDays: number[] = [5, 6]): number[] {
+  if (count === 0) return []
+
+  let keyDay = preferredKeyDays.find((d) => !blockedDays.has(d))
+  if (keyDay != null) {
+    blockedDays.add(keyDay)
+  } else {
+    ;[keyDay] = assignDays(1, blockedDays, 0)
+  }
+  if (keyDay == null) return [] // fully booked week - same degradation the un-decomposed assignDays would already show here
+
+  const rest = count > 1 ? assignDays(count - 1, blockedDays, (keyDay + 1) % 7) : []
+  return [keyDay, ...rest]
+}
+
 function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, approach: RaceApproach): PhaseTemplate {
   const usedDays = new Set<number>()
   const brickDays: number[] = []
@@ -347,7 +464,12 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, ap
       // never ends up with more days than it actually has sessions.
       const brickDaysForDiscipline = discipline === 'bike' || discipline === 'run' ? brickDays.slice(0, sessions) : []
       const remaining = sessions - brickDaysForDiscipline.length
-      const days = [...brickDaysForDiscipline, ...assignDays(remaining, usedDays)]
+      // A brick day already claims the key slot for free (brickDays
+      // defaults to Saturday - see above), so weekend-biasing only needs
+      // to apply when there's no brick already doing that job for this
+      // discipline this week.
+      const remainingDays = brickDaysForDiscipline.length === 0 ? assignKeyDayThenRest(remaining, usedDays) : assignDays(remaining, usedDays)
+      const days = [...brickDaysForDiscipline, ...remainingDays]
 
       enduranceSlots.push(...buildEnduranceSlots(discipline, days, phase, PROGRESSION_BY_PHASE[phase], approach))
     }
@@ -368,7 +490,13 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, ap
     ...enduranceSlots.filter((s) => s.role === 'key' || s.role === 'threshold' || s.role === 'vo2max').map((s) => s.day),
     ...brickDays,
   ])
-  const restrictedDays = computeRestrictedStrengthDays(hardDays)
+  // Run-specific subset, for the muscle-group-aware day-after restriction
+  // (see restrictedDaysForFocus) - brick days included, since a brick
+  // always has a run leg carrying the same interference profile.
+  const runHardDays = new Set<number>([
+    ...enduranceSlots.filter((s) => s.type === 'run' && (s.role === 'key' || s.role === 'threshold' || s.role === 'vo2max')).map((s) => s.day),
+    ...brickDays,
+  ])
 
   const strengthSlots: StrengthSlot[] = []
   if (week.targetStrengthSessions > 0) {
@@ -380,13 +508,24 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, ap
     // right after them stay off-limits. This (plus the lower
     // DISCIPLINE_MAX_SESSIONS caps) is what keeps a realistic week's
     // total sessions representable within 7 calendar days.
-    let days = assignDays(week.targetStrengthSessions, new Set([...hardDays, ...restrictedDays]))
-    if (days.length < week.targetStrengthSessions) {
-      // Last-resort degradation: relax even the day-after restriction,
-      // but never place strength directly on a key/brick day itself.
-      days = assignDays(week.targetStrengthSessions, new Set(hardDays))
+    //
+    // Placed one focus at a time (not all at once via a single assignDays
+    // call, unlike before) since each focus now carries its own
+    // restricted-day set - upper gets none, lower/full_body get run's
+    // day-after set specifically (see restrictedDaysForFocus). Same
+    // last-resort degradation as before: relax the day-after restriction
+    // first, never place strength directly on a key/brick day itself.
+    const usedStrengthDays = new Set<number>()
+    for (const focus of strengthFocusForSessionCount(week.targetStrengthSessions)) {
+      const restricted = restrictedDaysForFocus(focus, runHardDays, hardDays)
+      let [day] = assignDays(1, new Set([...hardDays, ...usedStrengthDays, ...restricted]))
+      if (day == null) {
+        day = assignDays(1, new Set([...hardDays, ...usedStrengthDays]))[0]
+      }
+      if (day == null) continue // fully booked week - same silent degradation the original code already tolerated
+      usedStrengthDays.add(day)
+      strengthSlots.push({ day, focus })
     }
-    for (const day of days) strengthSlots.push({ day })
   }
 
   return { enduranceSlots, strengthSlots, brickDays }

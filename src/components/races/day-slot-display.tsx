@@ -1,5 +1,5 @@
 import { Waves, Bike, Footprints, Dumbbell, type LucideIcon } from 'lucide-react'
-import type { EnduranceSlotType, SlotRole } from '@/lib/race-plan/day-template'
+import type { EnduranceSlotType, SlotRole, StrengthFocus } from '@/lib/race-plan/day-template'
 
 // Shared, presentational-only metadata - imported by both the read-only
 // per-week day list and the phase-level edit dialog so the two never
@@ -26,6 +26,12 @@ export const ROLE_LABEL: Record<SlotRole, string> = {
   technique: 'Technique',
   threshold: 'Threshold',
   vo2max: 'VO2max',
+}
+
+export const STRENGTH_FOCUS_LABEL: Record<StrengthFocus, string> = {
+  upper: 'Upper Body',
+  lower: 'Lower Body',
+  full_body: 'Full Body',
 }
 
 export function formatSlotKm(km: number): string {

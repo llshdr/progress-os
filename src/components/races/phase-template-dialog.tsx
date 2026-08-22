@@ -8,16 +8,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { WEEKDAY_NAMES } from '@/lib/gym-schedule'
 import {
   enduranceSlotKmForWeek,
-  computeRestrictedStrengthDays,
+  restrictedDaysForFocus,
+  sameDayEnduranceSlot,
   assignDays,
   ZONE_GUIDANCE,
   type PhaseTemplate,
   type PhaseTemplates,
   type EnduranceSlot,
+  type StrengthSlot,
 } from '@/lib/race-plan/day-template'
 import type { TrainingPhase, TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
 import type { Discipline } from '@/lib/race-plan/self-assessment'
-import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, ROLE_LABEL, formatSlotKm } from '@/components/races/day-slot-display'
+import { SLOT_TYPE_ICON, STRENGTH_ICON, TYPE_LABEL, ROLE_LABEL, STRENGTH_FOCUS_LABEL, formatSlotKm } from '@/components/races/day-slot-display'
 import { TRANSITION_GUIDANCE } from '@/lib/race-plan/race-day-prep'
 import { paceTargetForWeek } from '@/lib/race-plan/pace-targets'
 import { formatPaceForDiscipline } from '@/lib/race-plan/pace-units'
@@ -147,7 +149,14 @@ export default function PhaseTemplateDialog({
     ...edited.enduranceSlots.filter((s) => s.role === 'key' || s.role === 'threshold').map((s) => s.day),
     ...edited.brickDays,
   ])
-  const restrictedDays = computeRestrictedStrengthDays(hardDays)
+  // Run-specific subset, mirrors buildPhaseTemplate's own runHardDays -
+  // the day-after restriction is muscle-group-aware (see
+  // restrictedDaysForFocus), not a single blanket set anymore.
+  const runHardDays = new Set<number>([
+    ...edited.enduranceSlots.filter((s) => s.type === 'run' && (s.role === 'key' || s.role === 'threshold')).map((s) => s.day),
+    ...edited.brickDays,
+  ])
+  const restrictedDaysFor = (slot: StrengthSlot) => restrictedDaysForFocus(slot.focus, runHardDays, hardDays)
 
   // Mirrors WeekDayList's own thresholdZoneTitle - qualitative guidance
   // is the baseline for 'threshold' slots, this layers in the optional
@@ -237,12 +246,16 @@ export default function PhaseTemplateDialog({
       ...newEnduranceSlots.filter((s) => s.role === 'key' || s.role === 'threshold').map((s) => s.day),
       ...edited.brickDays,
     ])
-    const restrictedAfterMove = computeRestrictedStrengthDays(hardDaysAfterMove)
+    const runHardDaysAfterMove = new Set<number>([
+      ...newEnduranceSlots.filter((s) => s.type === 'run' && (s.role === 'key' || s.role === 'threshold')).map((s) => s.day),
+      ...edited.brickDays,
+    ])
 
     const newStrengthSlots = [...edited.strengthSlots]
     for (let i = 0; i < newStrengthSlots.length; i++) {
       const s = newStrengthSlots[i]
       if (!unavailable.has(s.day)) continue
+      const restrictedAfterMove = restrictedDaysForFocus(s.focus, runHardDaysAfterMove, hardDaysAfterMove)
       let [newDay] = assignDays(1, new Set([...usedDays, ...unavailable, ...hardDaysAfterMove, ...restrictedAfterMove]), (s.day + 1) % 7)
       if (newDay == null) {
         ;[newDay] = assignDays(1, new Set([...usedDays, ...unavailable, ...hardDaysAfterMove]), (s.day + 1) % 7)
@@ -433,24 +446,39 @@ export default function PhaseTemplateDialog({
             )
           })}
 
-          {edited.strengthSlots.map((slot, index) => (
-            <div key={`strength-${index}`} className="border border-lapis-border-subtle rounded-lapis-md p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <STRENGTH_ICON className="w-4 h-4 text-lapis-text-tertiary shrink-0" />
-                <span className="text-lapis-text-primary text-sm font-medium">Strength</span>
+          {edited.strengthSlots.map((slot, index) => {
+            const restrictedDays = restrictedDaysFor(slot)
+            // hardDays already guarantees strength never shares a day
+            // with a key/threshold/brick slot, so whatever this finds is
+            // structurally a fine, easy/technique pairing - see
+            // sameDayEnduranceSlot's own comment.
+            const sameDaySlot = sameDayEnduranceSlot(slot.day, edited.enduranceSlots)
+            return (
+              <div key={`strength-${index}`} className="border border-lapis-border-subtle rounded-lapis-md p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <STRENGTH_ICON className="w-4 h-4 text-lapis-text-tertiary shrink-0" />
+                  <span className="text-lapis-text-primary text-sm font-medium">Strength</span>
+                  {slot.focus && <span className="text-lapis-text-tertiary text-xs">({STRENGTH_FOCUS_LABEL[slot.focus]})</span>}
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <DayPicker value={slot.day} onChange={(day) => updateStrengthDay(index, day)} restrictedDays={restrictedDays} />
+                  <Input
+                    type="time"
+                    value={slot.time ?? ''}
+                    onChange={(e) => updateStrengthTime(index, e.target.value)}
+                    className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary w-28 h-8 text-xs"
+                  />
+                </div>
+                {restrictedDays.has(slot.day) && <p className="text-lapis-citrine/60 text-xs mt-2">{RESTRICTED_DAY_WARNING}</p>}
+                {sameDaySlot && (
+                  <p className="text-lapis-text-tertiary text-xs mt-2">
+                    Same day as {TYPE_LABEL[sameDaySlot.type]} ({ROLE_LABEL[sameDaySlot.role]}) - fine to pair; sequence matters less than which
+                    day (same-session order has small effect on most adaptations).
+                  </p>
+                )}
               </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <DayPicker value={slot.day} onChange={(day) => updateStrengthDay(index, day)} restrictedDays={restrictedDays} />
-                <Input
-                  type="time"
-                  value={slot.time ?? ''}
-                  onChange={(e) => updateStrengthTime(index, e.target.value)}
-                  className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary w-28 h-8 text-xs"
-                />
-              </div>
-              {restrictedDays.has(slot.day) && <p className="text-lapis-citrine/60 text-xs mt-2">{RESTRICTED_DAY_WARNING}</p>}
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
