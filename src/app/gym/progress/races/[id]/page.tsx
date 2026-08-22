@@ -1529,6 +1529,13 @@ export default function RaceDetailPage() {
                             </div>
                           )}
                           {group.isAcclimation && <p className="text-lapis-text-tertiary text-xs mb-1">{ACCLIMATION_GUIDANCE}</p>}
+                          {plan.phaseTemplates[group.phase]?.dayCapacityWarning?.map((w) => (
+                            <p key={w.discipline} className="text-lapis-garnet/90 text-xs mb-1">
+                              This phase&apos;s busiest week needs {w.requestedSessions}x {TYPE_LABEL[w.discipline]} but only {w.placedDays} day
+                              {w.placedDays === 1 ? '' : 's'} were free to place them on - the remaining session&apos;s volume isn&apos;t shown on
+                              any specific day rather than being piled onto one.
+                            </p>
+                          ))}
                           <p className="text-lapis-text-tertiary text-xs mb-1">{STRENGTH_SEQUENCING_NOTES[group.phase]}</p>
                           <p className="text-lapis-text-tertiary text-xs mb-1">{PHASE_NUTRITION_GUIDANCE[group.phase]}</p>
                           {category !== 'other' && (
@@ -1539,6 +1546,15 @@ export default function RaceDetailPage() {
                               const isCurrentWeek = week.weekStartDate === currentWeekStartDate
                               const phaseTemplate = plan.phaseTemplates[week.phase]
                               const isExpanded = expandedWeeks.has(week.weekStartDate)
+                              // Only the literal last week of the whole plan is
+                              // the actual race week (see computeTrainingWeeks -
+                              // there's no stored isRaceWeek flag, so position is
+                              // the only reliable signal) - every other week's
+                              // template may still legitimately place a session
+                              // on this same weekday, that's fine, it's not race
+                              // day for them.
+                              const isRaceWeek = week.weekStartDate === plan.weeks[plan.weeks.length - 1].weekStartDate
+                              const raceDay = isRaceWeek ? getLocalWeekdayIndex(new Date(race.race_date + 'T00:00:00')) : null
                               return (
                                 <div
                                   key={week.weekStartDate}
@@ -1625,7 +1641,7 @@ export default function RaceDetailPage() {
                                       </button>
                                       {isExpanded && (
                                         <WeekDayList
-                                          slots={slotsForWeek(phaseTemplate, week)}
+                                          slots={slotsForWeek(phaseTemplate, week, raceDay)}
                                           week={week}
                                           weekIndexWithinPhase={weekIndex}
                                           easyPaceTargets={easyPaceTargets}
@@ -1635,6 +1651,7 @@ export default function RaceDetailPage() {
                                           paceGaps={paceGaps}
                                           weeksUntilRace={weeksUntilRace}
                                           level={level}
+                                          raceDay={raceDay}
                                         />
                                       )}
                                     </>

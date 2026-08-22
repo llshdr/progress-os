@@ -52,6 +52,21 @@ export interface PhaseTemplate {
   // Days where the bike slot + run slot together ARE that week's brick -
   // informational badge only, doesn't change any math.
   brickDays: number[]
+  // Non-null only when this phase's sizing week (see computeDayByDayTemplates)
+  // has more sessions for a discipline than there are free days left to
+  // place them on - a genuinely over-subscribed week, not a rounding
+  // artifact. Each entry's shortfall (requestedSessions - placedDays)
+  // worth of weekly volume is deliberately left off every specific day
+  // (see buildEnduranceSlots' intendedSessions param) rather than being
+  // silently dumped onto whichever day did get placed - see
+  // buildPhaseTemplate for where this is detected.
+  dayCapacityWarning: DayCapacityWarning[] | null
+}
+
+export interface DayCapacityWarning {
+  discipline: EnduranceSlotType
+  requestedSessions: number
+  placedDays: number
 }
 
 export type PhaseTemplates = Partial<Record<TrainingPhase, PhaseTemplate>>
@@ -326,12 +341,24 @@ const PROGRESSION_BY_PHASE: Record<TrainingPhase, SlotProgression | null> = {
   taper: null,
 }
 
+// intendedSessions: the discipline's REAL requested session count for
+// this week (week.disciplines[d].sessions), which can exceed days.length
+// when buildPhaseTemplate ran out of free days to place all of them (see
+// its dayCapacityWarning detection). Defaults to days.length, so every
+// normal (non-shortfall) call site is byte-for-byte unchanged. When they
+// differ, KEY_SHARE is looked up against the INTENDED count (so the
+// placed key slot still only gets its rightful share, e.g. 75% of 3
+// intended sessions, never inflating to 100% just because 2 siblings
+// didn't get a day) and the unplaced siblings' share is deliberately left
+// off every specific day rather than silently reassigned to whichever
+// slot did get placed - see buildPhaseTemplate/dayCapacityWarning.
 function buildEnduranceSlots(
   type: EnduranceSlotType,
   days: number[],
   phase: TrainingPhase,
   progressionForKey: SlotProgression | null,
-  approach: RaceApproach
+  approach: RaceApproach,
+  intendedSessions: number = days.length
 ): EnduranceSlot[] {
   if (days.length === 0) return []
 
@@ -342,8 +369,8 @@ function buildEnduranceSlots(
   // in every other phase are technique/drill sessions alongside the key
   // one, also flat.
   const swimBaseTechnique = type === 'swim' && phase === 'base'
-  const keyShare = keyShareForSessionCount(type, days.length)
-  const restShare = days.length > 1 ? (1 - keyShare) / (days.length - 1) : 0
+  const keyShare = keyShareForSessionCount(type, intendedSessions)
+  const restShare = intendedSessions > 1 ? (1 - keyShare) / (intendedSessions - 1) : 0
 
   // At most one non-key slot per discipline gets promoted to threshold
   // intensity - never in Base (foundation first), never on the key slot
@@ -360,7 +387,7 @@ function buildEnduranceSlots(
   // as an established technique.
   const muscleFocusedApproach = approach === 'muscle_leaning' || approach === 'muscle_focused'
   const skipThresholdForRun = type === 'run' && muscleFocusedApproach
-  const thresholdDayIndex = phase !== 'base' && days.length >= 2 && !skipThresholdForRun ? 1 : -1
+  const thresholdDayIndex = phase !== 'base' && intendedSessions >= 2 && !skipThresholdForRun ? 1 : -1
 
   return days.map((day, i) => {
     const isKey = i === 0 && !swimBaseTechnique
@@ -378,7 +405,7 @@ function buildEnduranceSlots(
       day,
       type,
       role,
-      shareOfWeeklyTotal: days.length === 1 ? 1 : isKey ? keyShare : restShare,
+      shareOfWeeklyTotal: intendedSessions === 1 ? 1 : isKey ? keyShare : restShare,
       progression: isKey ? progressionForKey : null,
     }
   })
@@ -438,13 +465,29 @@ function assignKeyDayThenRest(count: number, blockedDays: Set<number>, preferred
   return [keyDay, ...rest]
 }
 
+// A key brick's bike leg exceeding this is a genuinely long ride
+// (2x TYPICAL_SESSION_KM.bike, periodization.ts) - not realistic to
+// follow with a run leg on a weekday given normal work/time constraints.
+// Below this, a weekday brick is fine (matches this file's existing
+// Wed/Sat default) - only large bricks need to move to the weekend.
+const LARGE_BRICK_KEY_KM_THRESHOLD = 90
+
 function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, approach: RaceApproach): PhaseTemplate {
   const usedDays = new Set<number>()
   const brickDays: number[] = []
 
   if (week.disciplines && week.brickSessions) {
-    // 1 brick -> Saturday; 2 -> Wednesday + Saturday (spread apart).
-    const candidates = week.brickSessions >= 2 ? [2, 5] : [5]
+    // 1 brick -> Saturday. 2 bricks -> Wednesday + Saturday, ordered so
+    // whichever day is FIRST in this array claims the key/larger brick
+    // (buildEnduranceSlots always treats a discipline's first day as its
+    // key slot) - Saturday leads when the key brick's bike leg is large
+    // enough that a weekday pairing with a run leg isn't realistic;
+    // otherwise Wednesday leading (the original default) is fine.
+    const bikeSessions = week.disciplines.bike.sessions
+    const bikeKeyKm =
+      week.disciplines.bike.protectedKeyKm ?? (bikeSessions > 0 ? week.disciplines.bike.km * keyShareForSessionCount('bike', bikeSessions) : 0)
+    const largeBrick = bikeKeyKm > LARGE_BRICK_KEY_KM_THRESHOLD
+    const candidates = week.brickSessions >= 2 ? (largeBrick ? [5, 2] : [2, 5]) : [5]
     for (const d of candidates) {
       usedDays.add(d)
       brickDays.push(d)
@@ -452,8 +495,24 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, ap
   }
 
   const enduranceSlots: EnduranceSlot[] = []
+  const dayCapacityWarnings: DayCapacityWarning[] = []
 
   if (week.disciplines) {
+    // Only ONE discipline per week gets true weekend-day priority for its
+    // key session - coordinating across disciplines within a single
+    // generation pass, rather than letting each discipline independently
+    // grab a weekend day and risk clustering two key/hard sessions on
+    // adjacent days. Bike first (longest, most time-demanding session,
+    // most in need of a free weekend day), falling back to run when bike
+    // has no sessions this week; swim never gets weekend priority (its
+    // key session is shorter and its share is already the most evenly
+    // split of the three - see KEY_SHARE). Every other discipline places
+    // via plain assignDays (unchanged, pre-weekend-bias round-robin
+    // starting from Monday), which naturally lands away from whichever
+    // weekend day the priority discipline took.
+    const priorityDiscipline: Discipline | null =
+      week.disciplines.bike.sessions > 0 ? 'bike' : week.disciplines.run.sessions > 0 ? 'run' : null
+
     for (const discipline of DISCIPLINES) {
       const sessions = week.disciplines[discipline].sessions
       if (sessions === 0) continue
@@ -465,17 +524,30 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, ap
       const brickDaysForDiscipline = discipline === 'bike' || discipline === 'run' ? brickDays.slice(0, sessions) : []
       const remaining = sessions - brickDaysForDiscipline.length
       // A brick day already claims the key slot for free (brickDays
-      // defaults to Saturday - see above), so weekend-biasing only needs
-      // to apply when there's no brick already doing that job for this
-      // discipline this week.
-      const remainingDays = brickDaysForDiscipline.length === 0 ? assignKeyDayThenRest(remaining, usedDays) : assignDays(remaining, usedDays)
+      // defaults to Saturday-leading - see above), so weekend-biasing
+      // only needs to apply when there's no brick already doing that job
+      // for this discipline this week, and only for the one priority
+      // discipline this week (see priorityDiscipline above).
+      const useWeekendBias = discipline === priorityDiscipline && brickDaysForDiscipline.length === 0
+      const remainingDays = useWeekendBias ? assignKeyDayThenRest(remaining, usedDays) : assignDays(remaining, usedDays)
       const days = [...brickDaysForDiscipline, ...remainingDays]
 
-      enduranceSlots.push(...buildEnduranceSlots(discipline, days, phase, PROGRESSION_BY_PHASE[phase], approach))
+      // The week ran out of free days to place every requested session -
+      // flag it rather than letting buildEnduranceSlots silently treat
+      // the truncated day count as the real plan (see its intendedSessions
+      // param and shareOfWeeklyTotal comment above).
+      if (days.length < sessions) {
+        dayCapacityWarnings.push({ discipline, requestedSessions: sessions, placedDays: days.length })
+      }
+
+      enduranceSlots.push(...buildEnduranceSlots(discipline, days, phase, PROGRESSION_BY_PHASE[phase], approach, sessions))
     }
   } else if (week.targetCardioSessions > 0) {
     const days = assignDays(week.targetCardioSessions, usedDays)
-    enduranceSlots.push(...buildEnduranceSlots('cardio', days, phase, PROGRESSION_BY_PHASE[phase], approach))
+    if (days.length < week.targetCardioSessions) {
+      dayCapacityWarnings.push({ discipline: 'cardio', requestedSessions: week.targetCardioSessions, placedDays: days.length })
+    }
+    enduranceSlots.push(...buildEnduranceSlots('cardio', days, phase, PROGRESSION_BY_PHASE[phase], approach, week.targetCardioSessions))
   }
 
   // 'threshold' slots are hard days too - without this, the existing
@@ -528,7 +600,7 @@ function buildPhaseTemplate(week: TrainingWeekSkeleton, phase: TrainingPhase, ap
     }
   }
 
-  return { enduranceSlots, strengthSlots, brickDays }
+  return { enduranceSlots, strengthSlots, brickDays, dayCapacityWarning: dayCapacityWarnings.length > 0 ? dayCapacityWarnings : null }
 }
 
 // Reduces a phase's template down to what THIS specific week actually
@@ -551,8 +623,16 @@ export interface WeekSlots {
   brickDays: number[]
 }
 
-export function slotsForWeek(template: PhaseTemplate, week: TrainingWeekSkeleton): WeekSlots {
-  const brickDays = week.brickSessions ? template.brickDays.slice(0, week.brickSessions) : []
+// excludeDay: the literal race day's weekday index (0=Mon..6=Sun, see
+// getLocalWeekdayIndex), passed only by the caller when `week` is the
+// actual race week - the phase-level template is sized against a
+// different (non-race) week within the same phase, so it can and
+// commonly does place a session on that weekday. The athlete is racing
+// that day, not training, so both slot types are filtered out here at
+// the per-week reduction step rather than trying to keep race day out of
+// the phase-level template in the first place.
+export function slotsForWeek(template: PhaseTemplate, week: TrainingWeekSkeleton, excludeDay?: number | null): WeekSlots {
+  const brickDays = (week.brickSessions ? template.brickDays.slice(0, week.brickSessions) : []).filter((d) => d !== excludeDay)
   const brickDaySet = new Set(brickDays)
 
   const slotPriority = (s: EnduranceSlot): number => {
@@ -565,12 +645,12 @@ export function slotsForWeek(template: PhaseTemplate, week: TrainingWeekSkeleton
   const types: EnduranceSlotType[] = week.disciplines ? ['swim', 'bike', 'run'] : ['cardio']
   for (const type of types) {
     const targetCount = week.disciplines ? week.disciplines[type as Discipline].sessions : week.targetCardioSessions
-    const candidates = template.enduranceSlots.filter((s) => s.type === type)
+    const candidates = template.enduranceSlots.filter((s) => s.type === type && s.day !== excludeDay)
     const prioritized = [...candidates].sort((a, b) => slotPriority(a) - slotPriority(b))
     enduranceSlots.push(...prioritized.slice(0, Math.min(targetCount, candidates.length)))
   }
 
-  const strengthSlots = template.strengthSlots.slice(0, Math.min(week.targetStrengthSessions, template.strengthSlots.length))
+  const strengthSlots = template.strengthSlots.filter((s) => s.day !== excludeDay).slice(0, Math.min(week.targetStrengthSessions, template.strengthSlots.length))
 
   return { enduranceSlots, strengthSlots, brickDays }
 }

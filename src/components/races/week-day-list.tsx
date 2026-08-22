@@ -43,6 +43,11 @@ interface Props {
   paceGaps: PaceGap[]
   weeksUntilRace: number
   level: ExperienceLevel
+  // The literal race day's weekday index (0=Mon..6=Sun), passed only when
+  // this IS the actual race week (see slotsForWeek's excludeDay, which
+  // already filters that day's slots out of `slots` itself) - purely for
+  // the "Race Day" label below instead of a generic "Rest" on that one day.
+  raceDay?: number | null
 }
 
 function kmForSlot(slot: EnduranceSlot, sameTypeSlots: EnduranceSlot[], week: TrainingWeekSkeleton, weekIndexWithinPhase: number): number {
@@ -104,6 +109,7 @@ export default function WeekDayList({
   paceGaps,
   weeksUntilRace,
   level,
+  raceDay,
 }: Props) {
   return (
     <div className="mt-3 pt-3 border-t border-lapis-border-subtle space-y-1.5">
@@ -116,7 +122,7 @@ export default function WeekDayList({
           return (
             <div key={day} className="flex items-center gap-3">
               <span className="text-lapis-text-disabled text-xs w-9 shrink-0">{label}</span>
-              <span className="text-lapis-text-disabled text-xs">Rest</span>
+              <span className="text-lapis-text-disabled text-xs">{day === raceDay ? 'Race Day' : 'Rest'}</span>
             </div>
           )
         }
