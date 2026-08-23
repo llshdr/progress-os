@@ -799,7 +799,18 @@ export function computeTrainingWeeks(
   // unmodified - just anchored at a start date shifted later by however
   // many acclimation weeks will be prepended (zero shift, i.e. identical
   // to today, when acclimation doesn't apply).
-  const startMonday = new Date(requestedStartMonday.getTime() + weeksNeeded * 7 * 86400000)
+  // Calendar-based shift (setDate), not a flat ms offset - the raw
+  // getTime()+ms form this replaced could land 1 hour short of real
+  // midnight Monday whenever the shift window crossed a DST transition
+  // (confirmed via trace: requestedStartMonday.getTime() + N*7*86400000
+  // produced 23:00 the day before, not 00:00 Monday, for a shift crossing
+  // the Oct 2026 EU fall-back), corrupting startMonday's calendar date by
+  // one day and, with it, every week derived from it for the rest of this
+  // function. setDate() operates on calendar-day components directly, the
+  // same DST-safe approach every other date shift in this file already
+  // uses (see weekStart.setDate(...) below and computeAcclimationWeeks).
+  const startMonday = new Date(requestedStartMonday)
+  startMonday.setDate(startMonday.getDate() + weeksNeeded * 7)
   const diffWeeks = Math.round((raceMonday.getTime() - startMonday.getTime()) / (7 * 86400000))
   const totalWeeks = Math.max(1, diffWeeks + 1)
 
