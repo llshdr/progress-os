@@ -133,11 +133,9 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, sch
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogTrigger>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors">
-            <Wand2 className="w-4 h-4" />
-            <span className="text-sm font-medium">Quick Setup</span>
-          </button>
+        <DialogTrigger render={<button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md border border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2 transition-colors" />}>
+          <Wand2 className="w-4 h-4" />
+          <span className="text-sm font-medium">Quick Setup</span>
         </DialogTrigger>
         <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
           <DialogHeader>

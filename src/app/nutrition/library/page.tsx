@@ -95,7 +95,7 @@ export default function FoodLibraryPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
             <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Food Library</h1>

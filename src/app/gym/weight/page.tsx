@@ -171,7 +171,7 @@ export default function WeightPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load your weight history. Try refreshing." />}
         <div className="flex items-center gap-3 mb-8">
           <Link href="/gym/progress" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
@@ -179,10 +179,8 @@ export default function WeightPage() {
           </Link>
           <div className="flex-1" />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger>
-              <Button className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm">
-                Log Weight
-              </Button>
+            <DialogTrigger render={<Button className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm" />}>
+              Log Weight
             </DialogTrigger>
             <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
               <DialogHeader>

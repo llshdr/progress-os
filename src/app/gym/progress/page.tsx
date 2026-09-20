@@ -1,67 +1,64 @@
-import AppLayout from '@/components/app-layout'
-import { TrendingUp } from 'lucide-react'
-import Link from 'next/link'
-
+import AppLayout from "@/components/app-layout";
+import { PageHeader, NavRow } from "@/components/lapis/page";
+import { Trophy, Scale, Flag, Moon, Target, History } from "lucide-react";
 export default function GymProgressPage() {
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/gym" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
-
-        <div className="flex items-center gap-4 mb-8">
-          <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
-            <TrendingUp className="w-8 h-8 text-lapis-text-secondary" />
-          </div>
-          <div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">
-              Progress
-            </h1>
-            <p className="text-lapis-text-tertiary text-sm">
-              How you&apos;re trending over time
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Link href="/gym/records" className="group">
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 hover:border-lapis-border/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-2">Personal Records</h2>
-              <p className="text-lapis-text-tertiary text-sm">
-                Your best lifts and runs, all in one place
-              </p>
+      <div className="lapis-page">
+        <PageHeader
+          title="Progress"
+          subtitle="The work adds up."
+          back={{ href: "/gym", label: "Training" }}
+        />
+        <div className="grid gap-6 md:grid-cols-2">
+          <section>
+            <h2 className="lapis-section">Explore</h2>
+            <div className="lapis-group">
+              <NavRow
+                href="/gym/records"
+                title="Personal records"
+                description="Your lifts and running bests"
+                icon={Trophy}
+              />
+              <NavRow
+                href="/gym/weight"
+                title="Weight tracking"
+                description="Entries, trends and notes"
+                icon={Scale}
+              />
+              <NavRow
+                href="/gym/progress/races"
+                title="Races"
+                description="Upcoming events, plans and results"
+                icon={Flag}
+              />
+              <NavRow
+                href="/gym/sleep"
+                title="Sleep"
+                description="Hours and bedroom temperature"
+                icon={Moon}
+              />
             </div>
-          </Link>
-
-          <Link href="/gym/weight" className="group">
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 hover:border-lapis-border/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-2">Weight Tracking</h2>
-              <p className="text-lapis-text-tertiary text-sm">
-                Monitor your body composition progress
-              </p>
+          </section>
+          <section>
+            <h2 className="lapis-section">Keep moving</h2>
+            <div className="lapis-group">
+              <NavRow
+                href="/gym/goals"
+                title="This week"
+                description="Your quick-win goals"
+                icon={Target}
+              />
+              <NavRow
+                href="/gym/workouts"
+                title="Training history"
+                description="Every session in one place"
+                icon={History}
+              />
             </div>
-          </Link>
-
-          <Link href="/gym/progress/races" className="group">
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 hover:border-lapis-border/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-2">Races</h2>
-              <p className="text-lapis-text-tertiary text-sm">
-                Your race history and what&apos;s next
-              </p>
-            </div>
-          </Link>
-
-          <Link href="/gym/sleep" className="group">
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 hover:border-lapis-border/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-2">Sleep</h2>
-              <p className="text-lapis-text-tertiary text-sm">
-                Hours slept and bedroom temperature, trended over time
-              </p>
-            </div>
-          </Link>
+          </section>
         </div>
       </div>
     </AppLayout>
-  )
+  );
 }

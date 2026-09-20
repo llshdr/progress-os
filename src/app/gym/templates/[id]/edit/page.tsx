@@ -270,7 +270,7 @@ export default function EditTemplatePage() {
   if (!template) {
     return (
       <AppLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="lapis-page">
           <div className="text-lapis-text-tertiary">Template not found</div>
         </div>
       </AppLayout>
@@ -279,7 +279,7 @@ export default function EditTemplatePage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load this template's exercises. Try refreshing." />}
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">

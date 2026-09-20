@@ -191,41 +191,19 @@ export default function RacesPage() {
   const completed = races.filter((r) => r.race_date < today).sort((a, b) => (a.race_date < b.race_date ? 1 : -1))
 
   const renderRaceCard = (race: Race) => (
-    <div key={race.id} className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 transition-all duration-200">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <Link href={`/gym/progress/races/${race.id}`} className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-lg font-medium text-lapis-text-primary">{raceTypeLabel(race.race_type)}</h3>
-            {(race.courseName || race.location) && (
-              <span className="px-2 py-0.5 rounded-full text-xs bg-lapis-surface-2 text-lapis-text-tertiary border border-lapis-border-subtle">
-                {race.courseName ?? race.location}
-              </span>
-            )}
-          </div>
-          <p className="text-lapis-text-tertiary text-sm">{formatRaceDate(race.race_date)}</p>
-          {RACE_TYPE_DISTANCE[race.race_type] && (
-            <p className="text-lapis-text-disabled text-xs mt-1">{RACE_TYPE_DISTANCE[race.race_type]}</p>
-          )}
-          {race.notes && <p className="text-lapis-text-disabled text-xs mt-1">{race.notes}</p>}
-        </Link>
-        <div className="flex items-center gap-4 shrink-0">
-          {race.result_duration_seconds != null && (
-            <div className="text-right">
-              <p className="text-xs text-lapis-text-tertiary mb-1">Result</p>
-              <p className="text-lapis-text-primary font-semibold">{formatResultDuration(race.result_duration_seconds)}</p>
-            </div>
-          )}
-          <button onClick={() => openDeleteModal(race.id)} className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors" title="Delete">
-            <Trash2 className="w-4 h-4 text-lapis-text-tertiary" />
-          </button>
-        </div>
-      </div>
-    </div>
+    <article key={race.id} className="lapis-panel relative overflow-hidden">
+      <div className="mb-5 flex items-center justify-between"><span className="lapis-eyebrow">{race.result_duration_seconds != null ? 'Result logged' : race.race_date >= today ? 'Planned' : 'Past event'}</span><button onClick={() => openDeleteModal(race.id)} className="lapis-icon-button" aria-label={`Delete ${raceTypeLabel(race.race_type)}`}><Trash2 size={16} /></button></div>
+      <Link href={`/gym/progress/races/${race.id}`}><h3 className="text-2xl font-semibold tracking-tight">{raceTypeLabel(race.race_type)}</h3><p className="mt-1 text-lapis-text-secondary">{race.courseName || race.location || 'Location not set'}</p><p className="mt-3 text-sm text-lapis-text-secondary">{formatRaceDate(race.race_date)}</p></Link>
+      {RACE_TYPE_DISTANCE[race.race_type] && <p className="mt-5 border-y border-lapis-border-subtle py-4 text-sm text-lapis-text-secondary">{RACE_TYPE_DISTANCE[race.race_type]}</p>}
+      {race.result_duration_seconds != null && <p className="mt-4 text-2xl font-semibold tabular-nums">{formatResultDuration(race.result_duration_seconds)}</p>}
+      {race.notes && <p className="mt-3 text-sm text-lapis-text-secondary">{race.notes}</p>}
+      <Link href={`/gym/progress/races/${race.id}`} className="lapis-primary mt-5 w-full">{race.result_duration_seconds != null ? 'View race and result' : 'View race plan'} →</Link>
+    </article>
   )
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         <Link
           href="/gym/progress"
           className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
@@ -234,7 +212,7 @@ export default function RacesPage() {
           Back to Progress
         </Link>
 
-        <div className="flex items-center justify-between flex-wrap gap-4 mb-8 mt-6">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-7">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
               <Flag className="w-8 h-8 text-lapis-text-secondary" />
@@ -252,11 +230,9 @@ export default function RacesPage() {
               if (!open) resetForm()
             }}
           >
-            <DialogTrigger>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors">
-                <Plus className="w-4 h-4" />
-                <span className="text-sm font-medium">Add Race</span>
-              </button>
+            <DialogTrigger render={<button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors" />}>
+              <Plus className="w-4 h-4" />
+              <span className="text-sm font-medium">Add Race</span>
             </DialogTrigger>
             <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary max-h-[85vh] overflow-y-auto">
               <DialogHeader>
@@ -409,7 +385,7 @@ export default function RacesPage() {
                   <p className="text-lapis-text-tertiary text-sm">No upcoming races.</p>
                 </div>
               ) : (
-                <div className="grid gap-3">{upcoming.map(renderRaceCard)}</div>
+                <div className="grid gap-4 md:grid-cols-2">{upcoming.map(renderRaceCard)}</div>
               )}
             </div>
 
@@ -420,7 +396,7 @@ export default function RacesPage() {
                   <p className="text-lapis-text-tertiary text-sm">No completed races yet.</p>
                 </div>
               ) : (
-                <div className="grid gap-3">{completed.map(renderRaceCard)}</div>
+                <div className="grid gap-4 md:grid-cols-2">{completed.map(renderRaceCard)}</div>
               )}
             </div>
           </div>

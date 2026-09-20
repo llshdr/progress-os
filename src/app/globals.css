@@ -7,8 +7,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", Consolas, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -48,51 +48,30 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ─── Lapis design system tokens (Phase 0 infrastructure) ───────────────
-   Additive only - every name below is new and distinct from the shadcn
-   tokens in this file, so nothing currently rendered changes. Nothing
-   in @layer base or any component points at these yet; Phase 1 adopts
-   them screen-by-screen. See the design proposal for the full rationale
-   (deep ink-blue base, ultramarine accent, gold used sparingly,
-   gemstone-coded semantic colors). Dark-mode only by design - plain
-   values, not a :root/.dark pair, since there is no light variant.
-
-   --radius-lapis-* is deliberately its own scale, not a remap of
-   --radius/--radius-sm..4xl above: those already drive every rounded-2xl/
-   rounded-3xl currently in production (derived via the @theme inline
-   block below from a single --radius value), so touching them would be
-   a real, app-wide visual change today, not inert infrastructure.
-   Likewise --color-lapis-* stays separate from --primary/--background/
-   --card/etc rather than overwriting them in place - even though every
-   current Button/Input/Dialog usage overrides those tokens with an
-   explicit className (verified, not assumed), a blanket "remap shadcn's
-   own tokens now" would depend on that holding for every remaining
-   component this session hasn't individually read. Phase 1 remaps the
-   real tokens deliberately, alongside the reviewable visual change. */
 @theme {
-  --color-lapis-bg: #0A0C12;
-  --color-lapis-surface-1: #12151F;
-  --color-lapis-surface-2: #1A1E2C;
-  --color-lapis-surface-3: #20253A;
+  --color-lapis-bg: #080B10;
+  --color-lapis-surface-1: #141B24;
+  --color-lapis-surface-2: #1D2733;
+  --color-lapis-surface-3: #283443;
   --color-lapis-border-subtle: rgba(154, 169, 214, .10);
   --color-lapis-border: rgba(154, 169, 214, .16);
   --color-lapis-border-strong: rgba(154, 169, 214, .26);
   --color-lapis-text-primary: #F3F4F7;
   --color-lapis-text-secondary: #A6ACC2;
-  --color-lapis-text-tertiary: #666E88;
-  --color-lapis-text-disabled: #454B60;
-  --color-lapis-accent-400: #5B72E3;
-  --color-lapis-accent-500: #2E4BD4;
-  --color-lapis-accent-600: #2438A8;
+  --color-lapis-text-tertiary: #9AA8BA;
+  --color-lapis-text-disabled: #8290A2;
+  --color-lapis-accent-400: #53A8FF;
+  --color-lapis-accent-500: #087EF5;
+  --color-lapis-accent-600: #0566D1;
   --color-lapis-gold-400: #E0BD74;
   --color-lapis-gold-500: #C9A24B;
   --color-lapis-jade: #3FAE82;
   --color-lapis-citrine: #D9A23B;
   --color-lapis-garnet: #C1484F;
 
-  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
-  --font-body: var(--font-general-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-data: var(--font-jetbrains-mono), ui-monospace, "SF Mono", monospace;
+  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-data: "SF Mono", Consolas, monospace;
 
   --radius-lapis-sm: 8px;
   --radius-lapis-md: 12px;
@@ -204,3 +183,41 @@
     @apply font-sans bg-lapis-bg overflow-x-hidden;
   }
 }
+/* Shared LAPIS surfaces. Glass belongs to navigation, not every content panel. */
+@layer base {
+  :root { color-scheme: dark; }
+  .dark { --background: #080B10; --foreground: #F3F4F7; --card: #141B24; --card-foreground: #F3F4F7; --primary: #087EF5; --primary-foreground: #fff; --ring: #53A8FF; }
+  body { font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { text-wrap: balance; }
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+  :focus-visible { outline: 2px solid #53A8FF; outline-offset: 4px; }
+  input, select, textarea { font-size: max(1rem, 16px); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+}
+@layer components {
+  .lapis-page { width: 100%; max-width: 64rem; margin-inline: auto; padding: 1.5rem 1.25rem 2rem; }
+  .lapis-title { font-size: clamp(2rem, 5vw, 2.6rem); font-weight: 700; letter-spacing: -.045em; line-height: 1.15; }
+  .lapis-subtitle { color: var(--color-lapis-text-secondary); font-size: .95rem; margin-top: .5rem; }
+  .lapis-section { font-size: 1.2rem; font-weight: 650; letter-spacing: -.025em; margin-bottom: .9rem; }
+  .lapis-panel { background: var(--color-lapis-surface-1); border: 1px solid var(--color-lapis-border-subtle); border-radius: 1.5rem; padding: 1.25rem; }
+  .lapis-primary { display: inline-flex; justify-content: center; align-items: center; gap: .65rem; min-height: 3.2rem; padding: .8rem 1.35rem; background: linear-gradient(180deg,#128AFF,#006AE8); color: white; border-radius: 1rem; font-weight: 600; text-align: center; }
+  .lapis-primary:hover { filter: brightness(1.1); }
+  .lapis-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; flex-shrink: 0; border: 1px solid var(--color-lapis-border); border-radius: 50%; background: var(--color-lapis-surface-2); color: #D7E4F3; }
+  .lapis-group { overflow: hidden; border: 1px solid var(--color-lapis-border-subtle); border-radius: 1.25rem; background: var(--color-lapis-surface-1); }
+  .lapis-row { display: flex; align-items: center; gap: 1rem; padding: 1rem; min-height: 4.5rem; transition: background .15s; }
+  .lapis-row + .lapis-row { border-top: 1px solid var(--color-lapis-border-subtle); }
+  .lapis-row:hover { background: var(--color-lapis-surface-2); }
+  .lapis-tabs { display: flex; gap: .25rem; padding: .3rem; border: 1px solid var(--color-lapis-border); border-radius: 1rem; background: var(--color-lapis-surface-1); }
+  .lapis-tabs a, .lapis-tabs button { flex: 1; min-height: 2.75rem; display: flex; align-items: center; justify-content: center; border-radius: .75rem; color: var(--color-lapis-text-secondary); font-size: .875rem; }
+  .lapis-tabs [aria-current="page"], .lapis-tabs [aria-selected="true"] { background: var(--color-lapis-surface-3); color: white; }
+  .lapis-world { position: relative; overflow: hidden; border-radius: 1.5rem; background: #152333 url('/images/lapis-world.webp') center / cover; }
+  .lapis-world::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg,rgba(4,12,24,.12),rgba(4,12,24,.15) 35%,rgba(4,12,24,.92)); pointer-events: none; }
+  .lapis-world > * { position: relative; }
+  .lapis-eyebrow { color: #ADBED2; font-size: .7rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+  @media (min-width: 768px) { .lapis-page { padding: 2.5rem; } }
+}
+
+.lapis-progress { appearance: none; background: #283443; border: 0; border-radius: 99px; overflow: hidden; }
+.lapis-progress::-webkit-progress-bar { background: #283443; }
+.lapis-progress::-webkit-progress-value { background: #087EF5; border-radius: 99px; }
+.lapis-progress::-moz-progress-bar { background: #087EF5; border-radius: 99px; }

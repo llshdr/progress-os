@@ -9,15 +9,12 @@ import type { Suggestion } from '@/lib/ai-coach/types'
 
 type State = { status: 'loading' } | { status: 'error' } | { status: 'ok'; items: Suggestion[] }
 
-// Replaces the old slim teaser + dedicated /today page: suggestions are
-// visible directly on the dashboard again. The single top suggestion (the
-// pipeline's own existing "ordered by importance" order - no new sorting)
-// renders prominently; the rest render as a compact secondary stack below.
-// No reorder - that only mattered when suggestions were a dedicated page's
-// entire content. Dismiss and Done both still write to the exact same
-// tables the removed /today page used.
-export default function TodaySuggestionsSection() {
+// Shared by Today (one suggestion) and Coach (the full list).
+// Dismiss/complete actions only disappear after a successful write.
+export default function TodaySuggestionsSection({ limit }: { limit?: number } = {}) {
   const [state, setState] = useState<State>({ status: 'loading' })
+  const [pending, setPending] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -57,36 +54,42 @@ export default function TodaySuggestionsSection() {
   }
 
   const handleDismiss = async (key: string) => {
-    if (state.status !== 'ok') return
-    setState({ status: 'ok', items: state.items.filter((s) => s.key !== key) })
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { error } = await supabase.from('dismissed_suggestions').upsert(
-      { user_id: user.id, suggestion_key: key, dismissed_date: getLocalDateString() },
-      { onConflict: 'user_id,suggestion_key,dismissed_date' }
-    )
-    if (error) console.error('Error dismissing suggestion:', error)
+    if (state.status !== 'ok' || pending) return
+    setPending(key)
+    setActionError(null)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Sign in required')
+      const { error } = await supabase.from('dismissed_suggestions').upsert(
+        { user_id: user.id, suggestion_key: key, dismissed_date: getLocalDateString() },
+        { onConflict: 'user_id,suggestion_key,dismissed_date' }
+      )
+      if (error) throw error
+      setState(current => current.status === 'ok' ? { ...current, items: current.items.filter(s => s.key !== key) } : current)
+    } catch { setActionError('Could not dismiss this suggestion. Please try again.') }
+    finally { setPending(null) }
   }
 
   const handleDone = async (item: Suggestion) => {
-    if (!item.sourceTable || !item.sourceId || state.status !== 'ok') return
-    setState({ status: 'ok', items: state.items.filter((s) => s.key !== item.key) })
-
-    const { error } = await supabase.from(item.sourceTable).update({ status: 'done' }).eq('id', item.sourceId)
-    if (error) console.error('Error marking suggestion done:', error)
+    if (!item.sourceTable || !item.sourceId || state.status !== 'ok' || pending) return
+    setPending(item.key)
+    setActionError(null)
+    try {
+      const { error } = await supabase.from(item.sourceTable).update({ status: 'done' }).eq('id', item.sourceId)
+      if (error) throw error
+      setState(current => current.status === 'ok' ? { ...current, items: current.items.filter(s => s.key !== item.key) } : current)
+    } catch { setActionError('Could not mark this done. Please try again.') }
+    finally { setPending(null) }
   }
 
   return (
     <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-5 h-5 text-lapis-gold-500" />
+        <Sparkles className="w-5 h-5 text-lapis-accent-400" />
         <h3 className="text-lg font-medium text-lapis-text-primary">Today&apos;s Suggestions</h3>
       </div>
 
+      {actionError && <p role="alert" className="mb-3 text-sm text-lapis-text-secondary">{actionError}</p>}
       {state.status === 'loading' && (
         <div className="space-y-3 animate-pulse">
           <div className="h-4 bg-lapis-surface-2 rounded w-3/4"></div>
@@ -95,7 +98,7 @@ export default function TodaySuggestionsSection() {
       )}
 
       {state.status === 'error' && (
-        <p className="text-lapis-text-tertiary text-sm">Couldn&apos;t load today&apos;s suggestions. Try again later.</p>
+        <div><p className="text-lapis-text-secondary text-sm">Couldn&apos;t load today&apos;s suggestions.</p><button onClick={load} className="mt-2 min-h-11 text-sm text-lapis-accent-400">Try again</button></div>
       )}
 
       {state.status === 'ok' && state.items.length === 0 && (
@@ -121,6 +124,7 @@ export default function TodaySuggestionsSection() {
                 <div className="flex items-center gap-1 shrink-0">
                   {canMarkDone && (
                     <button
+                      disabled={pending !== null}
                       onClick={() => handleDone(top)}
                       className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                       title="Mark done"
@@ -129,6 +133,7 @@ export default function TodaySuggestionsSection() {
                     </button>
                   )}
                   <button
+                    disabled={pending !== null}
                     onClick={() => handleDismiss(top.key)}
                     className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors"
                     title="Dismiss for today"
@@ -141,9 +146,9 @@ export default function TodaySuggestionsSection() {
           })()}
 
           {/* Remaining suggestions - compact secondary stack */}
-          {state.items.length > 1 && (
+          {state.items.length > 1 && limit !== 1 && (
             <div className="space-y-2 pt-1 border-t border-lapis-border-subtle">
-              {state.items.slice(1).map((item) => {
+              {state.items.slice(1, limit).map((item) => {
                 const canMarkDone = Boolean(item.sourceTable && item.sourceId)
                 return (
                   <div key={item.key} className="flex items-center justify-between gap-3 pt-2">
@@ -151,7 +156,8 @@ export default function TodaySuggestionsSection() {
                     <div className="flex items-center gap-1 shrink-0">
                       {canMarkDone && (
                         <button
-                          onClick={() => handleDone(item)}
+                          disabled={pending !== null}
+                      onClick={() => handleDone(item)}
                           className="p-1.5 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-disabled hover:text-lapis-text-tertiary transition-colors"
                           title="Mark done"
                         >
@@ -159,7 +165,8 @@ export default function TodaySuggestionsSection() {
                         </button>
                       )}
                       <button
-                        onClick={() => handleDismiss(item.key)}
+                        disabled={pending !== null}
+                    onClick={() => handleDismiss(item.key)}
                         className="p-1.5 rounded-lapis-sm hover:bg-lapis-surface-2 text-lapis-text-disabled hover:text-lapis-text-tertiary transition-colors"
                         title="Dismiss for today"
                       >

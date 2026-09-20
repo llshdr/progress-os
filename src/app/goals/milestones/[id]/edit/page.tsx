@@ -118,7 +118,7 @@ export default function EditMilestonePage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load this milestone. Try refreshing." />}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <Link href={backHref} className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">

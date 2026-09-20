@@ -679,7 +679,7 @@ export default function RaceDetailPage() {
   if (notFound || !race) {
     return (
       <AppLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="lapis-page">
           <Link href="/gym/progress/races" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Races
@@ -972,7 +972,7 @@ export default function RaceDetailPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         <Link href="/gym/progress/races" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" />
           Back to Races
@@ -1456,7 +1456,7 @@ export default function RaceDetailPage() {
                   )}
                 </div>
 
-                {weeksByPhase.map((group) => {
+                {weeksByPhase.map((group, phaseIndex) => {
                   const groupKey = `${group.phase}-${group.isAcclimation}`
                   const isGroupExpanded = isPhaseExpanded(groupKey)
                   const firstWeek = group.weeks[0]
@@ -1477,9 +1477,10 @@ export default function RaceDetailPage() {
                     : `${firstWeek.targetCardioKm}→${lastWeek.targetCardioKm}km`
 
                   return (
-                    <div key={groupKey}>
+                    <div key={groupKey} className="relative border-l border-lapis-border pl-4 ml-2">
                       <button
                         onClick={() => togglePhaseExpanded(groupKey)}
+                        aria-expanded={isGroupExpanded}
                         className={`w-full text-left flex items-center justify-between flex-wrap gap-3 border rounded-lapis-lg p-4 transition-colors ${
                           containsCurrentWeek
                             ? 'border-lapis-border-strong bg-lapis-accent-500/[0.05]'
@@ -1487,6 +1488,7 @@ export default function RaceDetailPage() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
+                          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-lapis-surface-3 text-sm">{phaseIndex + 1}</span>
                           {isGroupExpanded ? (
                             <ChevronUp className="w-4 h-4 text-lapis-text-tertiary shrink-0" />
                           ) : (

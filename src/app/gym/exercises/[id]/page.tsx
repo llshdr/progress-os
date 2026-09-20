@@ -401,7 +401,7 @@ export default function ExerciseDetailPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load this exercise's full history. Try refreshing." />}
         {/* Header */}
         <div className="mb-8">

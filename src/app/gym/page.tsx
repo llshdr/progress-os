@@ -1,54 +1,143 @@
-import AppLayout from '@/components/app-layout'
-import { Dumbbell } from 'lucide-react'
-import Link from 'next/link'
-
-export default function GymPage() {
+"use client";
+import AppLayout from "@/components/app-layout";
+import { PageHeader, NavRow } from "@/components/lapis/page";
+import TrainingCard from "@/components/lapis/training-card";
+import { useTrainingOverview } from "@/lib/use-training-overview";
+import {
+  CalendarDays,
+  BookOpen,
+  TrendingUp,
+  History,
+  Apple,
+  Plus,
+} from "lucide-react";
+import Link from "next/link";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { LoadErrorBanner } from "@/components/ui/load-error-banner";
+export default function TrainingPage() {
+  const { data, error, loading } = useTrainingOverview();
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
-            <Dumbbell className="w-8 h-8 text-lapis-text-secondary" />
+      <div className="lapis-page">
+        <PageHeader
+          title="Training"
+          subtitle="Build strength. Go further."
+          action={
+            <Link
+              href="/gym/workouts/new"
+              aria-label="New workout"
+              className="lapis-icon-button"
+            >
+              <Plus size={22} />
+            </Link>
+          }
+        />
+        {error && (
+          <LoadErrorBanner message="Couldn't load your training. Your library and logs are still accessible below." />
+        )}
+        {loading && <PageSkeleton />}
+        <div className="grid gap-7 lg:grid-cols-2">
+          <div className="space-y-6">
+            {data && (
+              <>
+                <TrainingCard data={data} />
+                <section className="lapis-panel">
+                  <div className="flex justify-between gap-3">
+                    <h2 className="font-semibold">This week</h2>
+                    <Link
+                      href="/settings/training"
+                      className="text-sm text-lapis-accent-400"
+                    >
+                      Edit target
+                    </Link>
+                  </div>
+                  <p className="my-3 text-lapis-text-secondary">
+                    <strong className="text-3xl text-white">
+                      {data.weeklyCount}
+                    </strong>{" "}
+                    / {data.weeklyTarget} sessions
+                  </p>
+                  <progress
+                    aria-label="Weekly training target"
+                    max={data.weeklyTarget}
+                    value={Math.min(data.weeklyCount, data.weeklyTarget)}
+                    className="lapis-progress h-2 w-full"
+                  />
+                </section>
+              </>
+            )}
+            <div className="lapis-group">
+              <NavRow
+                href="/gym/schedule"
+                title="Schedule"
+                description="Your rotation and weekly volume"
+                icon={CalendarDays}
+              />
+              <NavRow
+                href="/gym/library"
+                title="Library"
+                description="Exercises and saved routines"
+                icon={BookOpen}
+              />
+              <NavRow
+                href="/gym/progress"
+                title="Progress"
+                description="Records, weight, races and sleep"
+                icon={TrendingUp}
+              />
+              <NavRow
+                href="/nutrition"
+                title="Nutrition"
+                description="Meals, food library and cookbook"
+                icon={Apple}
+              />
+            </div>
           </div>
-          <div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">
-              Gym
-            </h1>
-            <p className="text-lapis-text-tertiary text-sm">
-              Track your fitness journey
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <Link href="/gym/train" className="group">
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 hover:border-lapis-border/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-2">Train</h2>
-              <p className="text-lapis-text-tertiary text-sm">
-                Log a workout and see what&apos;s next
-              </p>
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="lapis-section mb-0">Recent sessions</h2>
+              <Link
+                href="/gym/workouts"
+                className="inline-flex min-h-11 items-center text-sm text-lapis-accent-400"
+              >
+                See all
+              </Link>
             </div>
-          </Link>
-
-          <Link href="/gym/library" className="group">
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 hover:border-lapis-border/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-2">Library</h2>
-              <p className="text-lapis-text-tertiary text-sm">
-                Exercises and templates
-              </p>
+            <div className="lapis-group">
+              {data?.recent.map((w) => (
+                <NavRow
+                  key={w.id}
+                  href={`/gym/workouts/${w.id}`}
+                  title={w.title}
+                  description={new Date(
+                    `${w.date}T12:00:00`,
+                  ).toLocaleDateString("en", {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                  icon={History}
+                />
+              ))}
+              {data && data.recent.length === 0 && (
+                <p className="p-5 text-sm text-lapis-text-secondary">
+                  Your completed sessions will appear here.
+                </p>
+              )}
             </div>
-          </Link>
-
-          <Link href="/gym/progress" className="group">
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 hover:bg-lapis-surface-2 hover:border-lapis-border/15 transition-all duration-200">
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-2">Progress</h2>
-              <p className="text-lapis-text-tertiary text-sm">
-                Records, weight, and weekly goals
-              </p>
-            </div>
-          </Link>
+            <Link
+              href="/journey"
+              className="lapis-world mt-6 flex min-h-48 items-end p-6"
+            >
+              <span>
+                <span className="lapis-eyebrow">Your direction</span>
+                <strong className="mt-2 block text-xl">
+                  Open your journey →
+                </strong>
+              </span>
+            </Link>
+          </section>
         </div>
       </div>
     </AppLayout>
-  )
+  );
 }

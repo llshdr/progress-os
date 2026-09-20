@@ -480,7 +480,7 @@ export default function NutritionPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load some of your nutrition data. Try refreshing." />}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div className="flex items-center gap-4">
@@ -516,10 +516,8 @@ export default function NutritionPage() {
               </button>
             </Link>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger>
-              <Button onClick={openDialog} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm">
-                {todayEntry ? 'Edit Today' : 'Log Today'}
-              </Button>
+            <DialogTrigger render={<Button onClick={openDialog} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm" />}>
+              {todayEntry ? 'Edit Today' : 'Log Today'}
             </DialogTrigger>
             <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary max-h-[85vh] overflow-y-auto">
               <DialogHeader>

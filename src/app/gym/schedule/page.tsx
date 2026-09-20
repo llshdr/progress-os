@@ -298,7 +298,7 @@ export default function SchedulePage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         <Link
           href="/gym/train"
           className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
@@ -339,11 +339,9 @@ export default function SchedulePage() {
                 if (!open) resetAddForm()
               }}
             >
-              <DialogTrigger>
-                <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors">
-                  <Plus className="w-4 h-4" />
-                  <span className="text-sm font-medium">Add Slot</span>
-                </button>
+              <DialogTrigger render={<button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors" />}>
+                <Plus className="w-4 h-4" />
+                <span className="text-sm font-medium">Add Slot</span>
               </DialogTrigger>
               <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
               <DialogHeader>
