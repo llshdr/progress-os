@@ -287,11 +287,9 @@ export default function RaceBudgetPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-lapis-text-primary">Expenses</h2>
           <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-            <DialogTrigger>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors">
-                <Plus className="w-4 h-4" />
-                <span className="text-sm font-medium">Add Expense</span>
-              </button>
+            <DialogTrigger render={<button className="flex items-center gap-2 px-4 py-2.5 rounded-lapis-md bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 transition-colors" />}>
+              <Plus className="w-4 h-4" />
+              <span className="text-sm font-medium">Add Expense</span>
             </DialogTrigger>
             <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
               <DialogHeader>

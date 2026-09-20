@@ -5,7 +5,7 @@ import packageJson from '../../../../package.json'
 export default function AboutSettingsPage() {
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back to Settings
         </Link>

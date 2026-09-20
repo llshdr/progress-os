@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import GoalSessions from '@/components/lapis/goal-sessions'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,6 +12,7 @@ import Link from 'next/link'
 import { Sparkles, Trash2, Lock, ChevronDown, ChevronRight, History } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import GoalFormFields from '@/components/goals/goal-form-fields'
+import type { WorldStyle } from '@/lib/journey'
 import type { ActionItemStatus, GoalScope } from '@/lib/goals'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { LoadErrorBanner } from '@/components/ui/load-error-banner'
@@ -45,6 +47,8 @@ export default function GoalDetailPage() {
   const [nextAction, setNextAction] = useState('')
   const [savingNextAction, setSavingNextAction] = useState(false)
   const [status, setStatus] = useState<ActionItemStatus>('active')
+  const [worldStyle, setWorldStyle] = useState<WorldStyle | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [scope, setScope] = useState<GoalScope | null>(null)
   const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
   const [dependsOnGoalId, setDependsOnGoalId] = useState<string | null>(null)
@@ -113,6 +117,7 @@ export default function GoalDetailPage() {
     setNextAction(data.next_action || '')
     setStatus(data.status)
     setScope(data.scope ?? null)
+    setWorldStyle(data.world_style ?? null)
     setAutoBlockBeforeDeadline(data.auto_block_before_deadline ?? false)
     setDependsOnGoalId(data.depends_on_goal_id ?? null)
 
@@ -263,12 +268,14 @@ export default function GoalDetailPage() {
         target_date: targetDate || null,
         status,
         scope,
+        world_style: worldStyle,
         auto_block_before_deadline: autoBlockBeforeDeadline,
         depends_on_goal_id: dependsOnGoalId,
       })
       .eq('id', params.id)
 
     if (error) {
+      setSaveError('Could not save your changes. Your previous goal is unchanged. Try again or check the latest database migration.')
       console.error('Error updating goal:', error)
       setSaving(false)
     } else {
@@ -383,6 +390,8 @@ export default function GoalDetailPage() {
           </div>
           {ideaError && <p className="text-lapis-garnet text-xs mt-2">{ideaError}</p>}
         </div>
+
+        <GoalSessions goalId={params.id as string} />
 
         {/* What I've tried - a low-friction log, not a form. Logging a
             check-in is the one thing this page asks you to do regularly;
@@ -548,6 +557,7 @@ export default function GoalDetailPage() {
 
           {showDetails && (
             <div className="mt-4 space-y-6">
+              {saveError && <p role="alert" className="rounded-xl border border-lapis-garnet/40 p-3 text-sm text-lapis-text-primary">{saveError}</p>}
               <GoalFormFields
                 title={title}
                 onTitleChange={setTitle}
@@ -561,6 +571,8 @@ export default function GoalDetailPage() {
                 onNextActionChange={setNextAction}
                 status={status}
                 onStatusChange={setStatus}
+                worldStyle={worldStyle}
+                onWorldStyleChange={setWorldStyle}
                 scope={scope}
                 onScopeChange={setScope}
                 autoBlockBeforeDeadline={autoBlockBeforeDeadline}

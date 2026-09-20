@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import WorkoutGoalLinks from '@/components/lapis/workout-goal-links'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
 import { Plus, Check, Clock, ArrowLeft, Trash2, RotateCcw, Dumbbell } from 'lucide-react'
@@ -350,7 +351,7 @@ export default function CurrentWorkoutPage() {
   if (!workout) {
     return (
       <AppLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="lapis-page">
           <div className="text-lapis-text-tertiary">Workout not found</div>
         </div>
       </AppLayout>
@@ -366,7 +367,7 @@ export default function CurrentWorkoutPage() {
 
     return (
       <AppLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="lapis-page">
           <button
             onClick={() => setActiveExerciseId(null)}
             className="flex items-center gap-2 text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6"
@@ -397,7 +398,7 @@ export default function CurrentWorkoutPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
@@ -700,6 +701,7 @@ export default function CurrentWorkoutPage() {
         onConfirm={handleDeleteExercise}
         destructive
       />
+      <div className="lapis-page"><WorkoutGoalLinks workoutId={params.id as string} /></div>
     </AppLayout>
   )
 }

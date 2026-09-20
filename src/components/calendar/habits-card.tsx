@@ -107,9 +107,7 @@ export default function HabitsCard({ habits, habitLogs, onChanged }: Props) {
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-medium text-lapis-text-primary">Habits</h2>
         <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogTrigger>
-            <button className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors underline underline-offset-2">Add a habit</button>
-          </DialogTrigger>
+          <DialogTrigger render={<button className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors underline underline-offset-2" />}>Add a habit</DialogTrigger>
           <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Edit habit' : 'Add a habit'}</DialogTitle>

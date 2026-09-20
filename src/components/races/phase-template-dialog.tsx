@@ -304,9 +304,7 @@ export default function PhaseTemplateDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger>
-        <button className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors underline underline-offset-2">View/Edit Template</button>
-      </DialogTrigger>
+      <DialogTrigger render={<button className="text-xs text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors underline underline-offset-2" />}>View/Edit Template</DialogTrigger>
       <DialogContent className="bg-lapis-bg border-lapis-border-subtle text-lapis-text-primary max-w-2xl">
         <DialogHeader>
           <DialogTitle>{PHASE_LABEL[phase]} Phase Template</DialogTitle>

@@ -195,7 +195,7 @@ export default function GoalsPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
@@ -231,6 +231,7 @@ export default function GoalsPage() {
           </div>
         </div>
 
+        <nav className="lapis-tabs mb-6" aria-label="Journey views"><Link href="/journey">World</Link><Link href="/goals" aria-current="page">Goals</Link></nav>
         {/* Same completion-rate math (done/(done+archived), goals only)
             recompute_user_rank already uses server-side for the rank tier -
             shown here so it's never a mystery number that only shows up as

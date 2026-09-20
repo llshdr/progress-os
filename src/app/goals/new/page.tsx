@@ -7,6 +7,7 @@ import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import GoalFormFields from '@/components/goals/goal-form-fields'
+import type { WorldStyle } from '@/lib/journey'
 import type { ActionItemStatus, GoalScope } from '@/lib/goals'
 import { getLocalDateString } from '@/lib/date'
 
@@ -18,6 +19,8 @@ export default function NewGoalPage() {
   const [targetDate, setTargetDate] = useState('')
   const [nextAction, setNextAction] = useState('')
   const [status, setStatus] = useState<ActionItemStatus>('active')
+  const [worldStyle, setWorldStyle] = useState<WorldStyle | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [scope, setScope] = useState<GoalScope | null>(null)
   const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
   const [dependsOnGoalId, setDependsOnGoalId] = useState<string | null>(null)
@@ -61,11 +64,13 @@ export default function NewGoalPage() {
       next_action: nextAction.trim() || null,
       status,
       scope,
+      world_style: worldStyle,
       auto_block_before_deadline: autoBlockBeforeDeadline,
       depends_on_goal_id: dependsOnGoalId,
     })
 
     if (error) {
+      setSaveError('Could not save your goal. Try again. If this persists, check that the latest database migration is installed.')
       console.error('Error creating goal:', error)
       setLoading(false)
     } else {
@@ -75,7 +80,7 @@ export default function NewGoalPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="lapis-page">
         <Link href="/goals" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
           ← Back
         </Link>
@@ -84,6 +89,7 @@ export default function NewGoalPage() {
         <p className="text-lapis-text-tertiary text-sm mb-8">A longer-term outcome you're working toward</p>
 
         <div className="max-w-2xl space-y-6">
+          {saveError && <p role="alert" className="rounded-xl border border-lapis-garnet/40 p-3 text-sm text-lapis-text-primary">{saveError}</p>}
           <GoalFormFields
             title={title}
             onTitleChange={setTitle}
@@ -97,6 +103,8 @@ export default function NewGoalPage() {
             onNextActionChange={setNextAction}
             status={status}
             onStatusChange={setStatus}
+            worldStyle={worldStyle}
+            onWorldStyleChange={setWorldStyle}
             scope={scope}
             onScopeChange={setScope}
             autoBlockBeforeDeadline={autoBlockBeforeDeadline}

@@ -5,9 +5,12 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { ActionItemStatus, GoalScope } from '@/lib/goals'
+import type { WorldStyle } from '@/lib/journey'
 import { SCOPE_LABELS } from '@/lib/rank'
 
 interface GoalFormFieldsProps {
+  worldStyle: WorldStyle | null
+  onWorldStyleChange: (value: WorldStyle | null) => void
   title: string
   onTitleChange: (value: string) => void
   description: string
@@ -38,6 +41,8 @@ interface GoalFormFieldsProps {
 // Shared by goals/new and the goal detail page - same fields, same shape,
 // so the two forms can't quietly drift from each other.
 export default function GoalFormFields({
+  worldStyle,
+  onWorldStyleChange,
   title,
   onTitleChange,
   description,
@@ -181,6 +186,14 @@ export default function GoalFormFields({
         <p className="text-lapis-text-tertiary text-xs">
           How big you consider this — affects your rank ceiling, not shown to anyone else.
         </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="goal-world-style" className="text-lapis-text-secondary">Place in your world</Label>
+        <select id="goal-world-style" value={worldStyle ?? 'auto'} onChange={e => onWorldStyleChange(e.target.value === 'auto' ? null : e.target.value as WorldStyle)} className="min-h-12 w-full rounded-xl border border-lapis-border bg-lapis-surface-2 px-3">
+          <option value="auto">Automatic</option><option value="summit">Summit — a major ambition</option><option value="basecamp">Basecamp — something you are building</option><option value="trail">Trail — a smaller step</option>
+        </select>
+        <p className="text-sm text-lapis-text-secondary">Any goal can be a summit. Changing its appearance keeps your milestones and history.</p>
       </div>
 
       {availableGoals.length > 0 && (
