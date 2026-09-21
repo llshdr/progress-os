@@ -1,11 +1,11 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { changed } from '@/components/lapis/app-provider'
 import AppLayout from '@/components/app-layout'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { getLocalDateString } from '@/lib/date'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
@@ -168,7 +168,8 @@ function NewWorkoutPageInner() {
 
       if (exercisesError) {
         console.error('Error fetching template exercises:', exercisesError)
-        router.push(`/gym/workouts/${workout.id}`)
+        changed()
+        router.replace(`/gym/workouts/${workout.id}`)
         return
       }
 
@@ -192,7 +193,8 @@ function NewWorkoutPageInner() {
       }
     }
 
-    router.push(`/gym/workouts/${workout.id}`)
+    changed()
+        router.replace(`/gym/workouts/${workout.id}`)
   }
 
   const formatStartedAgo = (startedAt: string) => {
@@ -218,9 +220,7 @@ function NewWorkoutPageInner() {
     return (
       <AppLayout>
         <div className="lapis-page">
-          <Link href="/gym/workouts" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-            ← Back
-          </Link>
+          <BackLink fallback="/gym/workouts" className="mb-6" />
 
           <div className="relative overflow-hidden border border-lapis-border rounded-lapis-xl bg-lapis-surface-1 p-8 before:content-[''] before:absolute before:top-0 before:left-8 before:right-8 before:h-[2px] before:bg-gradient-to-r before:from-lapis-gold-500 before:to-transparent">
             <h2 className="font-display text-2xl font-semibold text-lapis-text-primary mb-2">You have an unfinished workout</h2>
@@ -229,7 +229,7 @@ function NewWorkoutPageInner() {
               {formatStartedAgo(activeWorkout.started_at)}
             </p>
             <button
-              onClick={() => router.push(`/gym/workouts/${activeWorkout.id}`)}
+              onClick={() => router.replace(`/gym/workouts/${activeWorkout.id}`)}
               className="inline-flex items-center gap-2 px-6 py-3 bg-lapis-accent-500 text-lapis-text-primary rounded-lapis-md font-medium hover:brightness-110 transition-colors"
             >
               Continue Workout
@@ -246,9 +246,7 @@ function NewWorkoutPageInner() {
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/gym/workouts" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/gym/workouts" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
           New Workout

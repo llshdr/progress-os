@@ -1,8 +1,8 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { ArrowLeft, ThumbsUp } from 'lucide-react'
+import { ThumbsUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -158,10 +158,7 @@ export default function LeaderboardPage() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/profile/compare" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </Link>
+        <BackLink fallback="/profile/compare" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">Strength Leaderboard</h1>
         <p className="text-lapis-text-tertiary text-sm mb-8">

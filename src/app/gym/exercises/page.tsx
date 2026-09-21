@@ -1,5 +1,6 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
@@ -227,9 +228,7 @@ export default function ExerciseLibraryPage() {
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/gym/library" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/gym/library" className="mb-6" />
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">

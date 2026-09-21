@@ -1,8 +1,8 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { ArrowLeft, Wallet, Plus, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Wallet, Plus, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { raceTypeLabel, type RaceType } from '@/lib/race-constants'
 import { BUDGET_CATEGORIES, BUDGET_CATEGORY_LABEL, IRONMAN_WORTH_IT, IRONMAN_SKIPPABLE, type BudgetCategory } from '@/lib/race-plan/budget-guidance'
 
@@ -187,13 +187,7 @@ export default function RaceBudgetPage() {
     <AppLayout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loadError && <LoadErrorBanner message="Couldn't load all of your budget expenses. Try refreshing." />}
-        <Link
-          href={`/gym/progress/races/${raceId}`}
-          className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to {raceTypeLabel(race.race_type)}
-        </Link>
+        <BackLink fallback={`/gym/progress/races/${raceId}`} className="mb-6" />
 
         <div className="flex items-center gap-4 mb-8 mt-6">
           <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">

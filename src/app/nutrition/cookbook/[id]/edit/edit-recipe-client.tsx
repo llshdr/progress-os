@@ -1,11 +1,12 @@
 'use client'
 
+import { useReturnNavigation } from '@/lib/use-return-navigation'
+import BackLink from '@/components/lapis/back-link'
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import CookbookFormFields from '@/components/nutrition/cookbook-form-fields'
 import { resizeImageFile } from '@/lib/image'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -13,7 +14,6 @@ import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 export default function EditRecipeClient() {
   const params = useParams()
-  const router = useRouter()
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
   const [ingredients, setIngredients] = useState('')
@@ -28,6 +28,7 @@ export default function EditRecipeClient() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const returnToCaller = useReturnNavigation(`/nutrition/cookbook/${params.id}`)
   const supabase = createClient()
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export default function EditRecipeClient() {
       console.error('Error updating recipe:', error)
       setSaving(false)
     } else {
-      router.push(`/nutrition/cookbook/${params.id}`)
+      returnToCaller()
     }
   }
 
@@ -123,9 +124,7 @@ export default function EditRecipeClient() {
     <AppLayout>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loadError && <LoadErrorBanner message="Couldn't load this recipe. Try refreshing." />}
-        <Link href={`/nutrition/cookbook/${params.id}`} className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback={`/nutrition/cookbook/${params.id}`} className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Edit Recipe</h1>
         <p className="text-lapis-text-tertiary text-sm mb-8">Changes are visible to everyone as soon as you save</p>

@@ -1,0 +1,39 @@
+{
+  "created": "2026-09-21",
+  "tool": "image_gen.imagegen",
+  "brand": "LAPIS",
+  "reference": "User-supplied alpine staircase app reference",
+  "conversion": "Converted the generated PNGs to local WebP with sharp. Alpha is preserved in peak.webp. App UI, route pins, flags and progress are live HTML/CSS/SVG overlays.",
+  "assets": [
+    {
+      "file": "public/images/world/ascent-summit.webp",
+      "width": 1024,
+      "height": 1536,
+      "prompt": "Use case: stylized-concept. Production art asset for a premium dark personal-growth app called LAPIS, NOT an app mockup. One single high resolution portrait 1024x1536 cinematic alpine environment. A majestic rugged snow-capped mountain above clouds, beautifully detailed granite stone staircase ascending from the bottom center foreground, winding through rock terraces toward a small summit plateau near 65 percent across and 18 percent down. Blue alpine twilight, slate navy rocks, silver snow, subtle warm dawn light at the horizon, tall mountains in atmospheric background. Refined realistic 3D adventure-world rendering, mature sophisticated art direction and beautiful tactile detail, gentle volumetric mist, some tiny evergreen trees. The path is clearly readable, wide in foreground and recedes naturally. Empty landscape: NO person, NO avatar, NO flag, NO text, NO logo, NO UI, NO symbols or borders. This is scenery on which actual clickable milestones, an avatar, and a summit flag will be placed by application code; leave path and summit uncluttered. No fake frame. Fill entire image with artwork."
+    },
+    {
+      "file": "public/images/world/peak.webp",
+      "width": 1024,
+      "height": 1536,
+      "prompt": "Use case: stylized-concept. One production game environment cutout, portrait 1024x1536. A single majestic alpine mountain massif with distinct dramatic snow covered central summit at 50% width 20% height, detailed blue slate granite ridges, snow crevices, dark evergreen forest foothills, soft white cloud wisps at its broad base. Photorealistic premium 3D adventure environment. Cool blue hour lighting with soft warm silver light hitting the upper face from the right. Entire mountain and forest foothill silhouette completely visible, empty TRANSPARENT background with alpha outside the mountain; no sky, no ground plane, no rectangle, no checkerboard. Base at bottom fading into transparent fog so multiple mountain cutouts can be layered into a continuous mountain chain in application code. NO flag NO avatar NO paths NO UI NO text. High resolution crisply detailed mountain tile; mature cinematic sophisticated look."
+    },
+    {
+      "file": "public/images/world/ascent-basecamp.webp",
+      "width": 1024,
+      "height": 1536,
+      "prompt": "Use case: stylized-concept. Production landscape asset for premium dark LAPIS personal-growth app, NOT interface. Portrait 1024x1536 cinematic realistic 3D render of a small beautiful mountain village high above a lush blue alpine lake at dawn. Tactile stone steps wind upward from bottom center foreground through moss and pines to a little stone and timber observatory/workshop settlement on a high ridge at 65%width22%height. Refined architectural structures, little warm windows, a few planted gardens, nature first, cold blue slate shadows, subtle gold dawn from right, distant snowy mountain range and mist. Art style high end atmospheric adventure landscape, not cartoon. Rich geological details. Landscape only. NO people, flags, logos, UI, frames, symbols or text. Leave stairway clear for dynamic route markers rendered by code. Same camera composition as a stairway toward an alpine summit."
+    },
+    {
+      "file": "public/images/world/ascent-trail.webp",
+      "width": 1024,
+      "height": 1536,
+      "prompt": "Use case: stylized-concept. Production landscape art for LAPIS self-improvement app, NOT a mockup. Portrait1024x1536, cinematic sophisticated photorealistic 3D highland valley in cool blue morning light with subtle warm sunrise from right. Beautiful ancient granite trail and steps starts bottom center foreground, rises and curves via terraces through deep green ferns and pine forest to a ridge lookout near65%across22%down. Distant alpine mountains softly shrouded in blue cloud. Rich tactile rock textures, moss, gentle atmospheric mist. Single clear path, calm and aspirational, realistic premium adventure-world quality, no fantasy neon. NO people, NO flags, NO UI or typography, NO borders. Room along path for code-rendered milestone pins and climber marker."
+    },
+    {
+      "file": "public/images/world/dumbbells.webp",
+      "width": 1536,
+      "height": 1024,
+      "prompt": "Use case: product-mockup. One wide1536x1024 editorial training-card art asset: a beautiful pair of heavy hexagonal dark graphite dumbbells on tactile charcoal gym floor, one hero dumbbell diagonal in right two thirds of the image. Premium photorealistic product render with controlled blue edge lighting, polished steel knurled handle and textured dark weights, subtle chalk traces, expensive cinematic athletic mood, restrained tiny electric blue reflections. Left third is near-black negative space softly blending with background color #0c141e for UI text rendered separately. No brands, no numbers, no typography, no glow effects, no human, no UI. High quality material detail, no cartoon, no borders."
+    }
+  ]
+}

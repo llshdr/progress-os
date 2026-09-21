@@ -7,11 +7,15 @@ import {
   Sparkles,
   Info,
   KeyRound,
+  Link2,
   CalendarDays,
+  Mountain,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 const SECTIONS = [
+  { title: "Your World", description: "Summit flag, landscapes and mountain order", href: "/settings/world", icon: Mountain },
+  { title: "Connections & imports", description: "Calendar, mail, and workout imports", href: "/settings/connections", icon: Link2 },
   {
     title: "Account",
     description: "Display name and email",

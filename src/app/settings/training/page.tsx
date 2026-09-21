@@ -1,12 +1,13 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { changed } from '@/components/lapis/app-provider'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import Link from 'next/link'
 import { displayToKg, kgToDisplay, WeightUnit } from '@/lib/weight'
 
 type TrainingPhase = 'bulk' | 'cut' | 'maintain'
@@ -30,6 +31,8 @@ export default function TrainingSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -45,13 +48,16 @@ export default function TrainingSettingsPage() {
       return
     }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_settings')
       .select(
         'weekly_workout_goal, count_cardio_toward_workout_goal, weight_unit, goal_weight, training_phase, training_intensity, open_water_season_start_month, open_water_season_end_month, commute_bike_km_per_week'
       )
       .eq('user_id', user.id)
       .maybeSingle()
+
+    if (error) { setLoadError(true); setLoading(false); return }
+    setLoadError(false)
 
     if (data?.weekly_workout_goal) {
       setWeeklyWorkoutGoal(String(data.weekly_workout_goal))
@@ -100,6 +106,7 @@ export default function TrainingSettingsPage() {
 
     const goalWeightKg = goalWeight ? displayToKg(parseFloat(goalWeight), weightUnit) : null
 
+    setSaveError(null)
     setSaving(true)
     setSaved(false)
 
@@ -122,20 +129,21 @@ export default function TrainingSettingsPage() {
     setSaving(false)
     if (!error) {
       setSaved(true)
+      changed()
     } else {
-      console.error('Error saving training settings:', error)
+      setSaveError('Could not save. Your changes are still here; please retry.')
     }
   }
 
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back to Settings
-        </Link>
+        <BackLink fallback="/settings" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-8">Training</h1>
 
+        {loadError && <p role="alert" className="mb-4 text-sm text-lapis-garnet">Could not load your settings. Refresh before making changes.</p>}
+        {saveError && <p role="alert" className="mb-4 text-sm text-lapis-garnet">{saveError}</p>}
         <div className="max-w-md">
           {loading ? (
             <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
@@ -179,7 +187,7 @@ export default function TrainingSettingsPage() {
                   </label>
                   <p className="text-lapis-text-tertiary text-xs">
                     Off means a workout only counts here if it has at least one strength exercise - a mixed session still
-                    counts either way. Also affects your streak and the gym part of your rank.
+                    counts either way. Completed training days still contribute to your Level.
                   </p>
                 </div>
               </div>
@@ -377,7 +385,7 @@ export default function TrainingSettingsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button type="submit" disabled={saving} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
+                <Button type="submit" disabled={saving || loadError} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
                 {saved && <span className="text-lapis-text-tertiary text-sm">Saved</span>}

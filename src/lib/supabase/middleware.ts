@@ -37,6 +37,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user && request.nextUrl.pathname.startsWith('/api/')) return NextResponse.json({ error: 'Sign in again' }, { status: 401 })
+
   if (!user && !request.nextUrl.pathname.startsWith('/auth')) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth'

@@ -1,11 +1,13 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
+import { useReturnNavigation } from '@/lib/use-return-navigation'
+import BackLink from '@/components/lapis/back-link'
 import { Suspense, useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import MilestoneFormFields from '@/components/goals/milestone-form-fields'
 import type { ActionItemStatus } from '@/lib/goals'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -25,7 +27,6 @@ export default function NewMilestonePage() {
 }
 
 function NewMilestonePageInner() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const presetGoalId = searchParams.get('goalId')
 
@@ -39,6 +40,8 @@ function NewMilestonePageInner() {
   const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+
+  const returnToCaller = useReturnNavigation(goalId ? `/goals/${goalId}` : '/goals')
 
   useEffect(() => {
     fetchGoalOptions()
@@ -87,19 +90,15 @@ function NewMilestonePageInner() {
       console.error('Error creating milestone:', error)
       setLoading(false)
     } else {
-      router.push(goalId ? `/goals/${goalId}` : '/goals')
+      changed()
+      returnToCaller()
     }
   }
 
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link
-          href={presetGoalId ? `/goals/${presetGoalId}` : '/goals'}
-          className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block"
-        >
-          ← Back
-        </Link>
+        <BackLink fallback={presetGoalId ? `/goals/${presetGoalId}` : '/goals'} className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Add Milestone</h1>
         <p className="text-lapis-text-tertiary text-sm mb-8">A concrete step, optionally in service of a goal</p>

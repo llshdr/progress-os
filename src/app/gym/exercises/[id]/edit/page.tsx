@@ -1,11 +1,12 @@
 'use client'
 
+import { useReturnNavigation } from '@/lib/use-return-navigation'
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import ExerciseVariantsManager from '@/components/gym/exercise-variants-manager'
 import type { ExerciseType, CardioType, PrimaryLift } from '@/lib/exercise-constants'
@@ -14,7 +15,6 @@ import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 export default function EditExercisePage() {
   const params = useParams()
-  const router = useRouter()
   const [name, setName] = useState('')
   const [exerciseType, setExerciseType] = useState<ExerciseType>('strength')
   const [primaryMuscleGroup, setPrimaryMuscleGroup] = useState('')
@@ -29,6 +29,7 @@ export default function EditExercisePage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const returnToCaller = useReturnNavigation("/gym/exercises")
   const supabase = createClient()
 
   useEffect(() => {
@@ -117,7 +118,7 @@ export default function EditExercisePage() {
       console.error('Error updating exercise:', error)
       setSaving(false)
     } else {
-      router.push('/gym/exercises')
+      returnToCaller()
     }
   }
 
@@ -133,9 +134,7 @@ export default function EditExercisePage() {
     <AppLayout>
       <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load this exercise. Try refreshing." />}
-        <Link href="/gym/exercises" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/gym/exercises" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
           Edit Exercise

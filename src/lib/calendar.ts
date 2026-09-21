@@ -8,6 +8,9 @@ import { CalendarDays, Dumbbell, Flag, Target, CheckCircle2, type LucideIcon } f
 import { getLocalWeekdayIndex, getLocalDateString } from '@/lib/date'
 import { computeSlotForWeekday, slotDisplayName, type ScheduleSlot } from '@/lib/gym-schedule'
 import type { ActionItem } from '@/lib/goals'
+import { buildDaySessions, type PlanRace } from '@/lib/daily-plan'
+import type { TrainingWeekSkeleton } from '@/lib/race-plan/periodization'
+import type { PhaseTemplates } from '@/lib/race-plan/day-template'
 import type { WeekSlots } from '@/lib/race-plan/day-template'
 import { habitAppliesToDate, isHabitLoggedOnDate, type Habit, type HabitLog } from '@/lib/habits'
 
@@ -197,7 +200,10 @@ const AUTO_BLOCK_DAYS_BEFORE = 3
 const AUTO_BLOCK_START_MINUTES = 9 * 60 // 09:00
 const AUTO_BLOCK_DURATION_MINUTES = 60
 
+export type TrainingCalendarContext = { race: PlanRace | null; plan: { weeks: TrainingWeekSkeleton[]; phase_templates: PhaseTemplates } | null; rotationSlot: ScheduleSlot | null }
+
 export function buildTimedItemsForDate(params: {
+  training?: TrainingCalendarContext
   date: string
   calendarEntries: CalendarEntry[]
   goalItems: ActionItem[]
@@ -266,6 +272,21 @@ export function buildTimedItemsForDate(params: {
       endMinutes: showAsTimed ? timeStringToMinutes(entry.endTime!) : null,
       entry,
     })
+  }
+
+  if (params.training) {
+    const slot = scheduleMode === 'calendar'
+      ? computeSlotForWeekday(scheduleSlots, getLocalWeekdayIndex(new Date(date + 'T12:00:00')))
+      : date === getLocalDateString() ? params.training.rotationSlot : null
+    for (const session of buildDaySessions(date, params.training.race, params.training.plan, slot)) {
+      const start = session.time ? timeStringToMinutes(session.time) : null
+      items.push({ id: session.key, source: session.raceId ? 'races' : 'gym',
+        title: `${session.title}${session.km != null ? ` · ${session.km.toFixed(1)} km` : ''}`,
+        startMinutes: start, endMinutes: start != null ? start + (session.kind === 'strength' ? DEFAULT_GYM_BLOCK_MINUTES : DEFAULT_RACES_BLOCK_MINUTES) : null,
+        href: `/plan?date=${date}&view=day#day-sessions`,
+      })
+    }
+    return items
   }
 
   // Gym slots only mean anything calendar-true in schedule_mode

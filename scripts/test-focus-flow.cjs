@@ -1,0 +1,37 @@
+/* Concurrency and isolation regressions for the in-memory navigation cache. */
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const ts = require("typescript");
+require.extensions[".ts"] = (m, file) => m._compile(ts.transpileModule(fs.readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, file);
+const { ClientResource, userResource, clearResources } = require("../src/lib/client-resource.ts");
+const { localHref } = require("../src/lib/navigation-history.ts");
+(async () => {
+  let calls = 0, finish;
+  const entry = new ClientResource();
+  const fetch = () => { calls++; return new Promise(resolve => { finish = resolve; }); };
+  const one = entry.load(fetch), two = entry.load(fetch);
+  assert.equal(one, two, "simultaneous readers share one request");
+  await Promise.resolve(); assert.equal(calls, 1);
+  finish("first"); await one;
+  await entry.load(fetch); assert.equal(calls, 1, "fresh navigation reuses data");
+  entry.invalidate();
+  const old = entry.load(fetch); await Promise.resolve(); const resolveOld = finish;
+  entry.invalidate(); await entry.load(async () => "after edit");
+  resolveOld("before edit"); await old;
+  assert.equal(entry.read().data, "after edit", "late pre-edit response cannot roll back a mutation");
+  entry.invalidate(); await entry.load(async () => { throw new Error("Offline"); });
+  assert.equal(entry.read().data, "after edit", "temporary errors preserve the last content");
+  assert.equal(entry.read().error, "Offline");
+  entry.invalidate(); await entry.load(async () => "retried");
+  assert.equal(entry.read().error, null);
+  const ownerA = userResource("alice", "goals"), ownerB = userResource("bob", "goals");
+  await ownerA.load(async () => "private to Alice"); assert.equal(ownerB.read().data, null);
+  let pendingResolve;
+  ownerA.invalidate(); const pending = ownerA.load(() => new Promise(resolve => { pendingResolve = resolve; }));
+  await Promise.resolve(); clearResources(); pendingResolve("old account response"); await pending;
+  assert.equal(ownerA.read().data, null, "logout removes data and ignores old-account responses");
+  assert.equal(userResource("alice", "goals").read().data, null);
+  for (const unsafe of ["https://example.test", "//example.test", "/\\example.test", "/auth", "/auth?redirect=/", "/a\n"]) assert.equal(localHref(unsafe), false);
+  assert.equal(localHref("/plan?date=2026-09-21#agenda"), true);
+  console.log("Resource deduplication, mutation races, failure/retry, account isolation and return-URL checks passed.");
+})().catch(error => { console.error(error); process.exitCode = 1; });

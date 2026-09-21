@@ -1,5 +1,6 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -56,6 +57,7 @@ export default function TravelPrepDialog({ entry, open, onOpenChange, onDisrupti
       return
     }
     setDeclared(true)
+    changed()
     onDisruptionDeclared()
   }
 

@@ -1,11 +1,11 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
-import Link from 'next/link'
 
 type InviteCode = {
   id: string
@@ -56,9 +56,7 @@ export default function InviteCodeClient({ inviteCode }: { inviteCode: InviteCod
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/settings" className="mb-6" />
 
         <div className="mb-8">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">

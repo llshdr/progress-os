@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Mountain, Plus, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
+import { changed } from "@/components/lapis/app-provider";
 type Goal = { id: string; title: string; status: string };
 export default function WorkoutGoalLinks({ workoutId }: { workoutId: string }) {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -74,6 +75,7 @@ export default function WorkoutGoalLinks({ workoutId }: { workoutId: string }) {
               user_id: user.id,
             });
       if (result.error) throw result.error;
+      changed();
       setLinked((previous) =>
         exists ? previous.filter((id) => id !== goalId) : [...previous, goalId],
       );

@@ -1,5 +1,6 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -84,6 +85,7 @@ export default function DisruptionDeclaration({ disruptions, onChanged }: Props)
       return
     }
     setOpen(false)
+    changed()
     onChanged()
   }
 
@@ -93,6 +95,7 @@ export default function DisruptionDeclaration({ disruptions, onChanged }: Props)
       console.error('Error deleting training disruption:', error)
       return
     }
+    changed()
     onChanged()
   }
 

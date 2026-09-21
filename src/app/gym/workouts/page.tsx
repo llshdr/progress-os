@@ -1,5 +1,6 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
@@ -110,9 +111,7 @@ export default function WorkoutsPage() {
     <AppLayout>
       <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load your workout history. Try refreshing." />}
-        <Link href="/gym/train" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/gym/train" className="mb-6" />
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>

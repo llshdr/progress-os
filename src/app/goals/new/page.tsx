@@ -1,18 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import BackLink from '@/components/lapis/back-link'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import GoalFormFields from '@/components/goals/goal-form-fields'
 import type { WorldStyle } from '@/lib/journey'
 import type { ActionItemStatus, GoalScope } from '@/lib/goals'
 import { getLocalDateString } from '@/lib/date'
+import { changed } from '@/components/lapis/app-provider'
 
 export default function NewGoalPage() {
   const router = useRouter()
+  const goalKey = useRef<string | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState(getLocalDateString())
@@ -20,6 +22,7 @@ export default function NewGoalPage() {
   const [nextAction, setNextAction] = useState('')
   const [status, setStatus] = useState<ActionItemStatus>('active')
   const [worldStyle, setWorldStyle] = useState<WorldStyle | null>(null)
+  const [attention, setAttention] = useState<'focus'|'later'|'paused'>('focus')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [scope, setScope] = useState<GoalScope | null>(null)
   const [autoBlockBeforeDeadline, setAutoBlockBeforeDeadline] = useState(false)
@@ -41,7 +44,7 @@ export default function NewGoalPage() {
       setAvailableGoals(data ?? [])
     }
     fetchAvailableGoals()
-  }, [])
+  }, [supabase])
 
   const isValid = title.trim().length > 0
 
@@ -54,8 +57,11 @@ export default function NewGoalPage() {
     if (!user) return
 
     setLoading(true)
+    setSaveError(null)
+    goalKey.current ??= crypto.randomUUID()
 
-    const { error } = await supabase.from('goals').insert({
+    const { data, error } = await supabase.from('goals').upsert({
+      id: goalKey.current,
       user_id: user.id,
       title: title.trim(),
       description: description.trim() || null,
@@ -65,28 +71,28 @@ export default function NewGoalPage() {
       status,
       scope,
       world_style: worldStyle,
+      attention,
       auto_block_before_deadline: autoBlockBeforeDeadline,
       depends_on_goal_id: dependsOnGoalId,
-    })
+    }, { onConflict: 'id' }).select('id').single()
 
     if (error) {
       setSaveError('Could not save your goal. Try again. If this persists, check that the latest database migration is installed.')
       console.error('Error creating goal:', error)
       setLoading(false)
     } else {
-      router.push('/goals')
+      changed()
+      router.replace(`/goals/${data.id}`)
     }
   }
 
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/goals" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/goals" className="mb-6" />
 
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Add Goal</h1>
-        <p className="text-lapis-text-tertiary text-sm mb-8">A longer-term outcome you're working toward</p>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">New destination</h1>
+        <p className="text-lapis-text-tertiary text-sm mb-8">Something worth working toward. Give it a place in your world.</p>
 
         <div className="max-w-2xl space-y-6">
           {saveError && <p role="alert" className="rounded-xl border border-lapis-garnet/40 p-3 text-sm text-lapis-text-primary">{saveError}</p>}
@@ -104,6 +110,8 @@ export default function NewGoalPage() {
             status={status}
             onStatusChange={setStatus}
             worldStyle={worldStyle}
+            attention={attention}
+            onAttentionChange={setAttention}
             onWorldStyleChange={setWorldStyle}
             scope={scope}
             onScopeChange={setScope}
@@ -119,7 +127,7 @@ export default function NewGoalPage() {
             disabled={loading || !isValid}
             className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 h-auto py-4 text-base font-medium"
           >
-            {loading ? 'Creating...' : 'Create Goal'}
+            {loading ? 'Creating...' : 'Create destination'}
           </Button>
         </div>
       </div>

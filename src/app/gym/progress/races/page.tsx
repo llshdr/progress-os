@@ -1,10 +1,14 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import RaceIdentity from '@/components/races/race-identity'
+import { usePageState } from '@/lib/use-page-state'
+import { changed } from '@/components/lapis/app-provider'
 import Link from 'next/link'
-import { Flag, ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { Flag, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -53,6 +57,8 @@ export default function RacesPage() {
   const [courses, setCourses] = useState<RaceCourse[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [view, setView] = usePageState<"upcoming" | "past">("view", "upcoming", v => ["upcoming", "past"].includes(v))
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [raceType, setRaceType] = useState<RaceType>('ironman')
@@ -75,6 +81,7 @@ export default function RacesPage() {
   }, [])
 
   const fetchRaces = async () => {
+    setLoadError(false)
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -140,6 +147,7 @@ export default function RacesPage() {
     } = await supabase.auth.getUser()
     if (!user) return
 
+    setSaveError(null)
     setSaving(true)
 
     const hasResult = Boolean(resultHours || resultMinutes || resultSeconds)
@@ -158,7 +166,7 @@ export default function RacesPage() {
     })
 
     if (error) {
-      console.error('Error adding race:', error)
+      setSaveError('Your race could not save. Your details are still here; please retry.')
       setSaving(false)
       return
     }
@@ -166,6 +174,7 @@ export default function RacesPage() {
     setSaving(false)
     setShowAddModal(false)
     resetForm()
+    changed()
     fetchRaces()
   }
 
@@ -179,49 +188,34 @@ export default function RacesPage() {
 
     const { error } = await supabase.from('races').delete().eq('id', raceToDelete)
     if (error) {
-      console.error('Error deleting race:', error)
+      setSaveError('Your race could not be deleted. Please retry.')
     } else {
+      changed()
       fetchRaces()
     }
     setRaceToDelete(null)
   }
 
   const today = getLocalDateString()
-  const upcoming = races.filter((r) => r.race_date >= today)
-  const completed = races.filter((r) => r.race_date < today).sort((a, b) => (a.race_date < b.race_date ? 1 : -1))
+  const upcoming = races.filter((r) => r.race_date >= today && r.result_duration_seconds == null)
+  const completed = races.filter((r) => r.race_date < today || r.result_duration_seconds != null).sort((a, b) => (a.race_date < b.race_date ? 1 : -1))
 
   const renderRaceCard = (race: Race) => (
-    <article key={race.id} className="lapis-panel relative overflow-hidden">
-      <div className="mb-5 flex items-center justify-between"><span className="lapis-eyebrow">{race.result_duration_seconds != null ? 'Result logged' : race.race_date >= today ? 'Planned' : 'Past event'}</span><button onClick={() => openDeleteModal(race.id)} className="lapis-icon-button" aria-label={`Delete ${raceTypeLabel(race.race_type)}`}><Trash2 size={16} /></button></div>
-      <Link href={`/gym/progress/races/${race.id}`}><h3 className="text-2xl font-semibold tracking-tight">{raceTypeLabel(race.race_type)}</h3><p className="mt-1 text-lapis-text-secondary">{race.courseName || race.location || 'Location not set'}</p><p className="mt-3 text-sm text-lapis-text-secondary">{formatRaceDate(race.race_date)}</p></Link>
-      {RACE_TYPE_DISTANCE[race.race_type] && <p className="mt-5 border-y border-lapis-border-subtle py-4 text-sm text-lapis-text-secondary">{RACE_TYPE_DISTANCE[race.race_type]}</p>}
-      {race.result_duration_seconds != null && <p className="mt-4 text-2xl font-semibold tabular-nums">{formatResultDuration(race.result_duration_seconds)}</p>}
-      {race.notes && <p className="mt-3 text-sm text-lapis-text-secondary">{race.notes}</p>}
-      <Link href={`/gym/progress/races/${race.id}`} className="lapis-primary mt-5 w-full">{race.result_duration_seconds != null ? 'View race and result' : 'View race plan'} →</Link>
+    <article key={race.id} className="race-card">
+      <Link href={`/gym/progress/races/${race.id}`} className="block" aria-label={`Open ${raceTypeLabel(race.race_type)} ${race.courseName || race.location || ''}`}>
+        <RaceIdentity compact type={race.race_type} location={race.courseName || race.location} date={race.race_date} result={race.result_duration_seconds != null ? formatResultDuration(race.result_duration_seconds) : null} />
+      </Link>
+      <div className="race-card-footer"><Link href={`/gym/progress/races/${race.id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-lapis-accent-400">{race.result_duration_seconds != null ? 'Race & result' : 'Open race'} →</Link><button onClick={() => openDeleteModal(race.id)} className="lapis-icon-button" aria-label={`Delete ${raceTypeLabel(race.race_type)}`}><Trash2 size={16}/></button></div>
     </article>
   )
 
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link
-          href="/gym/progress"
-          className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Progress
-        </Link>
+        <BackLink fallback="/gym/progress" className="mb-6" />
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-7">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
-              <Flag className="w-8 h-8 text-lapis-text-secondary" />
-            </div>
-            <div>
-              <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">Races</h1>
-              <p className="text-lapis-text-tertiary text-sm">Your race history and what&apos;s next</p>
-            </div>
-          </div>
+          <div><p className="lapis-eyebrow mb-2">Training with a purpose</p><h1 className="lapis-title">Races</h1><p className="lapis-subtitle">From the next session to the finish line.</p></div>
 
           <Dialog
             open={showAddModal}
@@ -242,6 +236,7 @@ export default function RacesPage() {
                 </DialogDescription>
               </DialogHeader>
 
+              {saveError && <p role="alert" className="text-sm text-lapis-garnet">{saveError}</p>}
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-lapis-text-secondary">Race Type</Label>
@@ -377,28 +372,10 @@ export default function RacesPage() {
             <p className="text-lapis-text-tertiary">No races yet — add one to start tracking your race history.</p>
           </div>
         ) : (
-          <div className="space-y-10">
-            <div>
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Upcoming</h2>
-              {upcoming.length === 0 ? (
-                <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-8 text-center">
-                  <p className="text-lapis-text-tertiary text-sm">No upcoming races.</p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">{upcoming.map(renderRaceCard)}</div>
-              )}
-            </div>
-
-            <div>
-              <h2 className="text-lg font-medium text-lapis-text-primary mb-4">Completed</h2>
-              {completed.length === 0 ? (
-                <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-8 text-center">
-                  <p className="text-lapis-text-tertiary text-sm">No completed races yet.</p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">{completed.map(renderRaceCard)}</div>
-              )}
-            </div>
+          <div className="space-y-6">
+            <div className="lapis-tabs max-w-md" aria-label="Race history"><button aria-pressed={view === 'upcoming'} onClick={() => setView('upcoming')}>Upcoming · {upcoming.length}</button><button aria-pressed={view === 'past'} onClick={() => setView('past')}>Past races · {completed.length}</button></div>
+            {(view === 'upcoming' ? upcoming : completed).length ? <div className="grid gap-5 xl:grid-cols-2">{(view === 'upcoming' ? upcoming : completed).map(renderRaceCard)}</div> : <section className="lapis-panel"><h2 className="font-semibold">{view === 'upcoming' ? 'Your next start line is open' : 'Your race history starts here'}</h2><p className="mt-2 text-sm text-lapis-text-secondary">{view === 'upcoming' ? 'Add a race when you have one in mind.' : 'Past races and recorded finishes will appear in this view.'}</p></section>}
+            {saveError && !showAddModal && <p role="alert" className="text-sm text-lapis-garnet">{saveError}</p>}
           </div>
         )}
           </>

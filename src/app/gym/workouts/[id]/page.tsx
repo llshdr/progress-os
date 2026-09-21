@@ -1,11 +1,14 @@
 'use client'
 
+import { useReturnNavigation } from '@/lib/use-return-navigation'
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import WorkoutGoalLinks from '@/components/lapis/workout-goal-links'
+import { changed } from '@/components/lapis/app-provider'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
+import BackLink from '@/components/lapis/back-link'
 import { Plus, Check, Clock, ArrowLeft, Trash2, RotateCcw, Dumbbell } from 'lucide-react'
 import SetLogger from '@/components/workout/set-logger'
 import CardioLogger from '@/components/workout/cardio-logger'
@@ -58,7 +61,6 @@ type LibraryExercise = {
 
 export default function CurrentWorkoutPage() {
   const params = useParams()
-  const router = useRouter()
   const [workout, setWorkout] = useState<Workout | null>(null)
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([])
@@ -75,6 +77,8 @@ export default function CurrentWorkoutPage() {
   const [exerciseToDelete, setExerciseToDelete] = useState<string | null>(null)
   const [now, setNow] = useState<Date | null>(null)
   const supabase = createClient()
+
+  const returnToCaller = useReturnNavigation("/gym/workouts")
 
   useEffect(() => {
     fetchWorkoutData()
@@ -266,7 +270,8 @@ export default function CurrentWorkoutPage() {
     if (error) {
       console.error('Error completing workout:', error)
     } else {
-      router.push('/gym/workouts')
+      changed()
+      returnToCaller()
     }
   }
 
@@ -292,6 +297,7 @@ export default function CurrentWorkoutPage() {
       console.error('Error reopening workout:', error)
     } else {
       setWorkout((prev) => (prev ? { ...prev, completed_at: null } : prev))
+      changed()
     }
   }
 
@@ -304,7 +310,8 @@ export default function CurrentWorkoutPage() {
     if (error) {
       console.error('Error deleting workout:', error)
     } else {
-      router.push('/gym/workouts')
+      changed()
+      returnToCaller()
     }
   }
 
@@ -402,9 +409,7 @@ export default function CurrentWorkoutPage() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
-            <Link href="/gym/workouts" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-2 block">
-              ← Back
-            </Link>
+            <BackLink fallback="/gym/workouts" />
             <div className="flex items-center gap-3 mb-1">
               <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary">
                 {workout.template_name || workout.workout_type || 'Workout'}

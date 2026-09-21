@@ -1,5 +1,6 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -125,6 +126,7 @@ export default function ScheduleWizard({ templateOptions, existingSlotCount, sch
 
     setSaving(false)
     setOpen(false)
+    changed()
     onComplete()
   }
 

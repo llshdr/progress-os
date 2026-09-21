@@ -1,12 +1,13 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { useIsOwner } from '@/lib/use-is-owner'
-import { ChefHat, Plus, ArrowLeft } from 'lucide-react'
+import { ChefHat, Plus } from 'lucide-react'
 import Link from 'next/link'
 
 type Recipe = {
@@ -57,10 +58,7 @@ export default function CookbookPage() {
     <AppLayout>
       <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load the cookbook. Try refreshing." />}
-        <Link href="/nutrition" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </Link>
+        <BackLink fallback="/nutrition" className="mb-6" />
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>

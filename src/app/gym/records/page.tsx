@@ -1,10 +1,12 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { Award, ArrowLeft, Plus, Calendar, Dumbbell, Footprints } from 'lucide-react'
+import { Award, Plus, Calendar, Dumbbell, Footprints } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,9 +26,6 @@ import { fetchCardioActivity, bucketWeeklyCardioDistance, type CardioActivity } 
 import { getLocalDateString } from '@/lib/date'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { LoadErrorBanner } from '@/components/ui/load-error-banner'
-import { computeStrengthFacts } from '@/lib/race-plan/analyze-fitness'
-import { computeGymProgressionSignal } from '@/lib/gym-progression'
-import { upsertGymProgressionSignal } from '@/lib/rank-progression'
 
 type ComputedStrength = { bestWeight: number; bestReps: number; estimated1RM: number; timesPerformed: number }
 type ManualStrength = { weight: number; reps: number; estimated1RM: number; date: string | null; note: string | null }
@@ -276,17 +275,6 @@ export default function RecordsPage() {
       setRecentBodyweightKg(daysOld <= BODYWEIGHT_RECENCY_DAYS ? latestWeightEntry.weight : null)
     }
 
-    // Feeds the rank system's progression bonus (migration 076) - fire
-    // and forget, doesn't block this page's own render. Computed here
-    // (rather than on the Races detail page, where a similar trend
-    // read already happens for its own unrelated purpose) so a user
-    // with no active race plan still earns credit for real gym
-    // progress - this page is the one every gym user actually visits.
-    computeStrengthFacts(supabase).then((facts) => {
-      const signal = computeGymProgressionSignal(facts.muscleGroupTrends)
-      upsertGymProgressionSignal(supabase, user.id, signal)
-    })
-
     if (recentWorkouts) {
       const today = new Date()
       const workoutDates = recentWorkouts.map((w) => w.date)
@@ -490,6 +478,7 @@ export default function RecordsPage() {
     setSaving(false)
     setShowAddModal(false)
     resetForm()
+    changed()
     fetchRecords()
   }
 
@@ -510,13 +499,7 @@ export default function RecordsPage() {
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link
-          href="/gym/progress"
-          className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Progress
-        </Link>
+        <BackLink fallback="/gym/progress" className="mb-6" />
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8 mt-6">
           <div className="flex items-center gap-4">

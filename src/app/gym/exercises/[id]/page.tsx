@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, Dumbbell, TrendingUp, Clock, Award, Pencil, Footprints } from 'lucide-react'
+import BackLink from '@/components/lapis/back-link'
+import { Calendar, Dumbbell, TrendingUp, Clock, Award, Pencil, Footprints } from 'lucide-react'
 import ExerciseCoachCard from '@/components/ai-coach/exercise-coach-card'
 import ExerciseProgressChart, { type ExerciseSessionPoint } from '@/components/gym/exercise-progress-chart'
 import CardioProgressChart, { type CardioSessionPoint } from '@/components/gym/cardio-progress-chart'
@@ -189,8 +190,7 @@ export default function ExerciseDetailPage() {
             notes: e.notes,
             variantLabel: e.variant?.label ?? null,
             sets: e.sets || [],
-          })),
-        })
+          })) })
       }
     }
 
@@ -405,13 +405,7 @@ export default function ExerciseDetailPage() {
         {loadError && <LoadErrorBanner message="Couldn't load this exercise's full history. Try refreshing." />}
         {/* Header */}
         <div className="mb-8">
-          <Link
-            href="/gym/exercises"
-            className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Library
-          </Link>
+          <BackLink fallback="/gym/exercises" className="mb-6" />
 
           <div className="mt-6 flex items-start justify-between gap-4">
             <div>

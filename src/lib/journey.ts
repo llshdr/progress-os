@@ -7,6 +7,12 @@ export type JourneyGoal = {
   scope: string | null;
   world_style?: WorldStyle | null;
   target_date: string | null;
+  description?: string | null;
+  attention?: "focus" | "later" | "paused";
+  world_slot?: number | null;
+  reached_at?: string | null;
+  summit_country?: string | null;
+  milestones?: { id: string; title: string; status: string; next_action: string | null }[];
   depends_on_goal_id?: string | null;
 };
 export function worldStyle(

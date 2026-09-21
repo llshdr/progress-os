@@ -7,9 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { ActionItemStatus, GoalScope } from '@/lib/goals'
 import type { WorldStyle } from '@/lib/journey'
 import { SCOPE_LABELS } from '@/lib/rank'
+import { worldScenery } from '@/lib/world-progress'
 
 interface GoalFormFieldsProps {
   worldStyle: WorldStyle | null
+  attention: 'focus' | 'later' | 'paused'
+  onAttentionChange: (value: 'focus' | 'later' | 'paused') => void
   onWorldStyleChange: (value: WorldStyle | null) => void
   title: string
   onTitleChange: (value: string) => void
@@ -42,6 +45,8 @@ interface GoalFormFieldsProps {
 // so the two forms can't quietly drift from each other.
 export default function GoalFormFields({
   worldStyle,
+  attention,
+  onAttentionChange,
   onWorldStyleChange,
   title,
   onTitleChange,
@@ -184,8 +189,13 @@ export default function GoalFormFields({
           </SelectContent>
         </Select>
         <p className="text-lapis-text-tertiary text-xs">
-          How big you consider this — affects your rank ceiling, not shown to anyone else.
+          Choose the scale of this goal. It helps organize your goals and World; it doesn’t limit your Level.
         </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="goal-attention" className="text-lapis-text-secondary">Where this fits right now</Label>
+        <select id="goal-attention" value={attention} onChange={e=>onAttentionChange(e.target.value as 'focus'|'later'|'paused')} className="lapis-field"><option value="focus">Focus now</option><option value="later">On the horizon</option><option value="paused">Taking a pause</option></select>
       </div>
 
       <div className="space-y-2">
@@ -193,6 +203,13 @@ export default function GoalFormFields({
         <select id="goal-world-style" value={worldStyle ?? 'auto'} onChange={e => onWorldStyleChange(e.target.value === 'auto' ? null : e.target.value as WorldStyle)} className="min-h-12 w-full rounded-xl border border-lapis-border bg-lapis-surface-2 px-3">
           <option value="auto">Automatic</option><option value="summit">Summit — a major ambition</option><option value="basecamp">Basecamp — something you are building</option><option value="trail">Trail — a smaller step</option>
         </select>
+        <div className="grid grid-cols-3 gap-2 pt-2">
+          {(['summit','trail','basecamp'] as WorldStyle[]).map(style=><button key={style} type="button" aria-label={`Choose ${style} landscape`} aria-pressed={worldStyle===style} onClick={()=>onWorldStyleChange(style)} className={`relative overflow-hidden rounded-xl border ${worldStyle===style?'border-lapis-accent-400':'border-lapis-border'}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- Local generated landscape preview. */}
+            <img src={worldScenery(style)} alt="" className="h-28 w-full object-cover object-top"/>
+            <span className="absolute inset-x-0 bottom-0 bg-slate-950/80 py-2 text-xs capitalize">{style}</span>
+          </button>)}
+        </div>
         <p className="text-sm text-lapis-text-secondary">Any goal can be a summit. Changing its appearance keeps your milestones and history.</p>
       </div>
 

@@ -3,7 +3,9 @@ import { PageHeader, NavRow } from "@/components/lapis/page";
 import TodaySuggestionsSection from "@/components/ai-coach/today-suggestions-section";
 import { Settings2, Mountain, CalendarDays } from "lucide-react";
 import Link from "next/link";
-export default function CoachPage() {
+export default async function CoachPage({ searchParams }: { searchParams: Promise<{ context?: string }> }) {
+  const { context } = await searchParams
+  const returnPath = context && /^\/(gym|goals|nutrition|plan|journey)(\/|$)/.test(context) && !context.includes('://') ? context : null
   return (
     <AppLayout>
       <div className="lapis-page">
@@ -20,6 +22,7 @@ export default function CoachPage() {
             </Link>
           }
         />
+        {returnPath && <Link href={returnPath} className="lapis-secondary mb-6">← Return to where you were</Link>}
         <div className="grid gap-7 lg:grid-cols-2">
           <TodaySuggestionsSection />
           <section>

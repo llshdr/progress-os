@@ -1,5 +1,6 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -8,7 +9,7 @@ import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { useIsOwner } from '@/lib/use-is-owner'
-import { ChefHat, ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { ChefHat, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 type Recipe = {
@@ -97,10 +98,7 @@ export default function RecipeDetailPage() {
     <AppLayout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loadError && <LoadErrorBanner message="Couldn't fully load this recipe. Try refreshing." />}
-        <Link href="/nutrition/cookbook" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </Link>
+        <BackLink fallback="/nutrition/cookbook" className="mb-6" />
 
         {recipe.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element

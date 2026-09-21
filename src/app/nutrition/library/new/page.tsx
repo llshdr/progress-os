@@ -1,16 +1,15 @@
 'use client'
 
+import { useReturnNavigation } from '@/lib/use-return-navigation'
+import BackLink from '@/components/lapis/back-link'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import FoodFormFields from '@/components/nutrition/food-form-fields'
 import type { MealTag } from '@/lib/food-constants'
 
 export default function NewFoodPage() {
-  const router = useRouter()
   const [name, setName] = useState('')
   const [calories, setCalories] = useState('')
   const [protein, setProtein] = useState('')
@@ -19,6 +18,7 @@ export default function NewFoodPage() {
   const [defaultMealTag, setDefaultMealTag] = useState<MealTag | null>(null)
   const [ingredients, setIngredients] = useState('')
   const [loading, setLoading] = useState(false)
+  const returnToCaller = useReturnNavigation("/nutrition/library")
   const supabase = createClient()
 
   const isValid = name.trim() && calories && protein && fat && carbs
@@ -48,16 +48,14 @@ export default function NewFoodPage() {
       console.error('Error creating food:', error)
       setLoading(false)
     } else {
-      router.push('/nutrition/library')
+      returnToCaller()
     }
   }
 
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/nutrition/library" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/nutrition/library" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Add Food</h1>
         <p className="text-lapis-text-tertiary text-sm mb-8">Save a meal for one-click logging</p>

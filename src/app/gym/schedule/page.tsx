@@ -1,10 +1,12 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { CalendarDays, ArrowLeft, GripVertical, Trash2, Plus, Play } from 'lucide-react'
+import { CalendarDays, GripVertical, Trash2, Plus, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -138,7 +140,7 @@ export default function SchedulePage() {
 
     if (error) {
       console.error('Error saving schedule mode:', error)
-    }
+    } else changed()
     fetchAll()
   }
 
@@ -193,6 +195,7 @@ export default function SchedulePage() {
     setSaving(false)
     setShowAddModal(false)
     resetAddForm()
+    changed()
     setVolumeRefreshKey((k) => k + 1)
     fetchAll()
   }
@@ -206,6 +209,7 @@ export default function SchedulePage() {
       console.error('Error removing schedule slot:', error)
       return
     }
+    changed()
     setVolumeRefreshKey((k) => k + 1)
     fetchAll()
   }
@@ -228,6 +232,7 @@ export default function SchedulePage() {
       return
     }
 
+    changed()
     setVolumeRefreshKey((k) => k + 1)
     fetchAll()
   }
@@ -285,7 +290,7 @@ export default function SchedulePage() {
 
     if (error) {
       console.error('Error saving usual time:', error)
-    }
+    } else changed()
   }
 
   if (loading) {
@@ -299,13 +304,7 @@ export default function SchedulePage() {
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link
-          href="/gym/train"
-          className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Train
-        </Link>
+        <BackLink fallback="/gym/train" className="mb-6" />
 
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8 mt-6">
           <div className="flex items-center gap-4">

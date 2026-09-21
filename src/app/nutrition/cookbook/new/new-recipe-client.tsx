@@ -1,11 +1,11 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import CookbookFormFields from '@/components/nutrition/cookbook-form-fields'
 import { resizeImageFile } from '@/lib/image'
 
@@ -74,16 +74,14 @@ export default function NewRecipeClient() {
       console.error('Error creating recipe:', error)
       setSaving(false)
     } else {
-      router.push(`/nutrition/cookbook/${data.id}`)
+      router.replace(`/nutrition/cookbook/${data.id}`)
     }
   }
 
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/nutrition/cookbook" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/nutrition/cookbook" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Add Recipe</h1>
         <p className="text-lapis-text-tertiary text-sm mb-8">Visible to everyone once saved</p>

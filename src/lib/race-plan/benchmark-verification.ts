@@ -112,10 +112,10 @@ export function assessBenchmarkCompliance(
       if (week.phase === 'taper') continue
       if (week.weekStartDate >= currentWeekStartDate) continue
 
-      const template = plan.phaseTemplates[week.phase]
+      const template = week.templateSnapshot ?? plan.phaseTemplates[week.phase]
       if (!template) continue
       const phaseWeeks = weeksByPhase.get(phaseGroupKey(week))!
-      const weekIndexWithinPhase = phaseWeeks.indexOf(week)
+      const weekIndexWithinPhase = week.progressionIndex ?? phaseWeeks.indexOf(week)
 
       const slots = slotsForWeek(template, week)
       const keySlot = slots.enduranceSlots.find((s) => s.type === discipline && s.role === 'key')

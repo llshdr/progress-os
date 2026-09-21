@@ -1,11 +1,11 @@
 'use client'
 
+import { useReturnNavigation } from '@/lib/use-return-navigation'
+import BackLink from '@/components/lapis/back-link'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import ExerciseFormFields from '@/components/gym/exercise-form-fields'
 import CatalogSearch, { type CatalogEntry } from '@/components/gym/catalog-search'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
@@ -14,7 +14,6 @@ import { inferMuscleTargets } from '@/lib/muscle-targets'
 import { suggestIsUnilateral } from '@/lib/unilateral'
 
 export default function NewExercisePage() {
-  const router = useRouter()
   const [name, setName] = useState('')
   const [exerciseType, setExerciseType] = useState<ExerciseType>('strength')
   const [primaryMuscleGroup, setPrimaryMuscleGroup] = useState('')
@@ -33,6 +32,7 @@ export default function NewExercisePage() {
   const [unilateralTouched, setUnilateralTouched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
+  const returnToCaller = useReturnNavigation("/gym/exercises")
   const supabase = createClient()
 
   // Suggest-only: pre-fills the toggle from the name as the user types,
@@ -121,7 +121,7 @@ export default function NewExercisePage() {
       console.error('Error creating exercise:', error)
       setLoading(false)
     } else {
-      router.push('/gym/exercises')
+      returnToCaller()
     }
   }
 
@@ -170,9 +170,7 @@ export default function NewExercisePage() {
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/gym/exercises" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/gym/exercises" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
           Add Exercise

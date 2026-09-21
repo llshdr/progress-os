@@ -1,8 +1,10 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import { changed } from '@/components/lapis/app-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,7 +16,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import Link from 'next/link'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { celsiusToDisplay, displayToCelsius, formatTemperature, type TemperatureUnit } from '@/lib/sleep'
 import { getLocalDateString } from '@/lib/date'
@@ -173,6 +174,7 @@ export default function SleepPage() {
     } else {
       setNewEntry({ date: getLocalDateString(), hours_slept: '', room_temp: '' })
       setIsDialogOpen(false)
+      changed()
       fetchEntries()
       setInsightRefreshKey((k) => k + 1)
     }
@@ -186,6 +188,7 @@ export default function SleepPage() {
     if (error) {
       console.error('Error deleting sleep entry:', error)
     } else {
+      changed()
       fetchEntries()
       setInsightRefreshKey((k) => k + 1)
     }
@@ -222,9 +225,7 @@ export default function SleepPage() {
       <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load your sleep history. Try refreshing." />}
         <div className="flex items-center gap-3 mb-8">
-          <Link href="/gym/progress" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
-            ← Back
-          </Link>
+          <BackLink fallback="/gym/progress" className="mb-6" />
           <div className="flex-1" />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger render={<Button className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm" />}>Log Sleep</DialogTrigger>

@@ -1,0 +1,83 @@
+LAPIS LIVING WORLD — WINDOWS INSTALL
+
+This update goes ON TOP of the connected-world update you already installed.
+Use your current project/branch. Do not switch back to an older main branch.
+If a command reports an error, stop and paste that error in chat.
+
+1. DOWNLOAD AND EXTRACT
+
+Save lapis-living-world.zip in:
+C:\Users\lucce\OneDrive\Skrivbord\progress-os
+
+If the app is running in PowerShell, press Ctrl+C there to stop the dev server.
+Then paste these commands into PowerShell:
+
+cd "C:\Users\lucce\OneDrive\Skrivbord\progress-os"
+Expand-Archive .\lapis-living-world.zip -DestinationPath .\lapis-living-world-update -Force
+
+2. SAVE YOUR CURRENT APP AND CREATE A BRANCH
+
+These commands save app files. Downloaded patch/ZIP files are left out.
+
+git add src public scripts docs supabase/migrations .gitignore
+git diff --cached --quiet
+if ($LASTEXITCODE -eq 1) { git commit -m "Save working connected-world app" }
+git switch -c lapis-living-world
+
+3. CHECK THE PATCH
+
+git apply --check .\lapis-living-world-update\lapis-living-world.patch
+
+If it returns to the prompt with NO error, run:
+
+git apply .\lapis-living-world-update\lapis-living-world.patch
+
+If the check reports a conflict, stop. Do not force it or replace your folders.
+The patch was prepared against connected-world commit 66622f4.
+
+4. APPLY THE NEW DATABASE FILE ONCE
+
+Migrations 088–091 should already be installed. This update needs only 092.
+If you manage migrations with the Supabase CLI, use your normal process.
+If you used the Supabase SQL Editor before, copy this command into PowerShell:
+
+Get-Content -Raw .\supabase\migrations\092_living_world.sql | Set-Clipboard
+
+That copies the complete SQL file for you.
+Open your Supabase project → SQL Editor → New query.
+Click inside the query, press Ctrl+V, then click Run.
+“Success. No rows returned” is the expected result. Run this file only once.
+
+5. START WITH A FRESH BUILD
+
+The package does not change npm dependencies. Use your existing .env.local.
+First ensure the dev server is stopped, then run:
+
+if (Test-Path .next) { Remove-Item .next -Recurse -Force }
+npx tsc --noEmit
+npm run build
+
+When those finish successfully:
+
+npm run dev
+
+Open http://localhost:3000 and press Ctrl+F5 once to refresh the page fully.
+
+6. TRY THE CONNECTED FLOW
+
+- Open Today: your training card is back. Finish a planned session and check it.
+- Open Journey → click a mountain → complete a milestone and watch the ascent.
+- On that goal, “Make time for it” adds a step to Plan. Complete it there, then
+  open the goal’s journal. Undo the step to remove only its linked check-in.
+- Open Settings → Your World: choose a flag, change scenery, reorder mountains.
+- Mark a goal reached when appropriate. Its flag and first completion are saved.
+- Check on your phone too before publishing.
+
+Your old detailed calendar is still available through Plan → Timeline.
+Goal editing/AI tools are available through the sliders button on a destination.
+
+The download includes desktop and phone screenshots using synthetic test data.
+Build, viewport, browser-flow and isolated database tests were run during
+preparation. Review with your own account before committing/pushing the update.
+
+Technical details: docs/LAPIS-LIVING-WORLD.md

@@ -58,6 +58,9 @@ export interface CombinedBikeLoad {
 }
 
 export interface TrainingWeekSkeleton {
+  // A saved snapshot preserves past/current sessions when a future plan changes.
+  templateSnapshot?: import('./day-template').PhaseTemplate
+  progressionIndex?: number
   weekStartDate: string
   phase: TrainingPhase
   // Populated only for multisport races; null for single-discipline races

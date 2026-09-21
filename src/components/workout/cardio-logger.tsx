@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,9 @@ import { Check, Pencil, Trash2, ChevronDown, ChevronUp, Bike } from 'lucide-reac
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { formatDuration } from '@/lib/format'
 import { classifyDiscipline } from '@/lib/race-plan/discipline-weakness'
+import DraftBanner from '@/components/lapis/draft-banner'
+import { useRecoverableDraft } from '@/lib/use-recoverable-draft'
+import { changed } from '@/components/lapis/app-provider'
 import { getLocalDateString } from '@/lib/date'
 
 interface CardioLoggerProps {
@@ -68,11 +71,15 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
   const [lastCommute, setLastCommute] = useState<LastCommute | null>(null)
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   // Genuine, computed acknowledgment shown after a successful save - see
   // showLoggedAcknowledgment for what "genuine" means here and what it
   // deliberately doesn't claim.
   const [ackMessage, setAckMessage] = useState<string | null>(null)
+  const restoredDraft = useRef(false)
+  const draft=useRecoverableDraft(`cardio:${exerciseId}`,{distanceKm,durationMinutes,avgHeartRate,perceivedEffort,elevationGainM,isCommute,sessionFeedback},editing&&Boolean(distanceKm||durationMinutes))
+  const restoreDraft=()=>{const v=draft.consume();if(!v)return;restoredDraft.current=true;setDistanceKm(v.distanceKm);setDurationMinutes(v.durationMinutes);setAvgHeartRate(v.avgHeartRate);setPerceivedEffort(v.perceivedEffort);setElevationGainM(v.elevationGainM);setIsCommute(v.isCommute);setSessionFeedback(v.sessionFeedback);setEditing(true)}
   const supabase = createClient()
 
   useEffect(() => {
@@ -98,6 +105,7 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
         source: (data.source as 'training' | 'commute' | null) ?? 'training',
         sessionFeedback: (data.session_feedback as SessionFeedback | null) ?? null,
       })
+      if (restoredDraft.current) return
       setDistanceKm(String(data.distance_km))
       setDurationMinutes(String(data.duration_seconds / 60))
       setAvgHeartRate(data.avg_heart_rate != null ? String(data.avg_heart_rate) : '')
@@ -212,11 +220,12 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
   const handleSave = async () => {
     if (!distanceKm || !durationMinutes) return
 
-    setLoading(true)
-
+    setSaveError(null)
     const distance = parseFloat(distanceKm)
     const durationSeconds = Math.round(parseFloat(durationMinutes) * 60)
 
+    if (!Number.isFinite(distance) || distance <= 0 || !Number.isFinite(durationSeconds) || durationSeconds <= 0) { setSaveError('Enter a distance and duration greater than zero.'); return }
+    setLoading(true)
     const { error } = await supabase.from('cardio_logs').upsert(
       {
         exercise_id: exerciseId,
@@ -233,13 +242,16 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
 
     if (error) {
       console.error('Error saving cardio log:', error)
-      alert('Failed to save')
+      setSaveError('Could not save. Your entry is kept on this device. Reconnect and try again.')
       setLoading(false)
       return
     }
 
     setLoading(false)
+    restoredDraft.current = false
     fetchSavedLog()
+    draft.clear()
+    changed()
     showLoggedAcknowledgment()
   }
 
@@ -273,6 +285,8 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
 
   return (
     <div className="space-y-6">
+      {saveError && <p role="alert" className="text-sm text-lapis-garnet">{saveError}</p>}
+      <DraftBanner recoverable={Boolean(draft.recovery)} status={draft.status} onRestore={restoreDraft} onDiscard={draft.discard} />
       <div>
         <h2 className="text-2xl font-semibold tracking-tight text-lapis-text-primary mb-1">{exerciseName}</h2>
       </div>
@@ -333,21 +347,24 @@ export default function CardioLogger({ exerciseId, exerciseName, onComplete }: C
         <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-lapis-text-secondary text-sm">Distance (km)</label>
+              <label htmlFor={`cardio-distance-${exerciseId}`} className="text-lapis-text-secondary text-sm">Distance (km)</label>
               <Input
+                id={`cardio-distance-${exerciseId}`}
+                inputMode="decimal"
                 type="number"
                 step="0.01"
                 value={distanceKm}
                 onChange={(e) => setDistanceKm(e.target.value)}
                 placeholder="5.0"
                 className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary text-2xl font-semibold h-16 text-center placeholder:text-lapis-text-disabled"
-                autoFocus
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-lapis-text-secondary text-sm">Duration (minutes)</label>
+              <label htmlFor={`cardio-duration-${exerciseId}`} className="text-lapis-text-secondary text-sm">Duration (minutes)</label>
               <Input
+                id={`cardio-duration-${exerciseId}`}
+                inputMode="decimal"
                 type="number"
                 step="0.1"
                 value={durationMinutes}

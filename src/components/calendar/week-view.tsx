@@ -15,6 +15,7 @@ import {
   HABIT_DONE_STYLE,
   timeStringToMinutes,
   type CalendarEntry,
+  type TrainingCalendarContext,
   type TimedItem,
   type PositionedItem,
 } from '@/lib/calendar'
@@ -33,6 +34,7 @@ interface WeekViewProps {
   scheduleMode: 'rotation' | 'calendar'
   scheduleSlots: ScheduleSlot[]
   raceWeekSlots: WeekSlots | null
+  training?: TrainingCalendarContext
   habits: Habit[]
   habitLogs: HabitLog[]
   wakeTime: string
@@ -110,6 +112,7 @@ export default function WeekView({
   scheduleMode,
   scheduleSlots,
   raceWeekSlots,
+  training,
   habits,
   habitLogs,
   wakeTime,
@@ -131,13 +134,14 @@ export default function WeekView({
           scheduleMode,
           scheduleSlots,
           raceWeekSlots,
+  training,
           habits,
           habitLogs,
         })
       )
     }
     return map
-  }, [weekDates, calendarEntries, goalItems, activeRace, scheduleMode, scheduleSlots, raceWeekSlots, habits, habitLogs])
+  }, [weekDates, calendarEntries, goalItems, activeRace, scheduleMode, scheduleSlots, raceWeekSlots, training, habits, habitLogs])
 
   const wakeMinutes = timeStringToMinutes(wakeTime)
   const sleepMinutes = timeStringToMinutes(sleepTime)

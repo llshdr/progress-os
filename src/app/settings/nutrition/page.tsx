@@ -1,18 +1,21 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { changed } from '@/components/lapis/app-provider'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import Link from 'next/link'
 
 export default function NutritionSettingsPage() {
   const [maintenanceCalories, setMaintenanceCalories] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -28,11 +31,14 @@ export default function NutritionSettingsPage() {
       return
     }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_settings')
       .select('maintenance_calories')
       .eq('user_id', user.id)
       .maybeSingle()
+
+    if (error) { setLoadError(true); setLoading(false); return }
+    setLoadError(false)
 
     if (data?.maintenance_calories) {
       setMaintenanceCalories(String(data.maintenance_calories))
@@ -50,6 +56,7 @@ export default function NutritionSettingsPage() {
 
     const value = maintenanceCalories ? parseInt(maintenanceCalories, 10) : null
 
+    setSaveError(null)
     setSaving(true)
     setSaved(false)
 
@@ -64,20 +71,21 @@ export default function NutritionSettingsPage() {
     setSaving(false)
     if (!error) {
       setSaved(true)
+      changed()
     } else {
-      console.error('Error saving nutrition settings:', error)
+      setSaveError('Could not save. Your changes are still here; please retry.')
     }
   }
 
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back to Settings
-        </Link>
+        <BackLink fallback="/settings" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-8">Nutrition</h1>
 
+        {loadError && <p role="alert" className="mb-4 text-sm text-lapis-garnet">Could not load your settings. Refresh before making changes.</p>}
+        {saveError && <p role="alert" className="mb-4 text-sm text-lapis-garnet">{saveError}</p>}
         <div className="max-w-md">
           {loading ? (
             <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
@@ -112,7 +120,7 @@ export default function NutritionSettingsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button type="submit" disabled={saving} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
+                <Button type="submit" disabled={saving || loadError} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
                 {saved && <span className="text-lapis-text-tertiary text-sm">Saved</span>}

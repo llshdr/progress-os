@@ -1,11 +1,13 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, GripVertical, Save } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Save } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -159,6 +161,7 @@ export default function EditTemplatePage() {
       alert('Failed to save template')
       setSaving(false)
     } else {
+      changed()
       setSaving(false)
     }
   }
@@ -171,7 +174,7 @@ export default function EditTemplatePage() {
       target_sets: DEFAULT_TARGET_SETS,
       target_rep_range_min: DEFAULT_TARGET_REP_RANGE_MIN,
       target_rep_range_max: DEFAULT_TARGET_REP_RANGE_MAX,
-    })
+})
 
     if (error) {
       console.error('Error adding exercise:', error)
@@ -283,9 +286,7 @@ export default function EditTemplatePage() {
         {loadError && <LoadErrorBanner message="Couldn't load this template's exercises. Try refreshing." />}
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
-          <Link href="/gym/templates" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
-            ← Back
-          </Link>
+          <BackLink fallback="/gym/templates" className="mb-6" />
           <button
             onClick={handleSaveTemplate}
             disabled={saving}

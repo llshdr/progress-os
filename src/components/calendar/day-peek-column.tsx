@@ -5,6 +5,7 @@ import {
   buildTimedItemsForDate,
   SOURCE_DOT_COLOR,
   type CalendarEntry,
+  type TrainingCalendarContext,
 } from '@/lib/calendar'
 import type { ScheduleSlot } from '@/lib/gym-schedule'
 import type { ActionItem } from '@/lib/goals'
@@ -20,6 +21,7 @@ interface DayPeekColumnProps {
   scheduleMode: 'rotation' | 'calendar'
   scheduleSlots: ScheduleSlot[]
   raceWeekSlots: WeekSlots | null
+  training?: TrainingCalendarContext
   habits: Habit[]
   habitLogs: HabitLog[]
   onSelect: (date: string) => void
@@ -37,13 +39,7 @@ interface DayPeekColumnProps {
 // desktop week grid needs; a few dots close together is still legible
 // at this size without it.
 //
-// raceWeekSlots is passed down as computed by the parent for the
-// CENTER day's training week. If a peek date happens to fall in a
-// different week (only possible right at a Sun/Mon boundary), a
-// races-sourced dot here could reflect the wrong week's plan. Accepted
-// as a known, narrow limitation for a non-authoritative glance column,
-// not worth the complexity of computing a second week's slots for one
-// boundary day.
+// Each date resolves its own week through the shared training context.
 export default function DayPeekColumn({
   date,
   today,
@@ -53,6 +49,7 @@ export default function DayPeekColumn({
   scheduleMode,
   scheduleSlots,
   raceWeekSlots,
+  training,
   habits,
   habitLogs,
   onSelect,
@@ -67,10 +64,11 @@ export default function DayPeekColumn({
         scheduleMode,
         scheduleSlots,
         raceWeekSlots,
+  training,
         habits,
         habitLogs,
       }),
-    [date, calendarEntries, goalItems, activeRace, scheduleMode, scheduleSlots, raceWeekSlots, habits, habitLogs]
+    [date, calendarEntries, goalItems, activeRace, scheduleMode, scheduleSlots, raceWeekSlots, training, habits, habitLogs]
   )
 
   const timed = items.filter((i) => i.startMinutes != null)

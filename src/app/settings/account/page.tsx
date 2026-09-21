@@ -1,5 +1,6 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
+import { changed } from '@/components/lapis/app-provider'
 import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 export default function AccountSettingsPage() {
@@ -94,17 +96,16 @@ export default function AccountSettingsPage() {
     setSaving(false)
     if (!error) {
       setSaved(true)
+      changed()
     } else {
-      console.error('Error saving account settings:', error)
+      setNameError('Could not save. Your changes are still here; please retry.')
     }
   }
 
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back to Settings
-        </Link>
+        <BackLink fallback="/settings" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-8">Account</h1>
 
@@ -151,7 +152,7 @@ export default function AccountSettingsPage() {
                     href="/profile"
                     className="flex items-center justify-between text-sm text-lapis-text-secondary hover:text-lapis-text-primary transition-colors"
                   >
-                    <span>View your rank &amp; public profile</span>
+                    <span>View your profile &amp; Level</span>
                     <span className="text-lapis-text-disabled">→</span>
                   </Link>
                 </div>

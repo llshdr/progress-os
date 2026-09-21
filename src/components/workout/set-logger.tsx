@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,9 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { getExerciseRecommendation, RecommendationResult } from '@/lib/ai-coach/client'
 import { getExerciseHistory } from '@/lib/ai-coach/getExerciseHistory'
 import { estimateOneRepMax } from '@/lib/estimate1rm'
+import DraftBanner from '@/components/lapis/draft-banner'
+import { useRecoverableDraft } from '@/lib/use-recoverable-draft'
+import { changed } from '@/components/lapis/app-provider'
 import { useOnlineStatus } from '@/lib/use-online-status'
 
 interface SetLoggerProps {
@@ -106,6 +109,11 @@ export default function SetLogger({
   // what the Records page is for.
   const [personalBestEst1RM, setPersonalBestEst1RM] = useState<number | null>(null)
   const [showPrCelebration, setShowPrCelebration] = useState(false)
+  const [entryId,setEntryId] = useState<string | null>(null)
+  const [saveError,setSaveError] = useState<string | null>(null)
+  const restoredDraft=useRef(false)
+  const draft=useRecoverableDraft(`set:${exerciseId}`,{weight,reps,rir,setType,entryId,restStartedAt,currentSetNumber},Boolean(reps||restStartedAt))
+  const restoreDraft=()=>{const v=draft.consume();if(!v)return;restoredDraft.current=true;setWeight(v.weight);setReps(v.reps);setRir(v.rir);setSetType(v.setType);setEntryId(v.entryId);setRestStartedAt(v.restStartedAt);setCurrentSetNumber(v.currentSetNumber??1)}
   const isOnline = useOnlineStatus()
   const supabase = createClient()
 
@@ -345,7 +353,7 @@ export default function SetLogger({
         date: data.created_at,
       })
       // Pre-fill weight from last set
-      setWeight(data.weight.toString())
+      if (!restoredDraft.current) setWeight(data.weight.toString())
     }
   }
 
@@ -360,13 +368,17 @@ export default function SetLogger({
       setSavedSets(data)
       // Set current set number to next available
       if (data.length > 0) {
-        setCurrentSetNumber(data.length + 1)
+        if (!restoredDraft.current) setCurrentSetNumber(Math.max(...data.map(s => s.set_order)) + 1)
       }
     }
   }
 
   const handleSaveSet = async () => {
-    if (!weight || !reps) return
+    if (!weight || !reps || loading) return
+    setSaveError(null)
+    if (!Number.isFinite(Number(weight)) || Number(weight) < 0 || !Number.isInteger(Number(reps)) || Number(reps) < 1) { setSaveError('Enter a valid weight and a whole number of reps.'); return }
+    const stableId = entryId ?? crypto.randomUUID()
+    setEntryId(stableId)
 
     setLoading(true)
 
@@ -377,7 +389,8 @@ export default function SetLogger({
     const weightNum = parseFloat(weight)
     const repsNum = parseInt(reps)
 
-    const { error } = await supabase.from('sets').insert({
+    const { error } = await supabase.from('sets').upsert({
+      id: stableId,
       exercise_id: exerciseId,
       weight: weightNum,
       reps: repsNum,
@@ -391,15 +404,15 @@ export default function SetLogger({
 
     if (error) {
       console.error('Error saving set:', error)
-      alert(
-        isOnline
-          ? 'Failed to save set. Please try again.'
-          : "You're offline - this set wasn't saved. Reconnect, then log it again."
-      )
+      setSaveError(isOnline ? 'Could not save. Your draft is kept here; retry when ready.' : 'Offline. Your draft is kept on this device; reconnect and save.')
       setLoading(false)
       return
     }
 
+    restoredDraft.current = false
+    draft.discard()
+    setEntryId(null)
+    changed()
     // PR check - only for a real top-set attempt (not a drop/myo follow-on,
     // and not a deload-week set, which is intentionally light and was never
     // trying to be a PR). Silently updates the tracked best either way, so
@@ -516,10 +529,12 @@ export default function SetLogger({
       {!isOnline && (
         <div className="flex items-center gap-2 border border-lapis-garnet/40 bg-lapis-garnet/[0.06] rounded-lapis-md px-4 py-3 text-sm text-lapis-garnet">
           <WifiOff className="w-4 h-4 shrink-0" />
-          You&apos;re offline - sets won&apos;t save until you&apos;re back online.
+          You&apos;re offline. Your input stays as a draft on this device until you reconnect and save.
         </div>
       )}
 
+      <DraftBanner recoverable={Boolean(draft.recovery)} status={draft.status} onRestore={restoreDraft} onDiscard={draft.discard} />
+      {saveError && <p role="alert" className="mb-4 text-sm text-lapis-garnet">{saveError}</p>}
       {/* Exercise Header */}
       <div>
         <h2 className="text-2xl font-semibold tracking-tight text-lapis-text-primary mb-1">
@@ -631,7 +646,7 @@ export default function SetLogger({
                       value={editWeight}
                       onChange={(e) => setEditWeight(e.target.value)}
                       className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary h-9 w-20 text-center"
-                      autoFocus
+                      inputMode="decimal"
                     />
                     <span className="text-lapis-text-tertiary">×</span>
                     <Input
@@ -757,23 +772,26 @@ export default function SetLogger({
         <div className="space-y-4">
           {/* Weight Input */}
           <div className="space-y-2">
-            <label className="text-lapis-text-secondary text-sm">Weight (kg)</label>
+            <label htmlFor={`set-weight-${exerciseId}`} className="text-lapis-text-secondary text-sm">Weight (kg)</label>
             <Input
+              id={`set-weight-${exerciseId}`}
               type="number"
               step="0.5"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
               placeholder="82.5"
               className="bg-lapis-surface-2 border-lapis-border-subtle text-lapis-text-primary text-2xl font-semibold h-16 text-center placeholder:text-lapis-text-disabled"
-              autoFocus
+              inputMode="decimal"
             />
           </div>
 
           {/* Reps Input */}
           <div className="space-y-2">
-            <label className="text-lapis-text-secondary text-sm">Reps</label>
+            <label htmlFor={`set-reps-${exerciseId}`} className="text-lapis-text-secondary text-sm">Reps</label>
             <Input
+              id={`set-reps-${exerciseId}`}
               type="number"
+              inputMode="numeric"
               value={reps}
               onChange={(e) => setReps(e.target.value)}
               placeholder="8"

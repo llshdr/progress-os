@@ -1,11 +1,13 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
+import { useReturnNavigation } from '@/lib/use-return-navigation'
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import { Trash2 } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import MilestoneFormFields from '@/components/goals/milestone-form-fields'
@@ -15,7 +17,6 @@ import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 export default function EditMilestonePage() {
   const params = useParams()
-  const router = useRouter()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [nextAction, setNextAction] = useState('')
@@ -29,6 +30,8 @@ export default function EditMilestonePage() {
   const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const supabase = createClient()
+
+  const returnToCaller = useReturnNavigation(goalId ? `/goals/${goalId}` : '/goals')
 
   useEffect(() => {
     fetchMilestone()
@@ -92,7 +95,8 @@ export default function EditMilestonePage() {
       console.error('Error updating milestone:', error)
       setSaving(false)
     } else {
-      router.push(goalId ? `/goals/${goalId}` : '/goals')
+      changed()
+      returnToCaller()
     }
   }
 
@@ -103,7 +107,8 @@ export default function EditMilestonePage() {
       console.error('Error deleting milestone:', error)
       return
     }
-    router.push(goalId ? `/goals/${goalId}` : '/goals')
+    changed()
+    returnToCaller()
   }
 
   const backHref = goalId ? `/goals/${goalId}` : '/goals'
@@ -121,9 +126,7 @@ export default function EditMilestonePage() {
       <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load this milestone. Try refreshing." />}
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
-          <Link href={backHref} className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
-            ← Back
-          </Link>
+          <BackLink fallback={backHref} className="mb-6" />
           <button
             onClick={() => setShowDeleteModal(true)}
             className="p-2 rounded-lapis-sm hover:bg-lapis-surface-2 transition-colors"

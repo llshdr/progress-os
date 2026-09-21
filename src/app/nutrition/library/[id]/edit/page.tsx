@@ -1,11 +1,12 @@
 'use client'
 
+import { useReturnNavigation } from '@/lib/use-return-navigation'
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import FoodFormFields from '@/components/nutrition/food-form-fields'
 import type { MealTag } from '@/lib/food-constants'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -13,7 +14,6 @@ import { LoadErrorBanner } from '@/components/ui/load-error-banner'
 
 export default function EditFoodPage() {
   const params = useParams()
-  const router = useRouter()
   const [name, setName] = useState('')
   const [calories, setCalories] = useState('')
   const [protein, setProtein] = useState('')
@@ -24,6 +24,7 @@ export default function EditFoodPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const returnToCaller = useReturnNavigation("/nutrition/library")
   const supabase = createClient()
 
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function EditFoodPage() {
       console.error('Error updating food:', error)
       setSaving(false)
     } else {
-      router.push('/nutrition/library')
+      returnToCaller()
     }
   }
 
@@ -90,9 +91,7 @@ export default function EditFoodPage() {
     <AppLayout>
       <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load this food. Try refreshing." />}
-        <Link href="/nutrition/library" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/nutrition/library" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">Edit Food</h1>
         <p className="text-lapis-text-tertiary text-sm mb-8">

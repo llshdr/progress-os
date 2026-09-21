@@ -1,10 +1,11 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
-import Link from 'next/link'
-import { Archive, ArrowLeft, RotateCcw, Trash2 } from 'lucide-react'
+import { Archive, RotateCcw, Trash2 } from 'lucide-react'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { LoadErrorBanner } from '@/components/ui/load-error-banner'
@@ -31,6 +32,7 @@ export default function ArchivedGoalsPage() {
   const supabase = createClient()
 
   useEffect(() => {
+    changed()
     fetchArchivedGoals()
   }, [])
 
@@ -65,6 +67,7 @@ export default function ArchivedGoalsPage() {
       console.error('Error reactivating goal:', error)
       return
     }
+    changed()
     fetchArchivedGoals()
   }
 
@@ -73,6 +76,7 @@ export default function ArchivedGoalsPage() {
     const { error } = await supabase.from('goals').delete().eq('id', itemToDelete.id)
     if (error) console.error('Error deleting goal:', error)
     setItemToDelete(null)
+    changed()
     fetchArchivedGoals()
   }
 
@@ -86,10 +90,7 @@ export default function ArchivedGoalsPage() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/goals" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Goals
-        </Link>
+        <BackLink fallback="/goals" className="mb-6" />
 
         <div className="flex items-center gap-4 mb-8 mt-6">
           <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">

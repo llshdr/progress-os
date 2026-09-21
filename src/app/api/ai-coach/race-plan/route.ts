@@ -1,10 +1,13 @@
+import { isSameOrigin } from "@/lib/request-origin";
+import { assertTimezone, localParts } from '@/lib/imports/parsers'
+import { preserveStartedWeeks } from '@/lib/race-plan/preserve-weeks'
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenAI, Type } from '@google/genai'
 import { createClient } from '@/lib/supabase/server'
 import { analyzeCurrentFitness } from '@/lib/race-plan/analyze-fitness'
 import { computeTrainingWeeks, RACE_APPROACHES, RACE_APPROACH_LABELS, type RaceApproach, type TrainingPhase } from '@/lib/race-plan/periodization'
 import { raceTypeLabel, type RaceType } from '@/lib/race-constants'
-import { getLocalDateString } from '@/lib/date'
+import { getLocalDateString, getLocalWeekStartString } from '@/lib/date'
 import { formatDuration } from '@/lib/format'
 import { daysBetween } from '@/lib/goals'
 import { computeTensionFlags } from '@/lib/race-plan/tension'
@@ -92,6 +95,7 @@ function buildSelfAssessmentSummary(assessment: SelfAssessment | null): string {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
   const supabase = await createClient()
   const {
     data: { user },
@@ -119,6 +123,14 @@ export async function POST(request: NextRequest) {
   if (raceError || !race) {
     return NextResponse.json({ status: 'not_found' })
   }
+
+  const { data: savedPlan, error: savedPlanError } = await supabase.from('race_training_plans').select('*').eq('race_id', raceId).eq('user_id', user.id).maybeSingle()
+  if (savedPlanError) return NextResponse.json({ status: 'error', error: 'Could not read your saved plan' }, { status: 500 })
+  let reviewTimezone: string;
+  try { reviewTimezone = assertTimezone(body?.timezone ?? 'UTC') }
+  catch { return NextResponse.json({ status: 'error', error: 'Choose a valid timezone' }, { status: 400 }) }
+  const localDay = localParts(new Date(), reviewTimezone).date
+  const currentMonday = getLocalWeekStartString(new Date(localDay + 'T12:00:00'))
 
   const selfAssessment = (race.self_assessment ?? null) as SelfAssessment | null
   const category = raceCategoryFor(race.race_type as RaceType)
@@ -456,28 +468,15 @@ For each week listed above, write ONE short, specific sentence (its "focus_note"
       focusNote: week.isAcclimation ? ACCLIMATION_FALLBACK_NOTE : (focusNoteByWeek.get(week.weekStartDate) ?? PHASE_FALLBACK_NOTES[week.phase]),
     }))
 
-    const { error: upsertError } = await supabase.from('race_training_plans').upsert(
-      {
-        race_id: raceId,
-        user_id: user.id,
-        approach,
-        overview: parsed.overview,
-        weeks: mergedWeeks,
-        phase_templates: phaseTemplates,
-        generated_at: new Date().toISOString(),
-      },
-      { onConflict: 'race_id' }
-    )
-
-    if (upsertError) {
-      console.error('Error saving race training plan:', upsertError)
-      return NextResponse.json({ status: 'error', error: 'Failed to save plan' }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      status: 'ok',
-      plan: { approach, overview: parsed.overview, weeks: mergedWeeks, phaseTemplates },
-    })
+    const weeks = savedPlan ? preserveStartedWeeks(savedPlan.weeks, mergedWeeks, savedPlan.phase_templates ?? {}, currentMonday) : mergedWeeks
+    const candidate = { approach, overview: parsed.overview, weeks, phaseTemplates }
+    const { data: preview, error: previewError } = await supabase.from('race_plan_previews').insert({
+      race_id: raceId, user_id: user.id, payload: candidate, base_plan: savedPlan,
+      base_race_date: race.race_date, review_timezone: reviewTimezone, review_week: currentMonday,
+    }).select('id').single()
+    if (previewError) return NextResponse.json({ status: 'error', error: 'Could not save the preview. Apply the database update and try again.' }, { status: 500 })
+    await supabase.from('race_plan_previews').delete().eq('user_id', user.id).lt('created_at', new Date(Date.now() - 7 * 86400000).toISOString())
+    return NextResponse.json({ status: 'ok', previewId: preview.id, plan: candidate })
   } catch (err) {
     console.error('Race plan generation failed:', err)
     return NextResponse.json({ status: 'error', error: 'Failed to generate plan' }, { status: 502 })

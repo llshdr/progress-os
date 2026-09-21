@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { changed } from '@/components/lapis/app-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -87,6 +88,7 @@ export default function PhaseTemplateDialog({
   const [open, setOpen] = useState(false)
   const [edited, setEdited] = useState<PhaseTemplate>(template)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [unavailableDays, setUnavailableDays] = useState<number[]>([])
   const [redistributeNote, setRedistributeNote] = useState<string | null>(null)
   const supabase = createClient()
@@ -94,6 +96,7 @@ export default function PhaseTemplateDialog({
   const handleOpenChange = (next: boolean) => {
     setOpen(next)
     if (next) {
+      setSaveError(null)
       setEdited(template) // fresh copy every time it's reopened
       setUnavailableDays([])
       setRedistributeNote(null)
@@ -288,6 +291,7 @@ export default function PhaseTemplateDialog({
 
   const handleSave = async () => {
     setSaving(true)
+    setSaveError(null)
     const { error } = await supabase
       .from('race_training_plans')
       .update({ phase_templates: { ...allTemplates, [phase]: edited } })
@@ -295,10 +299,11 @@ export default function PhaseTemplateDialog({
 
     setSaving(false)
     if (error) {
-      console.error('Error saving phase template:', error)
+      setSaveError('Could not save the template. Your changes are still here; please retry.')
       return
     }
     onSaved(edited)
+    changed()
     setOpen(false)
   }
 
@@ -309,7 +314,7 @@ export default function PhaseTemplateDialog({
         <DialogHeader>
           <DialogTitle>{PHASE_LABEL[phase]} Phase Template</DialogTitle>
           <DialogDescription className="text-lapis-text-tertiary">
-            Repeats every week of this phase. Editing here is separate from regenerating the plan - regenerating recomputes every phase&apos;s template from scratch and discards these edits.
+            Edits apply to weeks using this template. Weeks preserved by a plan review keep their original schedule. Regenerating a plan proposes new templates for future weeks; you review changes before applying them.
           </DialogDescription>
         </DialogHeader>
 
@@ -479,6 +484,7 @@ export default function PhaseTemplateDialog({
           })}
         </div>
 
+        {saveError && <p role="alert" className="text-sm text-lapis-garnet">{saveError}</p>}
         <Button onClick={handleSave} disabled={saving} className="w-full bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
           {saving ? 'Saving...' : 'Save Template'}
         </Button>

@@ -1,11 +1,18 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import PlanReview from '@/components/races/plan-review'
+import { changed, useLapis } from '@/components/lapis/app-provider'
+import { loadRaceScreen } from '@/lib/race-plan/load-race-screen'
+import RaceIdentity from '@/components/races/race-identity'
+import RaceOverview from '@/components/races/race-overview'
+import { usePageState } from '@/lib/use-page-state'
 import Link from 'next/link'
-import { Flag, ArrowLeft, ChevronDown, ChevronUp, Wallet } from 'lucide-react'
+import { Flag, ChevronDown, ChevronUp, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,8 +20,8 @@ import { raceTypeLabel, RACE_TYPE_DISTANCE, type RaceType } from '@/lib/race-con
 import { getLocalDateString, getLocalWeekStart, getLocalWeekdayIndex } from '@/lib/date'
 import { formatDuration } from '@/lib/format'
 import { daysBetween } from '@/lib/goals'
-import { fetchCardioActivity, type CardioActivity } from '@/lib/cardio-stats'
-import { analyzeCurrentFitness, type FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
+import { type CardioActivity } from '@/lib/cardio-stats'
+import { type FitnessSnapshot } from '@/lib/race-plan/analyze-fitness'
 import {
   RACE_APPROACH_LABELS,
   describeStrengthEmphasis,
@@ -71,7 +78,6 @@ import {
   type ProjectedRaceTimeRange,
 } from '@/lib/race-plan/finish-time'
 import {
-  computeDisciplineActivityFacts,
   assessMultisportReadiness,
   describePaceTrend,
   type DisciplineActivityFacts,
@@ -87,13 +93,8 @@ import {
 import { findMostOverdueRetest, type RetestCandidate } from '@/lib/race-plan/retest-reminder'
 import { resolveRealZone2Pace, computePaceGaps, describePaceGap, type PaceGap } from '@/lib/race-plan/goal-achievability'
 import { assessBenchmarkCompliance, type BenchmarkFlag, type DisruptionRange } from '@/lib/race-plan/benchmark-verification'
-import { computeRacesProgressionSignal } from '@/lib/race-plan/progression-signal'
-import { upsertRacesProgressionSignal } from '@/lib/rank-progression'
 import DisruptionDeclaration, { formatDateRange, type TrainingDisruption } from '@/components/disruption-declaration'
 import {
-  fetchCourseProfile,
-  fetchCourseTimeBand,
-  fetchCourseCutoffs,
   describeCourseDifficulty,
   type RaceCourseProfile,
   type RaceCourseTimeBand,
@@ -272,9 +273,11 @@ export default function RaceDetailPage() {
   const searchParams = useSearchParams()
   const raceId = params.id as string
   const supabase = createClient()
+  const { identity } = useLapis()
 
   const [race, setRace] = useState<Race | null>(null)
   const [plan, setPlan] = useState<Plan | null>(null)
+  const [preview, setPreview] = useState<{ id: string; plan: Plan } | null>(null)
   const [snapshot, setSnapshot] = useState<FitnessSnapshot | null>(null)
   const [disciplineActivityFacts, setDisciplineActivityFacts] = useState<Record<Discipline, DisciplineActivityFacts> | null>(null)
   const [cardioActivities, setCardioActivities] = useState<CardioActivity[]>([])
@@ -303,6 +306,7 @@ export default function RaceDetailPage() {
   const [milestoneExpanded, setMilestoneExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [step, setStep] = useState<Step>('confirm')
   // Only meaningful once step === 'review' - the wizard steps above stay
   // their own single-column linear flow, untouched by this. Plan/Progress/
@@ -318,11 +322,8 @@ export default function RaceDetailPage() {
   // Dashboard's race-day banner) can deep-link straight to the Progress
   // tab's Race Result card, rather than always landing on Plan and
   // making the athlete find it themselves - not a route, just an initial
-  // value; switching tabs afterward never touches the URL.
-  const [reviewTab, setReviewTab] = useState<'plan' | 'progress' | 'prep'>(() => {
-    const tab = searchParams.get('tab')
-    return tab === 'progress' || tab === 'prep' ? tab : 'plan'
-  })
+  // value; usePageState keeps the selected tab in the URL.
+  const [reviewTab, setReviewTab] = usePageState<'overview' | 'plan' | 'progress' | 'prep'>('tab','overview',v=>['overview','plan','progress','prep'].includes(v))
 
   const [selfAssessment, setSelfAssessment] = useState<SelfAssessment>(emptySelfAssessmentFor('other'))
   const [disciplineWeakness, setDisciplineWeakness] = useState<DisciplineWeakness | null>(null)
@@ -352,12 +353,12 @@ export default function RaceDetailPage() {
   const [savingResult, setSavingResult] = useState(false)
 
   useEffect(() => {
-    fetchAll()
-  }, [raceId])
+    if (identity) void fetchAll().catch(() => { setLoadError(true); setLoading(false) })
+  }, [raceId, identity?.id])
 
   useEffect(() => {
     if (plan) computeCurrentWeekActual()
-  }, [plan])
+  }, [plan, cardioActivities])
 
   // Smart default, not a forced value: if there's a real (risk-tier)
   // cutoff margin and the athlete hasn't touched the approach slider yet,
@@ -373,69 +374,14 @@ export default function RaceDetailPage() {
     if (flags.some((f) => f.risk === 'risk')) setApproach('race_leaning')
   }, [race, snapshot, courseTimeBands, courseCutoffs, plan, approachTouched, selfAssessment, disciplineActivityFacts])
 
-  // Feeds the rank system's private progression signal (migration 076) -
-  // has to live here, before this component's early loading/not-found
-  // returns, same Rules-of-Hooks reason every other hook in this
-  // component already does. Recomputes assessBenchmarkCompliance
-  // independently from state rather than reusing the render body's own
-  // benchmarkFlags (that value is computed after the early returns, so
-  // it isn't reachable from a hook here) - deliberately passes null for
-  // both pace-target params, since a flag's status is determined purely
-  // by the distance ratio (see benchmark-verification.ts), never by
-  // paceRatio, so the flags this produces have identical status values
-  // to the render body's own richer call, just without the optional
-  // pace-shortfall message clause this doesn't need.
-  useEffect(() => {
-    if (!plan || !race) return
-    const cat = raceCategoryFor(race.race_type)
-    const weekStartDate = getLocalDateString(getLocalWeekStart())
-    const disruptionRangesForSignal: DisruptionRange[] = disruptions.map((d) => ({ startDate: d.start_date, endDate: d.end_date }))
-    const flags = assessBenchmarkCompliance(plan, cardioActivities, weekStartDate, cat, null, null, disruptionRangesForSignal)
-    const weeksElapsed = plan.weeks.filter((w) => w.weekStartDate < weekStartDate).length
-    const signal = computeRacesProgressionSignal(cat, flags, weeksElapsed)
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) upsertRacesProgressionSignal(supabase, user.id, signal)
-    })
-  }, [plan, cardioActivities, disruptions, race])
-
   const fetchAll = async () => {
+    setLoadError(false)
+    setNotFound(false)
     setLoading(true)
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setLoading(false)
-      return
-    }
-
-    const [{ data: raceRow }, { data: planRow }, { data: settingsRow }, { data: disruptionRows }, { data: checklistRows }, { data: todayWorkoutRows }] =
-      await Promise.all([
-      supabase
-        .from('races')
-        .select(
-          'id, race_type, course_id, location, race_date, self_assessment, target_finish_seconds, discipline_weakness, training_start_date, result_duration_seconds'
-        )
-        .eq('id', raceId)
-        .eq('user_id', user.id)
-        .maybeSingle(),
-      supabase.from('race_training_plans').select('approach, overview, weeks, phase_templates').eq('race_id', raceId).maybeSingle(),
-      supabase.from('user_settings').select('open_water_season_start_month, open_water_season_end_month').eq('user_id', user.id).maybeSingle(),
-      // User-level, not race-specific - shared across every race the
-      // athlete is training for. See migration 057.
-      supabase
-        .from('training_disruptions')
-        .select('id, start_date, end_date, reason, note')
-        .eq('user_id', user.id)
-        .order('start_date', { ascending: false }),
-      // Just enough for the race-week digest's completion count - the full
-      // per-item list still lives entirely in RaceChecklistCard, which
-      // self-fetches independently rather than being prop-driven from here.
-      supabase.from('race_checklist_items').select('done_at').eq('race_id', raceId),
-      // Powers the checklist-to-brick-session tie-in below - just "was
-      // anything completed today," not which workout specifically.
-      supabase.from('workouts').select('id').eq('user_id', user.id).eq('date', getLocalDateString()).not('completed_at', 'is', null).limit(1),
-    ])
+    if (!identity) return
+    const result = await loadRaceScreen(identity.id, raceId)
+    if (!result.found) { setNotFound(true); setLoading(false); return }
+    const { raceRow, planRow, settingsRow, disruptionRows, checklistRows, todayWorkoutRows, courseName, disciplineFacts, activities, facts, courseDetails } = result
 
     setChecklistProgress(checklistRows ? { done: checklistRows.filter((r) => r.done_at != null).length, total: checklistRows.length } : null)
     setHasCompletedWorkoutToday((todayWorkoutRows ?? []).length > 0)
@@ -450,11 +396,6 @@ export default function RaceDetailPage() {
       return
     }
 
-    let courseName: string | null = null
-    if (raceRow.course_id) {
-      const { data: course } = await supabase.from('race_courses').select('name').eq('id', raceRow.course_id).maybeSingle()
-      courseName = course?.name ?? null
-    }
     const raceType = raceRow.race_type as RaceType
     setRace({
       id: raceRow.id,
@@ -472,33 +413,21 @@ export default function RaceDetailPage() {
     setTargetFinishSeconds(raceRow.target_finish_seconds ?? null)
     setDisciplineWeakness(raceRow.discipline_weakness ?? null)
 
-    if (category === 'multisport') {
-      setDisciplineActivityFacts(await computeDisciplineActivityFacts(supabase))
-
-      if (raceRow.course_id) {
-        const courseId = raceRow.course_id as string
-        const [profile, beginnerBand, intermediateBand, advancedBand, cutoffs] = await Promise.all([
-          fetchCourseProfile(supabase, courseId),
-          fetchCourseTimeBand(supabase, courseId, 'beginner'),
-          fetchCourseTimeBand(supabase, courseId, 'intermediate'),
-          fetchCourseTimeBand(supabase, courseId, 'advanced'),
-          fetchCourseCutoffs(supabase, courseId),
-        ])
-        setCourseProfile(profile)
-        setCourseTimeBands({ beginner: beginnerBand, intermediate: intermediateBand, advanced: advancedBand })
-        setCourseCutoffs(cutoffs)
-      }
+    setDisciplineActivityFacts(disciplineFacts)
+    setCardioActivities(activities)
+    setSnapshot(facts)
+    if (courseDetails) {
+      const [profile, beginner, intermediate, advanced, cutoffs] = courseDetails
+      setCourseProfile(profile)
+      setCourseTimeBands({ beginner, intermediate, advanced })
+      setCourseCutoffs(cutoffs)
     }
-
     if (planRow) {
       setPlan({ approach: planRow.approach, overview: planRow.overview, weeks: planRow.weeks, phaseTemplates: planRow.phase_templates ?? {} })
       setApproach(planRow.approach)
       setStep('review')
-      setCardioActivities(await fetchCardioActivity(supabase))
     }
 
-    const facts = await analyzeCurrentFitness(supabase, user.id, raceId)
-    setSnapshot(facts)
     setLoading(false)
   }
 
@@ -520,8 +449,7 @@ export default function RaceDetailPage() {
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekEnd.getDate() + 7)
 
-    const activities = await fetchCardioActivity(supabase)
-    const cardioKm = activities
+    const cardioKm = cardioActivities
       .filter((a) => {
         const d = new Date(a.date)
         return d >= weekStart && d < weekEnd
@@ -553,11 +481,15 @@ export default function RaceDetailPage() {
       console.error('Error saving race result:', error)
       return
     }
+    changed()
     setRace((prev) => (prev ? { ...prev, resultDurationSeconds: totalSeconds } : prev))
   }
 
   const handleConfirmStartDate = async () => {
-    await supabase.from('races').update({ training_start_date: trainingStartDateInput }).eq('id', raceId)
+    const { error } = await supabase.from('races').update({ training_start_date: trainingStartDateInput }).eq('id', raceId)
+    if (error) { setAssessmentError('Your start date could not save. Please retry.'); return }
+    setAssessmentError(null)
+    changed()
     setRace((prev) => (prev ? { ...prev, trainingStartDate: trainingStartDateInput } : prev))
     setStep('assessment')
   }
@@ -576,7 +508,9 @@ export default function RaceDetailPage() {
     setAssessmentError(null)
     setWeaknessError(null)
 
-    await supabase.from('races').update({ self_assessment: selfAssessment }).eq('id', raceId)
+    const { error } = await supabase.from('races').update({ self_assessment: selfAssessment }).eq('id', raceId)
+    if (error) { setAssessmentError('Your assessment could not save. Please retry.'); return }
+    changed()
 
     setWeaknessLoading(true)
     try {
@@ -587,6 +521,7 @@ export default function RaceDetailPage() {
       })
       const data = await res.json()
       if (data.status === 'ok') {
+        changed()
         setDisciplineWeakness(data.disciplineWeakness)
         setStep('weakness')
       } else {
@@ -609,18 +544,19 @@ export default function RaceDetailPage() {
     setGenerateError(null)
 
     try {
-      await supabase.from('races').update({ self_assessment: selfAssessment, target_finish_seconds: targetFinishSeconds }).eq('id', raceId)
+      const { error: assessmentSaveError } = await supabase.from('races').update({ self_assessment: selfAssessment, target_finish_seconds: targetFinishSeconds }).eq('id', raceId)
+      if (assessmentSaveError) throw new Error('Could not save assessment')
+      changed()
 
       const res = await fetch('/api/ai-coach/race-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ raceId, approach }),
+        body: JSON.stringify({ raceId, approach, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       })
       const data = await res.json()
 
       if (data.status === 'ok') {
-        setPlan(data.plan)
-        setStep('review')
+        setPreview({ id: data.previewId, plan: data.plan })
       } else {
         setGenerateError(data.error || 'Could not generate a plan right now — try again later.')
       }
@@ -668,6 +604,8 @@ export default function RaceDetailPage() {
     setPhasesTouched(true)
   }
 
+  if (loadError) return <AppLayout><div className="lapis-page"><BackLink fallback="/gym/progress/races"/><p role="alert" className="mt-6 text-lapis-text-secondary">Your race couldn't load. Your saved plan hasn't changed.</p><button className="lapis-primary mt-4" onClick={() => { void fetchAll().catch(() => { setLoadError(true); setLoading(false) }) }}>Retry race</button></div></AppLayout>
+
   if (loading) {
     return (
       <AppLayout>
@@ -680,10 +618,7 @@ export default function RaceDetailPage() {
     return (
       <AppLayout>
         <div className="lapis-page">
-          <Link href="/gym/progress/races" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Races
-          </Link>
+          <BackLink fallback="/gym/progress/races" className="mb-6" />
           <p className="text-lapis-text-tertiary">Race not found.</p>
         </div>
       </AppLayout>
@@ -973,36 +908,9 @@ export default function RaceDetailPage() {
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/gym/progress/races" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 inline-flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Races
-        </Link>
+        <div className="mb-4 flex items-center justify-between gap-3"><BackLink fallback="/gym/progress/races" /><Link href={`/gym/progress/races/${raceId}/budget`} className="lapis-secondary"><Wallet size={16}/>Budget</Link></div>
 
-        <div className="flex items-center gap-4 mb-8 mt-6">
-          <div className="p-3 rounded-lapis-lg bg-lapis-surface-2 border border-lapis-border-subtle">
-            <Flag className="w-8 h-8 text-lapis-text-secondary" />
-          </div>
-          <div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-1">
-              {raceTypeLabel(race.race_type)}
-              {race.courseOrLocation && <span className="text-lapis-text-tertiary"> · {race.courseOrLocation}</span>}
-            </h1>
-            <p className="text-lapis-text-tertiary text-sm">
-              {new Date(race.race_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              {' — '}
-              {daysUntil > 0 ? `${daysUntil} days away` : daysUntil === 0 ? 'Today' : `${Math.abs(daysUntil)} days ago`}
-            </p>
-            {RACE_TYPE_DISTANCE[race.race_type] && <p className="text-lapis-text-disabled text-xs mt-1">{RACE_TYPE_DISTANCE[race.race_type]}</p>}
-          </div>
-        </div>
-
-        <Link
-          href={`/gym/progress/races/${race.id}/budget`}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm bg-lapis-surface-2 text-lapis-text-secondary border border-lapis-border-subtle hover:bg-lapis-surface-2 hover:text-lapis-text-primary transition-colors mb-8"
-        >
-          <Wallet className="w-3.5 h-3.5" />
-          Budget
-        </Link>
+        <div className="mb-6"><RaceIdentity type={race.race_type} location={race.courseOrLocation} date={race.race_date} result={race.resultDurationSeconds ? formatDuration(race.resultDurationSeconds) : null} target={targetFinishSeconds ? formatDuration(targetFinishSeconds) : null} /></div>
 
         {step !== 'review' && (
           <div className="flex flex-wrap items-center gap-1 mb-8 text-xs">
@@ -1015,6 +923,7 @@ export default function RaceDetailPage() {
           </div>
         )}
 
+        {step === 'confirm' && assessmentError && <p role="alert" className="mb-4 text-sm text-lapis-garnet">{assessmentError}</p>}
         {step === 'confirm' && (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
             <p className="text-lapis-text-secondary text-sm mb-4">
@@ -1104,7 +1013,7 @@ export default function RaceDetailPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setStep('assessment')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
+              <button onClick={() => setStep('assessment')} className="min-h-11 text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
                 Back
               </button>
               <Button onClick={() => setStep('snapshot')} className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110">
@@ -1388,23 +1297,25 @@ export default function RaceDetailPage() {
             {/* Plan/Progress/Prep, not routes - see reviewTab's own comment
                 for why. Same pill-toggle pattern as Calendar's Day/Week
                 switch, reused rather than inventing a new nav style. */}
-            <div className="flex items-center gap-1 p-1 rounded-lapis-sm bg-lapis-surface-2 w-fit">
+            <nav className="race-section-nav" aria-label="Race sections">
               {([
+                { key: 'overview', label: 'Overview' },
                 { key: 'plan', label: 'Plan' },
                 { key: 'progress', label: 'Progress' },
-                { key: 'prep', label: 'Prep' },
+                { key: 'prep', label: 'Race day' },
               ] as const).map((tab) => (
                 <button
                   key={tab.key}
+                  aria-pressed={reviewTab === tab.key}
                   onClick={() => setReviewTab(tab.key)}
-                  className={`px-4 py-1.5 rounded-lapis-sm text-sm font-medium transition-colors ${
-                    reviewTab === tab.key ? 'bg-lapis-accent-500 text-lapis-text-primary' : 'text-lapis-text-secondary hover:text-lapis-text-primary'
-                  }`}
+                  className="px-2 font-medium"
                 >
                   {tab.label}
                 </button>
               ))}
-            </div>
+            </nav>
+
+            {reviewTab === 'overview' && <RaceOverview raceId={raceId} weeks={plan.weeks} onTab={setReviewTab} />}
 
             {reviewTab === 'plan' && (
               <div className="space-y-8">
@@ -1413,11 +1324,11 @@ export default function RaceDetailPage() {
                     <h2 className="text-lg font-medium text-lapis-text-primary">
                       Training Plan <span className="text-lapis-text-tertiary text-sm font-normal">({RACE_APPROACH_LABELS[plan.approach]})</span>
                     </h2>
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => setStep('confirm')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button onClick={() => setStep('confirm')} className="min-h-11 text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
                         Edit start date
                       </button>
-                      <button onClick={() => setStep('assessment')} className="text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
+                      <button onClick={() => setStep('assessment')} className="min-h-11 text-sm text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
                         Edit my assessment
                       </button>
                       <Button onClick={() => setStep('spectrum')} variant="outline" className="border-lapis-border-subtle text-lapis-text-primary hover:bg-lapis-surface-2">
@@ -1921,6 +1832,16 @@ export default function RaceDetailPage() {
         )}
       </div>
 
+      {preview && <PlanReview candidate={preview.plan} previous={plan} onCancel={() => setPreview(null)} onApply={async () => {
+        const response = await fetch('/api/plan/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ previewId: preview.id }) })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || 'Could not apply plan')
+        setPlan(preview.plan)
+        setPreview(null)
+        setStep('review')
+        setReviewTab('overview')
+        changed()
+      }} />}
       <ConfirmationModal
         open={showCutoffConfirm}
         onOpenChange={setShowCutoffConfirm}

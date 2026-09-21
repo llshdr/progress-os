@@ -1,7 +1,8 @@
 "use client";
 import AppLayout from "@/components/app-layout";
 import { PageHeader, NavRow } from "@/components/lapis/page";
-import TrainingCard from "@/components/lapis/training-card";
+import DailySessions from "@/components/lapis/daily-sessions";
+import ActiveRaceCard from "@/components/lapis/active-race-card";
 import { useTrainingOverview } from "@/lib/use-training-overview";
 import {
   CalendarDays,
@@ -10,12 +11,12 @@ import {
   History,
   Apple,
   Plus,
+  Flag,
 } from "lucide-react";
 import Link from "next/link";
-import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { LoadErrorBanner } from "@/components/ui/load-error-banner";
 export default function TrainingPage() {
-  const { data, error, loading } = useTrainingOverview();
+  const { data, error } = useTrainingOverview();
   return (
     <AppLayout>
       <div className="lapis-page">
@@ -35,12 +36,12 @@ export default function TrainingPage() {
         {error && (
           <LoadErrorBanner message="Couldn't load your training. Your library and logs are still accessible below." />
         )}
-        {loading && <PageSkeleton />}
         <div className="grid gap-7 lg:grid-cols-2">
           <div className="space-y-6">
+            <DailySessions hero />
+            <ActiveRaceCard />
             {data && (
               <>
-                <TrainingCard data={data} />
                 <section className="lapis-panel">
                   <div className="flex justify-between gap-3">
                     <h2 className="font-semibold">This week</h2>
@@ -124,17 +125,14 @@ export default function TrainingPage() {
                 </p>
               )}
             </div>
-            <Link
-              href="/journey"
-              className="lapis-world mt-6 flex min-h-48 items-end p-6"
-            >
-              <span>
-                <span className="lapis-eyebrow">Your direction</span>
-                <strong className="mt-2 block text-xl">
-                  Open your journey →
-                </strong>
-              </span>
-            </Link>
+            <div className="lapis-group mt-6">
+              <NavRow
+                href="/gym/progress/races"
+                title="Your races"
+                description="Training plans, preparation and results"
+                icon={Flag}
+              />
+            </div>
           </section>
         </div>
       </div>

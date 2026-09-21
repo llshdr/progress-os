@@ -1,5 +1,6 @@
 'use client'
 
+import BackLink from '@/components/lapis/back-link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -8,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import Link from 'next/link'
 
 export default function NewTemplatePage() {
   const router = useRouter()
@@ -47,16 +47,14 @@ export default function NewTemplatePage() {
       console.error('Error creating template:', error)
       setLoading(false)
     } else {
-      router.push(`/gym/templates/${data.id}/edit`)
+      router.replace(`/gym/templates/${data.id}/edit`)
     }
   }
 
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/gym/templates" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back
-        </Link>
+        <BackLink fallback="/gym/templates" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-2">
           New Workout Template

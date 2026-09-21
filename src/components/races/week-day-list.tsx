@@ -111,6 +111,7 @@ export default function WeekDayList({
   level,
   raceDay,
 }: Props) {
+  weekIndexWithinPhase = week.progressionIndex ?? weekIndexWithinPhase
   return (
     <div className="mt-3 pt-3 border-t border-lapis-border-subtle space-y-1.5">
       {DAY_ABBREVIATIONS.map((label, day) => {

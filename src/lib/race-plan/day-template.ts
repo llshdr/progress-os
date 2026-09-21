@@ -632,6 +632,7 @@ export interface WeekSlots {
 // the per-week reduction step rather than trying to keep race day out of
 // the phase-level template in the first place.
 export function slotsForWeek(template: PhaseTemplate, week: TrainingWeekSkeleton, excludeDay?: number | null): WeekSlots {
+  template = week.templateSnapshot ?? template
   const brickDays = (week.brickSessions ? template.brickDays.slice(0, week.brickSessions) : []).filter((d) => d !== excludeDay)
   const brickDaySet = new Set(brickDays)
 

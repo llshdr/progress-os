@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
+import { changed } from '@/components/lapis/app-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -239,6 +240,17 @@ export default function NutritionPage() {
     setIsDialogOpen(true)
   }
 
+  useEffect(() => {
+    if (loading) return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('log') !== '1') return
+    openDialog()
+    setIsDialogOpen(true)
+    url.searchParams.delete('log')
+    history.replaceState(history.state, '', url)
+  }, [loading])
+
+
   const addFoodItemRow = () => {
     setForm((prev) => ({
       ...prev,
@@ -440,6 +452,7 @@ export default function NutritionPage() {
 
     setSaving(false)
     setIsDialogOpen(false)
+    changed()
     fetchData()
     setInsightRefreshKey((k) => k + 1)
   }
@@ -493,7 +506,7 @@ export default function NutritionPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {lastIntraWorkoutItem && (
               <button
                 onClick={handleQuickRepeatIntraWorkout}
@@ -727,39 +740,6 @@ export default function NutritionPage() {
           </div>
         )}
 
-        {allEntries.length >= MIN_ENTRIES_FOR_TREND ? (
-          <div className="grid gap-4 mb-6 lg:grid-cols-2">
-            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
-              <h3 className="text-lg font-medium text-lapis-text-primary mb-4">Trend</h3>
-              <NutritionChart points={chartPoints} />
-              {recentAverages && (
-                <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-lapis-border-subtle">
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-1">Avg Protein (7d)</p>
-                    <p className="text-sm font-semibold text-lapis-text-primary">{recentAverages.protein.toFixed(0)}g</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-1">Avg Fat (7d)</p>
-                    <p className="text-sm font-semibold text-lapis-text-primary">{recentAverages.fat.toFixed(0)}g</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-lapis-text-tertiary mb-1">Avg Carbs (7d)</p>
-                    <p className="text-sm font-semibold text-lapis-text-primary">{recentAverages.carbs.toFixed(0)}g</p>
-                  </div>
-                </div>
-              )}
-            </div>
-            <NutritionInsightCard refreshKey={insightRefreshKey} />
-          </div>
-        ) : allEntries.length > 0 ? (
-          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
-            <p className="text-lapis-text-tertiary text-sm">
-              Log {MIN_ENTRIES_FOR_TREND - allEntries.length} more day
-              {MIN_ENTRIES_FOR_TREND - allEntries.length === 1 ? '' : 's'} to see your trend and an AI insight.
-            </p>
-          </div>
-        ) : null}
-
         {!todayEntry ? (
           <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-12 text-center">
             <Apple className="w-10 h-10 text-lapis-text-disabled mx-auto mb-4" />
@@ -846,6 +826,41 @@ export default function NutritionPage() {
             )}
           </div>
         )}
+        <section className="mt-8">
+        {allEntries.length >= MIN_ENTRIES_FOR_TREND ? (
+          <div className="grid gap-4 mb-6 lg:grid-cols-2">
+            <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6">
+              <h3 className="text-lg font-medium text-lapis-text-primary mb-4">Trend</h3>
+              <NutritionChart points={chartPoints} />
+              {recentAverages && (
+                <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-lapis-border-subtle">
+                  <div>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Avg Protein (7d)</p>
+                    <p className="text-sm font-semibold text-lapis-text-primary">{recentAverages.protein.toFixed(0)}g</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Avg Fat (7d)</p>
+                    <p className="text-sm font-semibold text-lapis-text-primary">{recentAverages.fat.toFixed(0)}g</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-lapis-text-tertiary mb-1">Avg Carbs (7d)</p>
+                    <p className="text-sm font-semibold text-lapis-text-primary">{recentAverages.carbs.toFixed(0)}g</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <NutritionInsightCard refreshKey={insightRefreshKey} />
+          </div>
+        ) : allEntries.length > 0 ? (
+          <div className="border border-lapis-border-subtle rounded-lapis-lg bg-lapis-surface-1 p-6 mb-6">
+            <p className="text-lapis-text-tertiary text-sm">
+              Log {MIN_ENTRIES_FOR_TREND - allEntries.length} more day
+              {MIN_ENTRIES_FOR_TREND - allEntries.length === 1 ? '' : 's'} to see your trend and an AI insight.
+            </p>
+          </div>
+        ) : null}
+
+        </section>
       </div>
     </AppLayout>
   )

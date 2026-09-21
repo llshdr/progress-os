@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./living-world.css";
+import "./focus-flow.css";
+import { AppProvider } from "@/components/lapis/app-provider";
+import { WorldProvider } from "@/components/lapis/world-provider";
 
 export const metadata: Metadata = {
   title: "L.A.P.I.S",
@@ -28,7 +32,7 @@ export default function RootLayout({
       lang="en"
       className="dark h-full antialiased"
     >
-      <body className="min-h-full flex flex-col bg-lapis-bg text-lapis-text-primary">{children}</body>
+      <body className="min-h-full flex flex-col bg-lapis-bg text-lapis-text-primary"><AppProvider><WorldProvider>{children}</WorldProvider></AppProvider></body>
     </html>
   );
 }

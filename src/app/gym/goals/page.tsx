@@ -1,5 +1,7 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
+import BackLink from '@/components/lapis/back-link'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppLayout from '@/components/app-layout'
@@ -104,6 +106,7 @@ export default function GoalsPage() {
     } else {
       setNewGoal({ title: '', description: '' })
       setIsDialogOpen(false)
+      changed()
       fetchGoals()
     }
   }
@@ -114,6 +117,7 @@ export default function GoalsPage() {
     if (error) {
       console.error('Error updating goal:', error)
     } else {
+      changed()
       fetchGoals()
     }
   }
@@ -126,6 +130,7 @@ export default function GoalsPage() {
     if (error) {
       console.error('Error deleting goal:', error)
     } else {
+      changed()
       fetchGoals()
     }
     setGoalToDelete(null)
@@ -149,9 +154,7 @@ export default function GoalsPage() {
       <div className="lapis-page">
         {loadError && <LoadErrorBanner message="Couldn't load this week's goals. Try refreshing." />}
         <div className="flex items-center gap-3 mb-8">
-          <Link href="/gym/progress" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors">
-            ← Back
-          </Link>
+          <BackLink fallback="/gym/progress" className="mb-6" />
           <div className="flex-1" />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger render={<Button className="bg-lapis-accent-500 text-lapis-text-primary hover:brightness-110 text-sm" />}>

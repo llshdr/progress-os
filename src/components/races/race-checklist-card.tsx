@@ -1,5 +1,6 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2 } from 'lucide-react'
@@ -100,6 +101,7 @@ export default function RaceChecklistCard({ raceId, category, justCompletedBrick
       console.error('Error seeding race checklist items:', error)
       return
     }
+    changed()
     fetchItems()
   }
 
@@ -113,6 +115,7 @@ export default function RaceChecklistCard({ raceId, category, justCompletedBrick
       console.error('Error toggling race checklist item:', error)
       return
     }
+    changed()
     fetchItems()
   }
 
@@ -139,6 +142,7 @@ export default function RaceChecklistCard({ raceId, category, justCompletedBrick
       return
     }
     setNewTitles((prev) => ({ ...prev, [sectionCategory]: '' }))
+    changed()
     fetchItems()
   }
 
@@ -148,6 +152,7 @@ export default function RaceChecklistCard({ raceId, category, justCompletedBrick
       console.error('Error deleting race checklist item:', error)
       return
     }
+    changed()
     fetchItems()
   }
 

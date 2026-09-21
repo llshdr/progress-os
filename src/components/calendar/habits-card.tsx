@@ -1,5 +1,6 @@
 'use client'
 
+import { changed } from '@/components/lapis/app-provider'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -90,6 +91,7 @@ export default function HabitsCard({ habits, habitLogs, onChanged }: Props) {
     }
     setOpen(false)
     resetForm()
+    changed()
     onChanged()
   }
 
@@ -99,6 +101,7 @@ export default function HabitsCard({ habits, habitLogs, onChanged }: Props) {
       console.error('Error deleting habit:', error)
       return
     }
+    changed()
     onChanged()
   }
 

@@ -22,7 +22,7 @@ export function slotDisplayName(slot: ScheduleSlot): string {
 // Ordered rotation for the current user, joined to the template name where
 // one is linked. Reordering is just persisting new slot_order values - the
 // list itself is the only state; nothing else needs to stay in sync.
-export async function fetchScheduleSlots(supabase: SupabaseClient, userId: string): Promise<ScheduleSlot[]> {
+export async function fetchScheduleSlots(supabase: SupabaseClient, userId: string, strict = false): Promise<ScheduleSlot[]> {
   const { data, error } = await supabase
     .from('workout_schedule_slots')
     .select('id, template_id, label, slot_order, usual_time, workout_templates(name)')
@@ -30,6 +30,7 @@ export async function fetchScheduleSlots(supabase: SupabaseClient, userId: strin
     .order('slot_order', { ascending: true })
 
   if (error) {
+    if (strict) throw new Error('Your training schedule could not load. Please retry.')
     console.error('Error fetching schedule slots:', error)
     return []
   }

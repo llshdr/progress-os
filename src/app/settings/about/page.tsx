@@ -1,14 +1,12 @@
+import BackLink from '@/components/lapis/back-link'
 import AppLayout from '@/components/app-layout'
-import Link from 'next/link'
 import packageJson from '../../../../package.json'
 
 export default function AboutSettingsPage() {
   return (
     <AppLayout>
       <div className="lapis-page">
-        <Link href="/settings" className="text-lapis-text-tertiary hover:text-lapis-text-secondary transition-colors mb-6 block">
-          ← Back to Settings
-        </Link>
+        <BackLink fallback="/settings" className="mb-6" />
 
         <h1 className="font-display text-3xl font-semibold tracking-tight text-lapis-text-primary mb-8">About</h1>
 

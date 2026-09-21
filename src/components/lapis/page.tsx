@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, type LucideIcon } from "lucide-react";
+import BackLink from "./back-link";
+import { ChevronRight, type LucideIcon } from "lucide-react";
 
 export function PageHeader({
   title,
@@ -15,13 +16,7 @@ export function PageHeader({
   return (
     <header className="mb-7">
       {back && (
-        <Link
-          href={back.href}
-          className="mb-4 inline-flex min-h-11 items-center gap-2 text-sm text-lapis-accent-400"
-        >
-          <ArrowLeft size={18} />
-          {back.label}
-        </Link>
+        <BackLink fallback={back.href} className="mb-4" />
       )}
       <div className="flex items-center justify-between gap-4">
         <h1 className="lapis-title">{title}</h1>

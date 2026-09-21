@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import {
@@ -7,76 +7,57 @@ import {
   Plus,
   Dumbbell,
   Apple,
-  Mountain,
+  Target,
+  CalendarDays,
   Flag,
   Sparkles,
 } from "lucide-react";
 import AppLayout from "@/components/app-layout";
-import TrainingCard from "@/components/lapis/training-card";
-import { worldStyle } from "@/lib/journey";
-import JourneyPreview, { worldIcons } from "@/components/lapis/journey-preview";
+import DailySessions from "@/components/lapis/daily-sessions";
+import ActiveRaceCard from "@/components/lapis/active-race-card";
 import { NavRow } from "@/components/lapis/page";
 import { useTrainingOverview } from "@/lib/use-training-overview";
 import { useJourney } from "@/lib/use-journey";
-import { createClient } from "@/lib/supabase/client";
+import { useLapis } from "@/components/lapis/app-provider";
+import { useDailyPlan } from "@/lib/use-daily-plan";
 import { getLocalDateString } from "@/lib/date";
-import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { LoadErrorBanner } from "@/components/ui/load-error-banner";
 import TodaySuggestionsSection from "@/components/ai-coach/today-suggestions-section";
 
+const subscribeClock = (notify: () => void) => {
+  const timer = window.setInterval(notify, 60_000);
+  window.addEventListener("focus", notify);
+  return () => {
+    window.clearInterval(timer);
+    window.removeEventListener("focus", notify);
+  };
+};
+const readGreeting = () => {
+  const hour = new Date().getHours();
+  return hour < 12
+    ? "Good morning"
+    : hour < 18
+      ? "Good afternoon"
+      : "Good evening";
+};
 export default function DashboardClient({ user }: { user: User }) {
   const training = useTrainingOverview();
   const journey = useJourney();
-  const [name, setName] = useState(
-    user.user_metadata?.full_name || user.email?.split("@")[0] || "there",
+  const { identity } = useLapis();
+  const { data: daily } = useDailyPlan(getLocalDateString());
+  const name = identity?.name || user.user_metadata?.full_name || "there";
+  const todayRace =
+    daily?.race?.race_date === getLocalDateString() ? daily.race.id : null;
+  const greeting = useSyncExternalStore(
+    subscribeClock,
+    readGreeting,
+    () => "Welcome back",
   );
-  const [greeting, setGreeting] = useState("Welcome back");
-  const [todayRace, setTodayRace] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    async function load() {
-      const db = createClient();
-      const [profile, settings, race] = await Promise.all([
-        db.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
-        db
-          .from("user_settings")
-          .select("show_today_suggestions")
-          .eq("user_id", user.id)
-          .maybeSingle(),
-        db
-          .from("races")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("race_date", getLocalDateString())
-          .is("result_duration_seconds", null)
-          .limit(1)
-          .maybeSingle(),
-      ]);
-      if (!alive) return;
-      if (profile.data?.full_name) setName(profile.data.full_name);
-      setSuggestions(settings.data?.show_today_suggestions ?? true);
-      setTodayRace(race.data?.id ?? null);
-      const hour = new Date().getHours();
-      setGreeting(
-        hour < 12
-          ? "Good morning"
-          : hour < 18
-            ? "Good afternoon"
-            : "Good evening",
-      );
-    }
-    void load().catch(() => {
-      /* Optional profile data does not block the home screen. */
-    });
-    return () => {
-      alive = false;
-    };
-  }, [user.id]);
   const priorities = journey.goals
     .filter(
       (g) =>
         g.status === "active" &&
+        (g.attention ?? "focus") === "focus" &&
         (!g.depends_on_goal_id ||
           journey.goals.some(
             (p) => p.id === g.depends_on_goal_id && p.status === "done",
@@ -93,7 +74,13 @@ export default function DashboardClient({ user }: { user: User }) {
           <p className="mb-2 text-lapis-text-secondary">
             {greeting}, {name}.
           </p>
-          <h1 className="lapis-title">Today</h1>
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="lapis-title">Today</h1>
+            <Link href="/plan" className="lapis-secondary">
+              <CalendarDays size={17} />
+              Your plan
+            </Link>
+          </div>
         </header>
         {todayRace && (
           <Link
@@ -111,19 +98,13 @@ export default function DashboardClient({ user }: { user: User }) {
         )}
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="space-y-7">
-            {training.loading && <PageSkeleton />}
-            {training.error && (
-              <>
-                <LoadErrorBanner message="Couldn't load your training. Try refreshing, or open your workout log." />
-                <Link href="/gym/workouts" className="lapis-primary">
-                  Open workouts
-                </Link>
-              </>
-            )}
-            {training.data && <TrainingCard data={training.data} />}
+            <DailySessions hero />
+            <ActiveRaceCard />
+          </div>
+          <div className="space-y-6">
             <section>
               <div className="flex items-center justify-between">
-                <h2 className="lapis-section mb-0">Make time to build</h2>
+                <h2 className="lapis-section mb-0">Your next steps</h2>
                 <Link
                   href="/goals"
                   className="inline-flex min-h-11 items-center text-sm text-lapis-accent-400"
@@ -138,14 +119,13 @@ export default function DashboardClient({ user }: { user: User }) {
               ) : (
                 <div className="mt-3 divide-y divide-lapis-border-subtle border-y border-lapis-border-subtle">
                   {priorities.map((g) => {
-                    const Icon = worldIcons[worldStyle(g)];
                     return (
                       <Link
                         key={g.id}
                         href={`/goals/${g.id}`}
                         className="flex min-h-24 items-center gap-4 py-4"
                       >
-                        <Icon
+                        <Target
                           className="shrink-0 text-lapis-text-secondary"
                           size={24}
                         />
@@ -172,17 +152,12 @@ export default function DashboardClient({ user }: { user: User }) {
                       className="flex min-h-20 items-center gap-3 text-lapis-text-secondary"
                     >
                       <Plus size={20} />
-                      Give your next ambition a place
+                      Choose one thing to work toward
                     </Link>
                   )}
                 </div>
               )}
             </section>
-          </div>
-          <div className="space-y-6">
-            {!journey.loading && !journey.error && (
-              <JourneyPreview goals={journey.goals} />
-            )}
             <details className="group border-y border-lapis-border-subtle">
               <summary className="flex min-h-20 cursor-pointer list-none items-center gap-4 py-4 [&::-webkit-details-marker]:hidden">
                 <span className="lapis-icon-button">
@@ -202,12 +177,12 @@ export default function DashboardClient({ user }: { user: User }) {
                   title="Workout"
                   icon={Dumbbell}
                 />
-                <NavRow href="/nutrition" title="Meal" icon={Apple} />
+                <NavRow href="/nutrition?log=1" title="Meal" icon={Apple} />
                 <NavRow
                   href="/goals"
                   title="Goal check-in"
                   description="Choose a goal to add a note"
-                  icon={Mountain}
+                  icon={Target}
                 />
               </div>
             </details>
@@ -227,7 +202,7 @@ export default function DashboardClient({ user }: { user: User }) {
             )}
           </div>
         </div>
-        {suggestions && (
+        {training.data?.suggestions && (
           <section className="mt-8">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="lapis-section mb-0 flex items-center gap-2">
